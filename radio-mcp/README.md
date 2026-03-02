@@ -1,56 +1,71 @@
 # Radio MCP Server
 
-인터넷 라디오 검색 및 재생을 위한 MCP 서버
+MCP server for internet radio search and playback with Claude Desktop.
 
-## 설치
+## Installation
 
 ```bash
-cd radio-mcp
-pip install -e .
+# Install dependencies
+pip install "mcp[cli]"
+
+# Install mpv (required for playback)
+brew install mpv
 ```
 
-## Claude Desktop 설정
+## Claude Desktop Setup
 
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "radio": {
-      "command": "python",
-      "args": ["/Users/dragon/RadioCli/radio-mcp/server.py"]
+      "command": "python3",
+      "args": ["/path/to/radio-mcp/server.py"]
     }
   }
 }
 ```
 
-## 도구
+Restart Claude Desktop after configuration.
 
-| 도구 | 설명 |
-|------|------|
-| `search` | 라디오 검색 (장르, 이름 등) |
-| `search_by_country` | 국가별 검색 |
-| `get_popular` | 인기 방송국 |
-| `play` | 라디오 재생 |
-| `stop` | 정지 |
-| `now_playing` | 현재 곡 정보 |
-| `get_favorites` | 즐겨찾기 목록 |
-| `add_favorite` | 즐겨찾기 추가 |
-| `remove_favorite` | 즐겨찾기 삭제 |
-| `get_history` | 청취 기록 |
-| `recommend` | 분위기 기반 추천 |
+## Tools
 
-## 사용 예시
+| Tool | Description |
+|------|-------------|
+| `search` | Search radio stations by keyword |
+| `search_by_country` | Search by country code (KR, US, JP...) |
+| `get_popular` | Get popular stations |
+| `play` | Play a radio stream |
+| `stop` | Stop playback |
+| `now_playing` | Get current song info |
+| `get_favorites` | List favorites |
+| `add_favorite` | Add to favorites |
+| `remove_favorite` | Remove from favorites |
+| `get_history` | Listening history |
+| `recommend` | Mood-based recommendations |
 
-Claude Desktop에서:
-- "재즈 라디오 찾아줘"
-- "한국 라디오 틀어줘"
-- "지금 나오는 곡 뭐야?"
-- "편안한 음악 추천해줘"
-- "라디오 정지"
+## Usage
 
-## 의존성
+Just ask Claude naturally:
+
+- "Play some jazz radio"
+- "Find Korean radio stations"
+- "What's playing now?"
+- "I want relaxing music"
+- "Stop the radio"
+- "Add this to favorites"
+
+## API
+
+Uses [Radio Browser API](https://api.radio-browser.info/) for station data.
+
+## Requirements
 
 - Python 3.10+
-- mpv (재생용)
 - mcp[cli]
+- mpv
+
+## License
+
+MIT
