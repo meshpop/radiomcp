@@ -12,6 +12,7 @@ import sqlite3
 import urllib.request
 import urllib.parse
 import time
+import shutil
 from typing import Any
 from datetime import datetime
 
@@ -24,8 +25,11 @@ mcp = FastMCP("radio")
 DATA_DIR = os.path.expanduser("~/.radiocli")
 FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
+RECOGNIZED_FILE = os.path.join(DATA_DIR, "recognized_songs.json")
+RECORD_FILE = os.path.join(DATA_DIR, "record.mp3")
 MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
 API_BASE = "https://de1.api.radio-browser.info/json"
+ACOUSTID_API_KEY = os.environ.get("ACOUSTID_API_KEY", "vQEDUkpM7e")
 
 # DB 경로 (우선순위: 로컬 > 프로젝트)
 DB_PATHS = [
@@ -295,6 +299,15 @@ def fuzzy_match(query: str, threshold: int = 2) -> str:
     if query_lower in KNOWN_TAGS:
         return query_lower
 
+    # 너무 짧은 단어(3자 미만)는 퍼지 매칭 안 함 (fm → edm 방지)
+    if len(query_lower) < 3:
+        return query_lower
+
+    # 라디오 관련 일반 단어는 퍼지 매칭 제외
+    SKIP_WORDS = {"radio", "fm", "am", "hd", "the", "and", "or", "with"}
+    if query_lower in SKIP_WORDS:
+        return query_lower
+
     # 가장 가까운 태그 찾기
     best_match = None
     best_distance = threshold + 1
@@ -459,6 +472,123 @@ def get_db():
 
     print("No DB found, using API only", flush=True)
     return None
+
+
+# ============================================================
+# 메모리 인덱스 (초고속 검색)
+# ============================================================
+
+# 전역 인덱스
+_stations_cache = None      # 전체 방송국 리스트
+_tag_index = None           # {tag: [indices...]}
+_name_words_index = None    # {word: [indices...]}
+
+
+def build_memory_index():
+    """DB를 메모리에 로드하고 인덱스 구축 (최초 1회)"""
+    global _stations_cache, _tag_index, _name_words_index
+
+    if _stations_cache is not None:
+        return  # 이미 로드됨
+
+    db = get_db()
+    if not db:
+        _stations_cache = []
+        _tag_index = {}
+        _name_words_index = {}
+        return
+
+    try:
+        cursor = db.cursor()
+        cursor.execute("""
+            SELECT * FROM stations
+            WHERE is_alive = 1 OR is_alive IS NULL
+            ORDER BY clickcount DESC
+        """)
+        rows = cursor.fetchall()
+
+        _stations_cache = [format_station(row) for row in rows]
+        _tag_index = {}
+        _name_words_index = {}
+
+        for idx, station in enumerate(_stations_cache):
+            # 태그 인덱스
+            tags = station.get("tags", "").lower()
+            for tag in tags.split(","):
+                tag = tag.strip()
+                if tag:
+                    if tag not in _tag_index:
+                        _tag_index[tag] = []
+                    _tag_index[tag].append(idx)
+
+            # 이름 단어 인덱스
+            name = station.get("name", "").lower()
+            for word in name.split():
+                word = word.strip()
+                if len(word) >= 2:
+                    if word not in _name_words_index:
+                        _name_words_index[word] = []
+                    _name_words_index[word].append(idx)
+
+        print(f"Memory index built: {len(_stations_cache)} stations, {len(_tag_index)} tags", flush=True)
+    except Exception as e:
+        print(f"Index build error: {e}", flush=True)
+        _stations_cache = []
+        _tag_index = {}
+        _name_words_index = {}
+
+
+def fast_search_by_name(query: str, limit: int = 20) -> list:
+    """이름으로 초고속 검색"""
+    build_memory_index()
+
+    if not _stations_cache:
+        return []
+
+    query_lower = query.lower()
+    query_words = query_lower.split()
+
+    # 1. 정확한 이름 매칭
+    exact_matches = []
+    partial_matches = []
+
+    for idx, station in enumerate(_stations_cache):
+        name_lower = station.get("name", "").lower()
+
+        # 전체 쿼리가 이름에 포함
+        if query_lower in name_lower:
+            exact_matches.append(idx)
+        # 모든 단어가 이름에 포함
+        elif all(w in name_lower for w in query_words):
+            partial_matches.append(idx)
+
+    result_indices = (exact_matches + partial_matches)[:limit]
+    return [_stations_cache[i] for i in result_indices]
+
+
+def fast_search_by_tag(tags: list, limit: int = 20) -> list:
+    """태그로 초고속 검색"""
+    build_memory_index()
+
+    if not _stations_cache or not _tag_index:
+        return []
+
+    # 각 태그에 매칭되는 인덱스 수집
+    all_indices = set()
+    for tag in tags:
+        tag_lower = tag.lower()
+        # 정확 매칭
+        if tag_lower in _tag_index:
+            all_indices.update(_tag_index[tag_lower])
+        # 부분 매칭 (태그에 단어 포함)
+        else:
+            for idx_tag, indices in _tag_index.items():
+                if tag_lower in idx_tag or idx_tag in tag_lower:
+                    all_indices.update(indices[:50])  # 부분 매칭은 제한
+
+    # votes 기준 정렬 (이미 정렬된 상태라 인덱스 순으로 가져오면 됨)
+    sorted_indices = sorted(all_indices)[:limit]
+    return [_stations_cache[i] for i in sorted_indices]
 
 
 def load_json(filepath: str) -> list:
@@ -760,6 +890,8 @@ def search(query: str, limit: int = 20) -> list[dict]:
     Supports multilingual queries (Korean, Japanese, Chinese, etc.)
     and complex queries like "bossa nova lounge".
 
+    Uses in-memory index for instant results.
+
     Args:
         query: Search term - can be in any language (재즈, ジャズ, jazz)
         limit: Number of results (default 20)
@@ -767,68 +899,82 @@ def search(query: str, limit: int = 20) -> list[dict]:
     Returns:
         List of radio stations
     """
-    # 1. 다국어 번역
-    translated = translate_query(query)
-
-    # 2. 퍼지 매칭 (오타 교정)
-    words = translated.lower().split()
-    corrected_words = [fuzzy_match(w) for w in words]
-
-    # 3. 복합어 병합
-    merged = merge_compound_tokens(corrected_words)
-
-    # 4. 유사어 확장
-    all_tags = set(merged)
-    for word in merged:
-        if word in TAG_SYNONYMS:
-            all_tags.update(TAG_SYNONYMS[word])
-
-    all_results = []
+    name_results = []
+    tag_results = []
     seen_urls = set()
 
-    # 5. DB 검색
-    for tag in list(all_tags)[:8]:
-        db_results = db_search(tag, "tags", limit)
-        for r in db_results:
+    # 1. 먼저 이름으로 검색 (가장 정확, 최우선)
+    for r in fast_search_by_name(query, limit):
+        if r["url"] not in seen_urls:
+            seen_urls.add(r["url"])
+            r["source"] = "db"
+            r["match_type"] = "name"
+            name_results.append(r)
+
+    # 이름 매칭이 충분하면 바로 반환 (태그 검색 생략)
+    if len(name_results) >= limit:
+        return name_results[:limit]
+
+    # 2. 다국어 번역 + 태그 검색 (이름 매칭 부족시)
+    translated = translate_query(query)
+    words = translated.lower().split()
+    corrected_words = [fuzzy_match(w) for w in words]
+    merged = merge_compound_tokens(corrected_words)
+
+    # 유사어 확장 (장르 쿼리만)
+    # 일반 단어(fm, radio, beach 등)는 태그 확장 안 함
+    SKIP_TAG_EXPAND = {"fm", "am", "radio", "beach", "music", "the", "and", "or"}
+    all_tags = []
+    for word in merged:
+        if word.lower() not in SKIP_TAG_EXPAND:
+            all_tags.append(word)
+            if word in TAG_SYNONYMS:
+                all_tags.extend(TAG_SYNONYMS[word][:2])
+
+    # 태그가 있을 때만 검색
+    if all_tags:
+        for r in fast_search_by_tag(all_tags, limit):
             if r["url"] not in seen_urls:
                 seen_urls.add(r["url"])
                 r["source"] = "db"
-                r["matched_tag"] = tag
-                all_results.append(r)
+                r["match_type"] = "tag"
+                tag_results.append(r)
 
-    # 이름으로도 검색
-    if len(all_results) < limit // 2:
-        for word in merged:
-            db_results = db_search(word, "name", limit)
-            for r in db_results:
-                if r["url"] not in seen_urls:
-                    seen_urls.add(r["url"])
-                    r["source"] = "db"
-                    all_results.append(r)
+    # 이름 매칭 우선 + 태그 매칭으로 채움
+    all_results = name_results + tag_results
 
-    # 6. Radio Browser API
-    for tag in list(all_tags)[:3]:
-        encoded_tag = urllib.parse.quote(tag)
-        api_results = api_get(f"stations/bytag/{encoded_tag}", {
-            "limit": limit // 2,
-            "order": "clickcount",
-            "reverse": "true",
-            "lastcheckok": 1
-        })
+    # 3. API 검색 (이름 매칭이 없고 결과 부족시에만)
+    # 이름으로 찾았으면 API 호출 생략 (속도 향상)
+    has_name_match = any(r.get("match_type") == "name" for r in all_results)
+    if not has_name_match and len(all_results) < limit // 2:
+        for tag in all_tags[:2]:
+            encoded_tag = urllib.parse.quote(tag)
+            api_results = api_get(f"stations/bytag/{encoded_tag}", {
+                "limit": limit // 2,
+                "order": "clickcount",
+                "reverse": "true",
+                "lastcheckok": 1
+            })
 
-        for s in api_results:
-            url = s.get("url_resolved") or s.get("url", "")
-            if url and url not in seen_urls:
-                seen_urls.add(url)
-                station = format_station(s)
-                station["source"] = "api"
-                all_results.append(station)
-                if is_valid_station(s):
-                    add_station_to_db(s)
+            for s in api_results:
+                url = s.get("url_resolved") or s.get("url", "")
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    station = format_station(s)
+                    station["source"] = "api"
+                    all_results.append(station)
+                    if is_valid_station(s):
+                        add_station_to_db(s)
 
-    # votes 기준 정렬
-    all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
-    return all_results[:limit]
+    # 정렬: 이름 매칭 우선, 그 안에서 votes 정렬
+    # 이름 매칭이 있으면 그게 먼저 오고, 나머지는 votes로
+    if name_results:
+        # 이름 매칭은 그대로 두고, 태그 매칭만 votes로 정렬
+        tag_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+        return (name_results + tag_results)[:limit]
+    else:
+        all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+        return all_results[:limit]
 
 
 @mcp.tool()
@@ -1252,6 +1398,220 @@ def now_playing() -> dict:
             "station": current_station.get("name", ""),
             "error": str(e)
         }
+
+
+def record_stream(url: str, duration: int = 12) -> bool:
+    """스트림에서 오디오 녹음 (ffmpeg 사용)"""
+    if not shutil.which("ffmpeg"):
+        return False
+
+    try:
+        if os.path.exists(RECORD_FILE):
+            os.remove(RECORD_FILE)
+
+        subprocess.run(
+            ["ffmpeg", "-y", "-t", str(duration), "-i", url,
+             "-ac", "1", "-ar", "16000", "-acodec", "libmp3lame",
+             "-loglevel", "quiet", RECORD_FILE],
+            timeout=duration + 10
+        )
+        return os.path.exists(RECORD_FILE)
+    except:
+        return False
+
+
+def recognize_with_acoustid(audio_file: str) -> dict:
+    """AcoustID + Chromaprint로 곡 인식"""
+    if not shutil.which("fpcalc"):
+        return None
+
+    try:
+        # 오디오 핑거프린트 생성
+        result = subprocess.run(
+            ["fpcalc", "-json", audio_file],
+            capture_output=True, text=True, timeout=30
+        )
+        fp_data = json.loads(result.stdout)
+        fingerprint = fp_data.get("fingerprint", "")
+        duration = int(fp_data.get("duration", 0))
+
+        if not fingerprint:
+            return None
+
+        # AcoustID API 조회
+        params = urllib.parse.urlencode({
+            "client": ACOUSTID_API_KEY,
+            "fingerprint": fingerprint,
+            "duration": duration,
+            "meta": "recordings+releasegroups+compress"
+        })
+
+        req = urllib.request.Request(f"https://api.acoustid.org/v2/lookup?{params}")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+
+        if data.get("results"):
+            for r in data["results"]:
+                if r.get("recordings"):
+                    rec = r["recordings"][0]
+                    artists = rec.get("artists", [])
+                    artist_name = artists[0].get("name", "") if artists else ""
+
+                    album = ""
+                    if rec.get("releasegroups"):
+                        album = rec["releasegroups"][0].get("title", "")
+
+                    return {
+                        "title": rec.get("title", ""),
+                        "artist": artist_name,
+                        "album": album,
+                        "acoustid": r.get("id", ""),
+                        "score": r.get("score", 0)
+                    }
+    except:
+        pass
+    return None
+
+
+def recognize_with_whisper(audio_file: str) -> dict:
+    """Whisper로 음성 인식"""
+    try:
+        # mlx-whisper 시도 (Apple Silicon)
+        result = subprocess.run(
+            ["mlx_whisper", audio_file, "--language", "auto", "--output-format", "json"],
+            capture_output=True, text=True, timeout=60
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return {"transcription": result.stdout.strip(), "method": "mlx-whisper"}
+    except:
+        pass
+
+    try:
+        # openai-whisper 시도
+        result = subprocess.run(
+            ["whisper", audio_file, "--language", "auto", "--output_format", "txt"],
+            capture_output=True, text=True, timeout=120
+        )
+        if result.returncode == 0:
+            txt_file = audio_file.rsplit(".", 1)[0] + ".txt"
+            if os.path.exists(txt_file):
+                with open(txt_file, "r") as f:
+                    text = f.read().strip()
+                os.remove(txt_file)
+                return {"transcription": text, "method": "whisper"}
+    except:
+        pass
+
+    return None
+
+
+@mcp.tool()
+def recognize_song(duration: int = 12) -> dict:
+    """
+    Recognize current playing song using multiple methods.
+
+    Methods tried in order:
+    1. ICY metadata (instant, from stream)
+    2. AcoustID (audio fingerprinting, like Shazam)
+    3. Whisper (speech-to-text for DJ mentions)
+
+    Args:
+        duration: Recording duration in seconds (default 12)
+
+    Returns:
+        Recognized song info (title, artist, method)
+
+    Requirements:
+        - ffmpeg: brew install ffmpeg
+        - fpcalc: brew install chromaprint (for AcoustID)
+        - whisper: pip install openai-whisper (optional)
+    """
+    if not current_station:
+        return {"status": "not_playing"}
+
+    url = current_station.get("url_resolved") or current_station.get("url")
+    if not url:
+        return {"error": "no_stream_url"}
+
+    # 1. 먼저 메타데이터 확인 (가장 빠름)
+    metadata = now_playing()
+    if metadata.get("title") and metadata.get("status") == "playing":
+        result = {
+            "status": "recognized",
+            "method": "metadata",
+            "title": metadata.get("title", ""),
+            "artist": metadata.get("artist", ""),
+            "station": current_station.get("name", "")
+        }
+        save_recognized(result)
+        return result
+
+    # 2. 오디오 녹음
+    if not shutil.which("ffmpeg"):
+        return {"error": "ffmpeg_not_installed", "hint": "brew install ffmpeg"}
+
+    if not record_stream(url, duration):
+        return {"error": "recording_failed"}
+
+    # 3. AcoustID 시도
+    if shutil.which("fpcalc"):
+        acoustid_result = recognize_with_acoustid(RECORD_FILE)
+        if acoustid_result:
+            result = {
+                "status": "recognized",
+                "method": "acoustid",
+                "title": acoustid_result.get("title", ""),
+                "artist": acoustid_result.get("artist", ""),
+                "album": acoustid_result.get("album", ""),
+                "score": acoustid_result.get("score", 0),
+                "station": current_station.get("name", "")
+            }
+            save_recognized(result)
+            return result
+
+    # 4. Whisper 시도
+    if shutil.which("whisper") or shutil.which("mlx_whisper"):
+        whisper_result = recognize_with_whisper(RECORD_FILE)
+        if whisper_result and whisper_result.get("transcription"):
+            result = {
+                "status": "transcribed",
+                "method": whisper_result.get("method", "whisper"),
+                "transcription": whisper_result.get("transcription", ""),
+                "station": current_station.get("name", "")
+            }
+            save_recognized(result)
+            return result
+
+    return {"status": "not_recognized", "hint": "Install fpcalc (brew install chromaprint) for better recognition"}
+
+
+def save_recognized(result: dict):
+    """인식 결과 저장"""
+    songs = load_json(RECOGNIZED_FILE)
+    result["recognized_at"] = datetime.now().isoformat()
+    songs.append(result)
+    save_json(RECOGNIZED_FILE, songs[-100:])  # 최근 100개 유지
+
+
+@mcp.tool()
+def get_recognized_songs(limit: int = 20) -> list[dict]:
+    """
+    Get history of recognized songs.
+
+    Returns list of previously recognized songs with:
+    - title, artist (if available)
+    - method (metadata, acoustid, whisper)
+    - station name
+    - timestamp
+
+    Args:
+        limit: Number of recent songs to return
+
+    Returns:
+        List of recognized songs (newest first)
+    """
+    songs = load_json(RECOGNIZED_FILE)
+    return list(reversed(songs[-limit:]))
 
 
 @mcp.tool()
