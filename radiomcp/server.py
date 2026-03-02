@@ -732,10 +732,16 @@ def get_fresh_url(name: str) -> str:
     return ""
 
 
-# 영구 차단 목록 (로컬 기본값)
-BLOCK_LIST = ["평양", "pyongyang", "north korea", "dprk", "조선중앙"]
+# 블록 리스트 (로컬 파일에서 로드)
+BLOCK_LIST = []
 BLOCKED_URLS = set()
 BLOCKED_UUIDS = set()
+
+# 로컬 blocklist.json 경로 (패키지 내 또는 프로젝트 루트)
+LOCAL_BLOCKLIST_PATHS = [
+    os.path.join(PACKAGE_DIR, "blocklist.json"),
+    os.path.expanduser("~/RadioCli/blocklist.json"),
+]
 
 # 원격 블록 리스트 URL (GitHub → Cloudflare 폴백)
 BLOCKLIST_URLS = [
@@ -743,6 +749,24 @@ BLOCKLIST_URLS = [
     "https://radiomcp.pages.dev/blocklist.json",  # Cloudflare Pages (fallback)
 ]
 REMOTE_BLOCKLIST_URL = BLOCKLIST_URLS[0]  # 하위 호환성
+
+def load_local_blocklist():
+    """로컬 blocklist.json에서 로드"""
+    global BLOCK_LIST, BLOCKED_URLS, BLOCKED_UUIDS
+    for path in LOCAL_BLOCKLIST_PATHS:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                BLOCK_LIST = [b["pattern"] for b in data.get("blocked", [])]
+                BLOCKED_URLS = set(data.get("blocked_urls", []))
+                BLOCKED_UUIDS = set(data.get("blocked_uuids", []))
+                return
+            except Exception:
+                pass
+
+# 시작 시 로컬 블록리스트 로드
+load_local_blocklist()
 
 def fetch_remote_blocklist():
     """블록 리스트 가져오기 (GitHub → Cloudflare 폴백)"""

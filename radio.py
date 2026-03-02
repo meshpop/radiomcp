@@ -545,10 +545,28 @@ QUALITY_MAP = {
     "320k": {"min_bitrate": 320},
 }
 
-# 영구 차단 목록 (이름에 포함되면 제외)
-BLOCK_LIST = [
-    "평양", "pyongyang", "north korea", "dprk", "조선중앙",
-]
+# 블록 리스트 (blocklist.json에서 로드)
+BLOCK_LIST = []
+
+def load_blocklist():
+    """blocklist.json에서 블록리스트 로드"""
+    global BLOCK_LIST
+    paths = [
+        os.path.join(os.path.dirname(__file__), "blocklist.json"),
+        os.path.expanduser("~/RadioCli/blocklist.json"),
+    ]
+    for path in paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                BLOCK_LIST = [b["pattern"] for b in data.get("blocked", [])]
+                return
+            except Exception:
+                pass
+
+# 시작 시 블록리스트 로드
+load_blocklist()
 
 def is_blocked(name):
     """차단 목록에 있는지 확인"""
