@@ -800,6 +800,77 @@ def purge_blocked_from_db():
 # 시작 시 원격 블록 리스트 fetch
 fetch_remote_blocklist()
 
+def sync_popular_stations():
+    """시작 시 인기 방송 동기화 (Radio Browser → DB)"""
+    db = get_db()
+    if not db:
+        return
+
+    # 주요 국가 인기 방송 동기화
+    countries = ["KR", "US", "JP", "GB", "DE", "FR"]
+    total_added = 0
+
+    for country in countries:
+        try:
+            url = f"{API_BASE}/stations/bycountrycodeexact/{country}?limit=50&order=clickcount&reverse=true"
+            req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                stations = json.loads(resp.read().decode())
+
+            cursor = db.cursor()
+            for s in stations:
+                uuid = s.get("stationuuid", "")
+                if not uuid:
+                    continue
+
+                # 이미 있으면 URL만 업데이트 (토큰 갱신)
+                cursor.execute("SELECT url_resolved FROM stations WHERE stationuuid = ?", (uuid,))
+                existing = cursor.fetchone()
+
+                new_url = s.get("url_resolved") or s.get("url", "")
+                if existing:
+                    # URL이 바뀌었으면 업데이트
+                    if existing[0] != new_url:
+                        cursor.execute("""
+                            UPDATE stations SET url_resolved = ?, is_alive = 1 WHERE stationuuid = ?
+                        """, (new_url, uuid))
+                else:
+                    # 신규 추가
+                    name = s.get("name", "")
+                    if is_blocked(name, new_url, uuid):
+                        continue
+
+                    # 태그 자동 설정 (한국 방송)
+                    tags = s.get("tags", "")
+                    if not tags and country == "KR":
+                        if any(x in name for x in ["Classic", "클래식"]):
+                            tags = "classical,클래식"
+                        elif any(x in name for x in ["1R", "1Radio", "표준", "뉴스", "News"]):
+                            tags = "news,talk,뉴스"
+                        elif any(x in name for x in ["Cool", "FM4U", "Power", "Love"]):
+                            tags = "music,pop,kpop"
+                        elif "FM" in name:
+                            tags = "music,pop"
+
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO stations
+                        (stationuuid, name, url, url_resolved, country, countrycode, tags, bitrate, votes, clickcount, is_alive)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                    """, (
+                        uuid, name, s.get("url", ""), new_url,
+                        s.get("country", ""), country, tags,
+                        s.get("bitrate", 0), s.get("votes", 0), s.get("clickcount", 0)
+                    ))
+                    total_added += 1
+
+            db.commit()
+        except Exception:
+            pass
+
+# 시작 시 인기 방송 동기화 (백그라운드)
+import threading
+threading.Thread(target=sync_popular_stations, daemon=True).start()
+
 def is_blocked(name: str, url: str = "", uuid: str = "") -> bool:
     """차단 목록 확인 (이름, URL, UUID)"""
     if not name and not url and not uuid:
