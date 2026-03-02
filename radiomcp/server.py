@@ -1051,18 +1051,29 @@ def db_advanced_search(
 @mcp.tool()
 def search(query: str, limit: int = 20) -> list[dict]:
     """
-    Search radio stations by keyword (genre, name, etc.)
-    Supports multilingual queries (Korean, Japanese, Chinese, etc.)
-    and complex queries like "bossa nova lounge".
+    Search radio stations by keyword. Fast local DB search (~5ms).
 
-    Uses in-memory index for instant results.
+    SEARCH TIPS:
+    - Genre: jazz, rock, classical, electronic, lounge, ambient, news, talk
+    - Combine terms: "smooth jazz", "korean pop", "japanese news"
+    - Station names: "BBC", "NPR", "KBS"
+    - For country-specific: use search_by_country(country_code)
+    - For high quality: use advanced_search(min_bitrate=192)
+    - For mood-based: use recommend(mood)
+
+    EXPAND SEARCH: If few results, try related terms:
+    - jazz → smooth jazz, bebop, swing
+    - news → talk, information
+    - relaxing → lounge, ambient, chillout
+
+    Multilingual supported: 재즈, ジャズ, 爵士 all work.
 
     Args:
-        query: Search term - can be in any language (재즈, ジャズ, jazz)
+        query: Search term (genre, station name, keyword)
         limit: Number of results (default 20)
 
     Returns:
-        List of radio stations
+        List of stations with name, url, country, tags, bitrate
     """
     name_results = []
     tag_results = []
@@ -2561,6 +2572,166 @@ def refresh_blocklist() -> dict:
         "blocked_uuids": len(BLOCKED_UUIDS),
         "new_entries": new_count - old_count
     }
+
+
+# ============================================================
+# AI Helper Tools - 인공지능이 쓰기 좋게
+# ============================================================
+
+@mcp.tool()
+def get_radio_guide() -> dict:
+    """
+    IMPORTANT: Call this first when user asks about radio.
+    Returns complete guide for AI to use radio tools effectively.
+
+    Returns:
+        Guide with available tools, search tips, examples
+    """
+    return {
+        "overview": "Internet radio with 24,000+ stations from 197 countries",
+        "quick_start": [
+            "1. search('jazz') → find jazz stations",
+            "2. play(url, name) → start playback",
+            "3. now_playing() → see current song",
+            "4. stop() → stop playback"
+        ],
+        "search_tools": {
+            "search(query)": "General keyword search (genre, name, etc.)",
+            "search_by_country(code)": "Country-specific (KR, US, JP, DE, FR...)",
+            "advanced_search(...)": "Filters: country + tag + bitrate",
+            "get_popular()": "Top stations by popularity",
+            "recommend(mood)": "Mood-based: relaxing, energetic, focus, sleep"
+        },
+        "playback_tools": {
+            "play(url, name)": "Start playing (auto-refreshes URL)",
+            "stop()": "Stop playback",
+            "resume()": "Resume last station",
+            "now_playing()": "Current song info",
+            "set_volume(0-100)": "Adjust volume"
+        },
+        "user_tools": {
+            "add_favorite(station)": "Save to favorites",
+            "get_favorites()": "List favorites",
+            "get_history()": "Listening history"
+        },
+        "search_tips": {
+            "genres": ["jazz", "rock", "classical", "electronic", "pop", "lounge", "ambient", "news", "talk"],
+            "moods": ["relaxing", "energetic", "focus", "sleep", "romantic", "workout"],
+            "quality": "Use advanced_search(min_bitrate=192) for HQ",
+            "multilingual": "Korean(재즈), Japanese(ジャズ), Chinese(爵士) supported"
+        }
+    }
+
+
+@mcp.tool()
+def expand_search(query: str) -> dict:
+    """
+    Get related search terms to expand search results.
+    Use when initial search returns few results.
+
+    Args:
+        query: Original search term
+
+    Returns:
+        Related terms to try
+    """
+    expansions = {
+        # Genres
+        "jazz": ["smooth jazz", "bebop", "swing", "bossa nova", "jazz fusion"],
+        "rock": ["classic rock", "hard rock", "alternative", "indie rock"],
+        "classical": ["orchestra", "symphony", "chamber", "opera", "baroque"],
+        "electronic": ["edm", "techno", "house", "trance", "ambient"],
+        "pop": ["top 40", "hits", "chart", "contemporary"],
+        "lounge": ["chillout", "cafe", "easy listening", "smooth"],
+        "ambient": ["chillout", "new age", "meditation", "sleep"],
+        "news": ["talk", "information", "current affairs", "public radio"],
+
+        # Moods
+        "relaxing": ["lounge", "ambient", "chillout", "smooth jazz"],
+        "energetic": ["dance", "electronic", "rock", "pop hits"],
+        "focus": ["classical", "ambient", "instrumental", "lo-fi"],
+        "sleep": ["ambient", "nature", "meditation", "classical"],
+
+        # Languages
+        "korean": ["kpop", "한국", "korea"],
+        "japanese": ["jpop", "日本", "japan"],
+        "chinese": ["cpop", "中国", "china"],
+    }
+
+    query_lower = query.lower()
+    related = []
+
+    # 직접 매칭
+    if query_lower in expansions:
+        related = expansions[query_lower]
+    else:
+        # 부분 매칭
+        for key, terms in expansions.items():
+            if key in query_lower or query_lower in key:
+                related.extend(terms)
+
+    return {
+        "original": query,
+        "related_terms": list(set(related))[:8],
+        "tip": "Try searching with these related terms for more results"
+    }
+
+
+@mcp.tool()
+def get_radio_status() -> dict:
+    """
+    Get current radio system status.
+    Useful for AI to understand current state.
+
+    Returns:
+        Current playback status, station info, system state
+    """
+    db = get_db()
+
+    status = {
+        "playback": "stopped",
+        "current_station": None,
+        "current_song": None,
+        "volume": 100,
+        "favorites_count": 0,
+        "history_count": 0,
+        "db_stations": 0
+    }
+
+    # 재생 상태
+    if current_station:
+        status["playback"] = "playing"
+        status["current_station"] = current_station
+
+        # 현재 곡
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            sock.connect(MPV_SOCKET)
+            sock.send(b'{"command": ["get_property", "media-title"]}\n')
+            response = sock.recv(4096).decode()
+            sock.close()
+            data = json.loads(response)
+            if "data" in data and data["data"]:
+                status["current_song"] = data["data"]
+        except:
+            pass
+
+    # 즐겨찾기/기록
+    favs = load_json(FAVORITES_FILE)
+    history = load_json(HISTORY_FILE)
+    status["favorites_count"] = len(favs) if favs else 0
+    status["history_count"] = len(history) if history else 0
+
+    # DB 상태
+    if db:
+        try:
+            count = db.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 1").fetchone()[0]
+            status["db_stations"] = count
+        except:
+            pass
+
+    return status
 
 
 if __name__ == "__main__":
