@@ -12,6 +12,7 @@ import shutil
 import signal
 import os
 import time
+import sqlite3
 from datetime import datetime
 from collections import Counter
 
@@ -20,6 +21,9 @@ DATA_DIR = os.path.expanduser("~/.radiocli")
 FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
+
+# SQLite DB
+DB_PATH = os.path.expanduser("~/RadioCli/radio_stations.db")
 
 # 데이터 디렉토리 생성
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -271,6 +275,50 @@ PLAYER = None
 PLAYER_PROC = None
 CURRENT_SONG_FILE = os.path.join(DATA_DIR, "current_song.txt")
 MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
+
+# === SQLite DB 검색 (빠름) ===
+_db_cache = None
+
+def db_search(query=None, country=None, tag=None, limit=30):
+    """DB에서 검색 (메모리 캐시 사용)"""
+    global _db_cache
+
+    if not os.path.exists(DB_PATH):
+        return []
+
+    # 캐시 로드 (최초 1회)
+    if _db_cache is None:
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM stations
+                WHERE is_alive = 1 OR is_alive IS NULL
+                ORDER BY clickcount DESC
+            """)
+            _db_cache = [dict(row) for row in cursor.fetchall()]
+            conn.close()
+        except:
+            _db_cache = []
+
+    results = []
+    for s in _db_cache:
+        # 국가 필터
+        if country and s.get("countrycode", "").upper() != country.upper():
+            continue
+        # 태그 필터
+        if tag and tag.lower() not in s.get("tags", "").lower():
+            continue
+        # 이름 검색
+        if query and query.lower() not in s.get("name", "").lower():
+            continue
+
+        results.append(s)
+        if len(results) >= limit:
+            break
+
+    return results
 
 # 인기 장르 (tag, translation_key)
 GENRES = {
@@ -817,20 +865,93 @@ def api_request(endpoint, params=None):
         print(f"  {t('error')}: {e}")
         return []
 
+def save_stations_to_db(stations):
+    """새 방송 DB에 저장 (중복 무시)"""
+    if not stations or not os.path.exists(DB_PATH):
+        return
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        for s in stations:
+            url = s.get("url_resolved") or s.get("url", "")
+            if not url or "?" in url:  # 토큰 URL 제외
+                continue
+            try:
+                cursor.execute("""
+                    INSERT OR IGNORE INTO stations
+                    (stationuuid, name, url, url_resolved, country, countrycode,
+                     tags, bitrate, votes, clickcount, is_alive)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                """, (
+                    s.get("stationuuid", ""),
+                    s.get("name", ""),
+                    s.get("url", ""),
+                    s.get("url_resolved", ""),
+                    s.get("country", ""),
+                    s.get("countrycode", ""),
+                    s.get("tags", ""),
+                    s.get("bitrate", 0),
+                    s.get("votes", 0),
+                    s.get("clickcount", 0),
+                ))
+            except:
+                pass
+        conn.commit()
+        conn.close()
+        global _db_cache
+        _db_cache = None  # 캐시 무효화
+    except:
+        pass
+
+def merge_results(db_results, api_results, limit=30):
+    """DB + API 결과 병합 (중복 제거)"""
+    seen = set()
+    merged = []
+
+    # DB 먼저 (검증됨)
+    for s in db_results:
+        url = s.get("url_resolved") or s.get("url", "")
+        if url and url not in seen:
+            seen.add(url)
+            s["source"] = "db"
+            merged.append(s)
+
+    # API 추가
+    for s in api_results:
+        url = s.get("url_resolved") or s.get("url", "")
+        if url and url not in seen:
+            seen.add(url)
+            s["source"] = "api"
+            merged.append(s)
+
+    # 새 방송 DB에 저장
+    save_stations_to_db(api_results)
+
+    return merged[:limit]
+
 def search(query, limit=20):
-    return api_request("stations/byname/" + urllib.parse.quote(query), {
+    """DB + API 검색"""
+    db_results = db_search(query=query, limit=limit)
+    api_results = api_request("stations/byname/" + urllib.parse.quote(query), {
         "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
+    return merge_results(db_results, api_results, limit)
 
 def search_by_tag(tag, limit=20):
-    return api_request("stations/bytag/" + urllib.parse.quote(tag), {
+    """DB + API 태그 검색"""
+    db_results = db_search(tag=tag, limit=limit)
+    api_results = api_request("stations/bytag/" + urllib.parse.quote(tag), {
         "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
+    return merge_results(db_results, api_results, limit)
 
 def search_by_country(code, limit=20):
-    return api_request("stations/bycountrycodeexact/" + urllib.parse.quote(code.upper()), {
+    """DB + API 국가 검색"""
+    db_results = db_search(country=code, limit=limit)
+    api_results = api_request("stations/bycountrycodeexact/" + urllib.parse.quote(code.upper()), {
         "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
+    return merge_results(db_results, api_results, limit)
 
 def get_popular(limit=20):
     return api_request("stations/topclick/" + str(limit))
