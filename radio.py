@@ -2353,32 +2353,78 @@ def get_llm_status():
         return "openai"
     return "keyword"
 
+def display_width(s):
+    """문자열의 표시 너비 계산 (CJK/이모지는 2칸)"""
+    import unicodedata
+    width = 0
+    for c in s:
+        ea = unicodedata.east_asian_width(c)
+        if ea in ('F', 'W'):
+            width += 2
+        elif ord(c) > 0x1F000:  # 이모지
+            width += 2
+        else:
+            width += 1
+    return width
+
+def pad_right(s, total_width):
+    """오른쪽 패딩 (표시 너비 기준)"""
+    current = display_width(s)
+    padding = max(0, total_width - current)
+    return s + ' ' * padding
+
+def truncate(s, max_width):
+    """최대 너비로 자르기"""
+    width = 0
+    result = []
+    for c in s:
+        cw = 2 if display_width(c) == 2 else 1
+        if width + cw > max_width:
+            break
+        result.append(c)
+        width += cw
+    return ''.join(result)
+
 def show_menu():
     fav_count = len(load_favorites())
     history_count = len(load_history())
     songs_count = len(load_songs())
     llm_status = get_llm_status()
-    search_mode = "DB" if not USE_API else "DB+API"
+    search_mode = "DB" if not USE_API else "API"
 
-    print("""
-  ┌───────────────────────────────────┐
-  │           🎵 RadioCli 🎵          │
-  ├───────────────────────────────────┤
-  │  검색: 자연어로 입력               │
-  │  예) 한국 재즈, 신나는 음악        │
-  ├───────────────────────────────────┤""")
-    print(f"  │  [a] AI추천    [t] 내 취향        │")
-    print(f"  │  [w] 분위기    [i] 곡 인식        │")
-    print(f"  │  [p] 인기      [h] 고음질         │")
-    print(f"  │  [g] 장르      [c] 국가           │")
-    print(f"  │  [f] 즐겨찾기({fav_count}) [l] 플레이리스트  │")
-    print(f"  │  [r] 프리미엄  [d] DJ모드         │")
-    print(f"  ├───────────────────────────────────┤")
-    print(f"  │  [n] 현재곡    [sl] 곡기록({songs_count})    │")
-    print(f"  │  [s] 정지      [q] 종료           │")
-    print(f"  │  [!] 검색모드  [lang] 언어        │")
-    print(f"  └───────────────────────────────────┘")
-    print(f"  {llm_status} | 기록:{history_count} | 모드:{search_mode}")
+    W = 39  # 내부 너비
+    border = "─" * W
+
+    def row(content):
+        """행 출력 (너비 맞춤)"""
+        content = truncate(content, W - 2)
+        print(f"  │ {pad_right(content, W-2)}│")
+
+    def row2(l_key, l_text, r_key, r_text):
+        """2열 행"""
+        left = f"[{l_key}] {truncate(l_text, 9)}"
+        right = f"[{r_key}] {truncate(r_text, 10)}"
+        content = f"{pad_right(left, 17)} {right}"
+        row(content)
+
+    print()
+    print(f"  ┌{border}┐")
+    print(f"  │{' ' * ((W-16)//2)}🎵 RadioCli 🎵{' ' * ((W-15)//2)}│")
+    print(f"  ├{border}┤")
+    row(f"{t('search_hint')}: {t('search_examples')}")
+    print(f"  ├{border}┤")
+    row2('a', t('ai_recommend'), 't', t('my_taste'))
+    row2('w', t('mood_now'), 'i', t('song_recognize'))
+    row2('p', t('popular'), 'h', t('hq'))
+    row2('g', t('genre'), 'c', t('country'))
+    row2('f', f"{t('favorites')}({fav_count})", 'l', t('playlist'))
+    row2('r', t('premium'), 'd', t('dj_mode'))
+    print(f"  ├{border}┤")
+    row2('n', 'NowPlay', 'sl', f"Songs({songs_count})")
+    row2('s', t('stop'), 'q', t('quit'))
+    row(f"[!] Mode:{search_mode}  [lang] Language")
+    print(f"  └{border}┘")
+    print(f"  {llm_status} | {t('history')}:{history_count}")
     print()
 
 def show_genres():
