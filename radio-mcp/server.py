@@ -15,6 +15,7 @@ import time
 import shutil
 import atexit
 import signal
+import threading
 from typing import Any
 from datetime import datetime
 
@@ -93,6 +94,22 @@ def cleanup():
 atexit.register(cleanup)
 signal.signal(signal.SIGTERM, lambda s, f: (cleanup(), exit(0)))
 signal.signal(signal.SIGINT, lambda s, f: (cleanup(), exit(0)))
+
+# Watchdog: 부모 프로세스 종료 감지 (SIGKILL 대비)
+def start_watchdog():
+    """부모 프로세스 종료 시 mpv도 종료"""
+    parent_pid = os.getppid()
+    def watch():
+        while True:
+            time.sleep(3)
+            # 부모 PID가 변경되면 (보통 1로) 부모가 죽은 것
+            if os.getppid() != parent_pid:
+                cleanup()
+                os._exit(0)
+    t = threading.Thread(target=watch, daemon=True)
+    t.start()
+
+start_watchdog()
 
 # 유사어 매핑 (태그 확장)
 TAG_SYNONYMS = {
