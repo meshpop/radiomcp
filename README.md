@@ -24,6 +24,7 @@ brew install chromaprint ffmpeg
 
 ```
 > 한국 재즈          # 자연어 검색
+> 한국 뉴스 고음질    # 복합 검색
 > 신나는 음악        # 분위기로 검색
 > japan classical   # 다국어 지원
 ```
@@ -35,6 +36,17 @@ brew install chromaprint ffmpeg
 | `p` | 인기 방송국 |
 | `h` | 고음질 (256k+) |
 | `r` | 프리미엄 |
+| `/` | 검색 모드 |
+| `!` | 검색 모드 토글 (DB만/DB+API) |
+
+### 검색 모드
+
+| 모드 | 속도 | 설명 |
+|------|------|------|
+| DB만 | 0.1초 | 로컬 DB (기본값) |
+| DB+API | 1초+ | Radio Browser API 포함 |
+
+`!` 키로 토글
 
 ### AI 추천
 
@@ -49,8 +61,18 @@ brew install chromaprint ffmpeg
 | 키 | 기능 |
 |---|------|
 | `n` | 현재 곡 보기 |
-| `i` | 곡 인식 |
+| `i` | 곡 인식 (Shazam-like) |
 | `il` | 인식된 곡 목록 |
+
+### 곡 기록 (자동)
+
+재생 중 곡이 바뀌면 자동 저장됨
+
+| 키 | 기능 |
+|---|------|
+| `sl` | 곡 기록 보기 |
+| `st` | 곡 기록 온/오프 |
+| `sc` | 곡 기록 삭제 |
 
 ### 저장
 
@@ -71,6 +93,8 @@ brew install chromaprint ffmpeg
 | `s` | 정지 |
 | `q` | 종료 |
 
+재생 시 자동으로 최신 URL 가져옴 (토큰 만료 대응)
+
 ### DJ 모드
 
 ```bash
@@ -83,6 +107,34 @@ RADIOCLI_DJ=1 ./radio.py
 
 다국어 지원: 한국어, 영어, 일본어, 프랑스어, 독일어, 스페인어, 중국어, 포르투갈어, 러시아어, 이탈리아어
 
+### DB 관리
+
+```bash
+./radio.py --db-stats    # DB 통계
+./radio.py --cleanup     # 죽은 방송 정리
+```
+
+## 다국어 검색
+
+| 언어 | 예시 | 변환 |
+|------|------|------|
+| 한국어 | 재즈, 클래식, 뉴스, 시사 | jazz, classical, news |
+| 일본어 | ジャズ, クラシック | jazz, classical |
+| 중국어 | 爵士乐, 古典音乐 | jazz, classical |
+| 한국어 | 한국, 미국, 일본 | KR, US, JP |
+
+## 품질 필터
+
+검색어에 포함 가능:
+
+| 키워드 | 필터 |
+|--------|------|
+| 고음질, HQ | 192k+ |
+| 최고음질, HD | 256k+ |
+| 저음질, LQ | 96k 이하 |
+
+예: `한국 재즈 고음질`
+
 ## 자연어 검색 예시
 
 ```
@@ -93,6 +145,7 @@ RADIOCLI_DJ=1 ./radio.py
 일본 클래식
 france jazz
 deutschland klassik
+한국 뉴스
 ```
 
 ## LLM 설정
@@ -139,11 +192,15 @@ RADIOCLI_LLM=none ./radio.py
 
 ```
 ~/.radiocli/
-├── favorites.json      # 즐겨찾기
-├── history.json        # 청취 기록
-├── playlists.json      # 플레이리스트
+├── favorites.json        # 즐겨찾기
+├── history.json          # 청취 기록 (방송국)
+├── songs.json            # 곡 기록 (자동)
 ├── recognized_songs.json # 인식된 곡
-└── mpv.sock            # mpv 소켓
+├── playlists.json        # 플레이리스트
+└── mpv.sock              # mpv 소켓
+
+~/RadioCli/
+└── radio_stations.db     # 방송국 DB (24k+)
 ```
 
 ## 의존성
