@@ -867,9 +867,7 @@ def sync_popular_stations():
         except Exception:
             pass
 
-# 시작 시 인기 방송 동기화 (백그라운드)
-import threading
-threading.Thread(target=sync_popular_stations, daemon=True).start()
+# 시작 시 인기 방송 동기화 (main에서 호출)
 
 def is_blocked(name: str, url: str = "", uuid: str = "") -> bool:
     """차단 목록 확인 (이름, URL, UUID)"""
@@ -3124,6 +3122,9 @@ def get_listening_stats(period: str = "week") -> dict:
 
 def main():
     """Entry point for radiomcp command"""
+    # 백그라운드에서 인기 방송 동기화
+    sync_thread = threading.Thread(target=sync_popular_stations, daemon=True)
+    sync_thread.start()
     mcp.run()
 
 
