@@ -268,6 +268,31 @@ COMPOUND_GENRES = {
     ("nu", "jazz"): "nu jazz",
 }
 
+# 국가명 → 국가코드 매핑 (검색 시 국가 우선 정렬용)
+COUNTRY_NAMES = {
+    # 한국어
+    "한국": "KR", "대한민국": "KR", "미국": "US", "일본": "JP", "중국": "CN",
+    "영국": "GB", "프랑스": "FR", "독일": "DE", "이탈리아": "IT", "스페인": "ES",
+    "캐나다": "CA", "호주": "AU", "브라질": "BR", "멕시코": "MX", "러시아": "RU",
+    "인도": "IN", "태국": "TH", "베트남": "VN", "인도네시아": "ID", "필리핀": "PH",
+    "대만": "TW", "홍콩": "HK", "싱가포르": "SG", "말레이시아": "MY",
+    # 영어
+    "korea": "KR", "korean": "KR", "usa": "US", "america": "US", "american": "US",
+    "japan": "JP", "japanese": "JP", "china": "CN", "chinese": "CN",
+    "uk": "GB", "british": "GB", "england": "GB", "france": "FR", "french": "FR",
+    "germany": "DE", "german": "DE", "italy": "IT", "italian": "IT",
+    "spain": "ES", "spanish": "ES", "canada": "CA", "canadian": "CA",
+    "australia": "AU", "australian": "AU", "brazil": "BR", "brazilian": "BR",
+    "mexico": "MX", "mexican": "MX", "russia": "RU", "russian": "RU",
+    "india": "IN", "indian": "IN", "thailand": "TH", "thai": "TH",
+    "vietnam": "VN", "vietnamese": "VN", "indonesia": "ID", "indonesian": "ID",
+    "philippines": "PH", "filipino": "PH", "taiwan": "TW", "taiwanese": "TW",
+    "hongkong": "HK", "singapore": "SG", "malaysia": "MY", "malaysian": "MY",
+    # 일본어
+    "韓国": "KR", "アメリカ": "US", "日本": "JP", "中国": "CN",
+    "イギリス": "GB", "フランス": "FR", "ドイツ": "DE",
+}
+
 # 알려진 태그 목록 (퍼지 검색용)
 KNOWN_TAGS = [
     "jazz", "classical", "rock", "pop", "electronic", "ambient", "lounge",
@@ -1159,14 +1184,28 @@ def search(query: str, limit: int = 20) -> list[dict]:
                     if is_valid_station(s):
                         add_station_to_db(s)
 
-    # 정렬: 이름 매칭 우선, 그 안에서 votes 정렬
-    # 이름 매칭이 있으면 그게 먼저 오고, 나머지는 votes로
+    # 국가명 감지 (한국, korea, 일본, japan 등)
+    detected_country = None
+    query_lower = query.lower()
+    for name, code in COUNTRY_NAMES.items():
+        if name in query_lower:
+            detected_country = code
+            break
+
+    # 정렬: 국가 매칭 > 이름 매칭 > votes
+    def sort_key(r):
+        country_match = 1 if detected_country and r.get("countrycode", "").upper() == detected_country else 0
+        name_match = 1 if r.get("match_type") == "name" else 0
+        votes = r.get("votes", 0)
+        return (country_match, name_match, votes)
+
     if name_results:
-        # 이름 매칭은 그대로 두고, 태그 매칭만 votes로 정렬
-        tag_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
-        return (name_results + tag_results)[:limit]
+        # 이름 매칭 + 태그 매칭 합쳐서 정렬
+        combined = name_results + tag_results
+        combined.sort(key=sort_key, reverse=True)
+        return combined[:limit]
     else:
-        all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+        all_results.sort(key=sort_key, reverse=True)
         return all_results[:limit]
 
 
