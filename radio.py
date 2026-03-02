@@ -26,7 +26,7 @@ PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 DB_PATH = os.path.expanduser("~/RadioCli/radio_stations.db")
 
 # API 모드: True=DB+API, False=DB만 (빠름)
-USE_API = True
+USE_API = False  # 기본값: DB만 (0.1초)
 
 # 데이터 디렉토리 생성
 os.makedirs(DATA_DIR, exist_ok=True)
