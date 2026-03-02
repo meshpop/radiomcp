@@ -320,6 +320,46 @@ def db_search(query=None, country=None, tag=None, limit=30):
 
     return results
 
+def mark_station_failed(url):
+    """재생 실패한 방송 기록 (3회 실패 시 dead 처리)"""
+    if not os.path.exists(DB_PATH):
+        return
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE stations
+            SET fail_count = COALESCE(fail_count, 0) + 1,
+                is_alive = CASE WHEN COALESCE(fail_count, 0) >= 2 THEN 0 ELSE is_alive END,
+                last_checked_at = datetime('now')
+            WHERE url = ? OR url_resolved = ?
+        """, (url, url))
+        conn.commit()
+        conn.close()
+        global _db_cache
+        _db_cache = None  # 캐시 무효화
+    except:
+        pass
+
+def cleanup_dead_stations():
+    """죽은 방송 정리 (is_alive=0인 것들 삭제)"""
+    if not os.path.exists(DB_PATH):
+        return 0
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 0")
+        count = cursor.fetchone()[0]
+        if count > 0:
+            cursor.execute("DELETE FROM stations WHERE is_alive = 0")
+            conn.commit()
+        conn.close()
+        global _db_cache
+        _db_cache = None
+        return count
+    except:
+        return 0
+
 # 인기 장르 (tag, translation_key)
 GENRES = {
     "1": ("pop", "genre_pop"),
@@ -865,46 +905,45 @@ def api_request(endpoint, params=None):
         print(f"  {t('error')}: {e}")
         return []
 
-def save_stations_to_db(stations):
-    """새 방송 DB에 저장 (중복 무시)"""
-    if not stations or not os.path.exists(DB_PATH):
-        return
+def save_station_to_db(station):
+    """재생 성공한 방송 DB에 저장"""
+    if not station or not os.path.exists(DB_PATH):
+        return False
+
+    url = station.get("url_resolved") or station.get("url", "")
+    if not url or "?" in url:  # 토큰 URL 제외
+        return False
+
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        for s in stations:
-            url = s.get("url_resolved") or s.get("url", "")
-            if not url or "?" in url:  # 토큰 URL 제외
-                continue
-            try:
-                cursor.execute("""
-                    INSERT OR IGNORE INTO stations
-                    (stationuuid, name, url, url_resolved, country, countrycode,
-                     tags, bitrate, votes, clickcount, is_alive)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                """, (
-                    s.get("stationuuid", ""),
-                    s.get("name", ""),
-                    s.get("url", ""),
-                    s.get("url_resolved", ""),
-                    s.get("country", ""),
-                    s.get("countrycode", ""),
-                    s.get("tags", ""),
-                    s.get("bitrate", 0),
-                    s.get("votes", 0),
-                    s.get("clickcount", 0),
-                ))
-            except:
-                pass
+        cursor.execute("""
+            INSERT OR REPLACE INTO stations
+            (stationuuid, name, url, url_resolved, country, countrycode,
+             tags, bitrate, votes, clickcount, is_alive, fail_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+        """, (
+            station.get("stationuuid", ""),
+            station.get("name", ""),
+            station.get("url", ""),
+            station.get("url_resolved", ""),
+            station.get("country", ""),
+            station.get("countrycode", ""),
+            station.get("tags", ""),
+            station.get("bitrate", 0),
+            station.get("votes", 0),
+            station.get("clickcount", 0),
+        ))
         conn.commit()
         conn.close()
         global _db_cache
-        _db_cache = None  # 캐시 무효화
+        _db_cache = None
+        return True
     except:
-        pass
+        return False
 
 def merge_results(db_results, api_results, limit=30):
-    """DB + API 결과 병합 (중복 제거)"""
+    """DB + API 결과 병합 (중복 제거, DB 쓰기 안 함)"""
     seen = set()
     merged = []
 
@@ -923,9 +962,6 @@ def merge_results(db_results, api_results, limit=30):
             seen.add(url)
             s["source"] = "api"
             merged.append(s)
-
-    # 새 방송 DB에 저장
-    save_stations_to_db(api_results)
 
     return merged[:limit]
 
@@ -2397,6 +2433,10 @@ def main():
                 play(url, s.get("name", ""))
                 play_start_time = time.time()
 
+                # 재생 성공 시 DB에 저장 (API에서 가져온 것만)
+                if s.get("source") == "api":
+                    save_station_to_db(s)
+
                 print(f"  {t('help_after_play')}")
                 mode = "menu"  # 검색 가능하게 메뉴 모드로
             else:
@@ -2415,4 +2455,27 @@ def main():
         print(f"  ? {t('help_hint')}: g={t('genre')}, c={t('country')}, p={t('popular')}, /={t('searching')}, s={t('stop')}, q={t('quit')}")
 
 if __name__ == "__main__":
+    # --cleanup: 죽은 방송 정리
+    if len(sys.argv) > 1 and sys.argv[1] == "--cleanup":
+        count = cleanup_dead_stations()
+        print(f"죽은 방송 {count}개 삭제됨")
+        sys.exit(0)
+
+    # --db-stats: DB 통계
+    if len(sys.argv) > 1 and sys.argv[1] == "--db-stats":
+        if os.path.exists(DB_PATH):
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM stations")
+            total = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 1")
+            alive = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 0")
+            dead = cursor.fetchone()[0]
+            conn.close()
+            print(f"DB 통계: 전체 {total}개, 활성 {alive}개, 죽음 {dead}개")
+        else:
+            print("DB 파일 없음")
+        sys.exit(0)
+
     main()
