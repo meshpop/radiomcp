@@ -706,15 +706,74 @@ def get_fresh_url(name: str) -> str:
     return ""
 
 
-# 영구 차단 목록
+# 영구 차단 목록 (로컬 기본값)
 BLOCK_LIST = ["평양", "pyongyang", "north korea", "dprk", "조선중앙"]
+BLOCKED_URLS = set()
+BLOCKED_UUIDS = set()
 
-def is_blocked(name: str) -> bool:
-    """차단 목록 확인"""
-    if not name:
+# 원격 블록 리스트 URL (GitHub raw)
+REMOTE_BLOCKLIST_URL = "https://raw.githubusercontent.com/dragonflydiy/radiomcp/main/blocklist.json"
+
+def fetch_remote_blocklist():
+    """GitHub에서 최신 블록 리스트 가져오기"""
+    global BLOCK_LIST, BLOCKED_URLS, BLOCKED_UUIDS
+    try:
+        req = urllib.request.Request(REMOTE_BLOCKLIST_URL, headers={"User-Agent": "RadioMCP/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            # 패턴 블록 (이름 매칭)
+            remote_patterns = [b["pattern"] for b in data.get("blocked", [])]
+            for p in remote_patterns:
+                if p not in BLOCK_LIST:
+                    BLOCK_LIST.append(p)
+            # URL 블록
+            BLOCKED_URLS.update(data.get("blocked_urls", []))
+            # UUID 블록
+            BLOCKED_UUIDS.update(data.get("blocked_uuids", []))
+            # DB에서 블록된 방송 제거
+            purge_blocked_from_db()
+    except Exception:
+        pass  # 네트워크 실패 시 로컬 블록 리스트만 사용
+
+def purge_blocked_from_db():
+    """DB에서 블록된 방송 제거"""
+    conn = get_db()
+    if not conn:
+        return
+    try:
+        cursor = conn.cursor()
+        # 이름 패턴으로 삭제
+        for pattern in BLOCK_LIST:
+            cursor.execute("DELETE FROM stations WHERE LOWER(name) LIKE ?", (f"%{pattern.lower()}%",))
+        # UUID로 삭제
+        for uuid in BLOCKED_UUIDS:
+            cursor.execute("DELETE FROM stations WHERE stationuuid = ?", (uuid,))
+        # URL로 삭제
+        for url in BLOCKED_URLS:
+            cursor.execute("DELETE FROM stations WHERE url = ? OR url_resolved = ?", (url, url))
+        conn.commit()
+    except Exception:
+        pass
+
+# 시작 시 원격 블록 리스트 fetch
+fetch_remote_blocklist()
+
+def is_blocked(name: str, url: str = "", uuid: str = "") -> bool:
+    """차단 목록 확인 (이름, URL, UUID)"""
+    if not name and not url and not uuid:
         return False
-    name_lower = name.lower()
-    return any(b.lower() in name_lower for b in BLOCK_LIST)
+    # UUID 블록
+    if uuid and uuid in BLOCKED_UUIDS:
+        return True
+    # URL 블록
+    if url and url in BLOCKED_URLS:
+        return True
+    # 이름 패턴 블록
+    if name:
+        name_lower = name.lower()
+        if any(b.lower() in name_lower for b in BLOCK_LIST):
+            return True
+    return False
 
 
 def format_station(s) -> dict:
@@ -722,7 +781,9 @@ def format_station(s) -> dict:
     if isinstance(s, sqlite3.Row):
         s = dict(s)
     name = s.get("name", "Unknown")
-    if is_blocked(name):
+    url = s.get("url_resolved") or s.get("url", "")
+    uuid = s.get("stationuuid", "")
+    if is_blocked(name, url, uuid):
         return None
     return {
         "id": s.get("stationuuid", ""),
@@ -2463,6 +2524,42 @@ def recommend_by_time() -> list[dict]:
         "time_of_day": time_of_day,
         "hour": datetime.now().hour,
         "stations": all_results[:10]
+    }
+
+
+@mcp.tool()
+def get_blocklist() -> dict:
+    """
+    Get current blocklist status.
+
+    Returns:
+        Blocklist patterns, URLs, UUIDs and source URL
+    """
+    return {
+        "patterns": BLOCK_LIST,
+        "blocked_urls": list(BLOCKED_URLS),
+        "blocked_uuids": list(BLOCKED_UUIDS),
+        "source": REMOTE_BLOCKLIST_URL
+    }
+
+
+@mcp.tool()
+def refresh_blocklist() -> dict:
+    """
+    Refresh blocklist from GitHub and purge blocked stations from DB.
+
+    Returns:
+        Refresh status
+    """
+    old_count = len(BLOCK_LIST) + len(BLOCKED_URLS) + len(BLOCKED_UUIDS)
+    fetch_remote_blocklist()
+    new_count = len(BLOCK_LIST) + len(BLOCKED_URLS) + len(BLOCKED_UUIDS)
+    return {
+        "status": "refreshed",
+        "patterns": len(BLOCK_LIST),
+        "blocked_urls": len(BLOCKED_URLS),
+        "blocked_uuids": len(BLOCKED_UUIDS),
+        "new_entries": new_count - old_count
     }
 
 

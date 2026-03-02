@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-03-02",
+  "blocked": [
+    {
+      "pattern": "평양",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "pyongyang",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "north korea",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "dprk",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "조선중앙",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    }
+  ],
+  "blocked_urls": [],
+  "blocked_uuids": []
+}
