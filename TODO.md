@@ -3,10 +3,10 @@
 ## MCP 공개 배포
 
 ### 1. PyPI 패키지 등록
-- [ ] `setup.py` 또는 `pyproject.toml` 작성
-- [ ] 패키지 이름 결정 (예: `radiomcp`)
+- [x] `pyproject.toml` 작성
+- [x] 패키지 이름: `radiomcp`
 - [ ] PyPI 계정 준비
-- [ ] `pip install radiomcp`로 설치 가능하게
+- [ ] `pip install radiomcp`로 설치 가능하게 (테스트 완료, 업로드 필요)
 
 ### 2. MCP Registry 등록
 - [ ] PyPI 등록 후 진행
@@ -15,13 +15,13 @@
 
 ### 3. 자동 업데이트 체계
 - [ ] GitHub Actions로 PyPI 자동 배포 (태그 푸시 시)
-- [ ] 블록 리스트: GitHub raw JSON (이미 구현됨)
-- [ ] DB 업데이트: 새 버전 배포 시 포함
+- [x] 블록 리스트: GitHub raw JSON (구현됨)
+- [x] DB 업데이트: 새 버전 배포 시 포함 (wheel에 포함)
 
 ### 4. 법적 대응
-- [ ] 이용약관 / 면책 조항 작성
-- [ ] 삭제 요청 채널 (이메일 등) 준비
-- [ ] Radio Browser API 기반 명시
+- [x] 이용약관 / 면책 조항 작성 (DISCLAIMER.md)
+- [x] 삭제 요청 채널: GitHub Issues
+- [x] Radio Browser API 기반 명시
 
 ## 블록 리스트 관리
 
