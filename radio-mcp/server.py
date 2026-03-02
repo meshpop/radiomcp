@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
 Radio MCP Server - 인터넷 라디오 검색 및 재생
+SQLite DB 우선, Radio Browser API fallback
 """
 
 import json
 import os
 import subprocess
 import socket
+import sqlite3
 import urllib.request
 import urllib.parse
+import time
 from typing import Any
+from datetime import datetime
 
 from mcp.server.fastmcp import FastMCP
 
@@ -23,13 +27,38 @@ HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
 API_BASE = "https://de1.api.radio-browser.info/json"
 
+# DB 경로 (우선순위: 로컬 > 프로젝트)
+DB_PATHS = [
+    os.path.join(DATA_DIR, "radio_stations.db"),
+    os.path.expanduser("~/RadioCli/radio_stations.db"),
+    "/Users/dragon/RadioCli/radio_stations.db",
+]
+
 # 전역 상태
 current_station = None
 player_proc = None
+db_conn = None
 
 
 def ensure_data_dir():
     os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def get_db():
+    """SQLite DB 연결 (싱글톤)"""
+    global db_conn
+    if db_conn:
+        return db_conn
+
+    for path in DB_PATHS:
+        if os.path.exists(path):
+            db_conn = sqlite3.connect(path, check_same_thread=False)
+            db_conn.row_factory = sqlite3.Row
+            print(f"DB loaded: {path}", flush=True)
+            return db_conn
+
+    print("No DB found, using API only", flush=True)
+    return None
 
 
 def load_json(filepath: str) -> list:
@@ -62,8 +91,10 @@ def api_get(endpoint: str, params: dict = None) -> list:
         return []
 
 
-def format_station(s: dict) -> dict:
-    """방송국 정보 포맷"""
+def format_station(s) -> dict:
+    """방송국 정보 포맷 (dict 또는 sqlite Row)"""
+    if isinstance(s, sqlite3.Row):
+        s = dict(s)
     return {
         "id": s.get("stationuuid", ""),
         "name": s.get("name", "Unknown"),
@@ -76,10 +107,158 @@ def format_station(s: dict) -> dict:
     }
 
 
+def db_search(query: str, field: str = "tags", limit: int = 20) -> list:
+    """DB에서 검색"""
+    db = get_db()
+    if not db:
+        return []
+
+    try:
+        cursor = db.cursor()
+        sql = f"""
+            SELECT * FROM stations
+            WHERE {field} LIKE ? AND (is_alive = 1 OR is_alive IS NULL)
+            ORDER BY clickcount DESC
+            LIMIT ?
+        """
+        cursor.execute(sql, (f"%{query}%", limit))
+        return [format_station(row) for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"DB error: {e}", flush=True)
+        return []
+
+
+def db_search_country(code: str, limit: int = 20) -> list:
+    """DB에서 국가별 검색"""
+    db = get_db()
+    if not db:
+        return []
+
+    try:
+        cursor = db.cursor()
+        sql = """
+            SELECT * FROM stations
+            WHERE countrycode = ? AND (is_alive = 1 OR is_alive IS NULL)
+            ORDER BY clickcount DESC
+            LIMIT ?
+        """
+        cursor.execute(sql, (code.upper(), limit))
+        return [format_station(row) for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"DB error: {e}", flush=True)
+        return []
+
+
+def db_get_popular(limit: int = 20) -> list:
+    """DB에서 인기 방송국"""
+    db = get_db()
+    if not db:
+        return []
+
+    try:
+        cursor = db.cursor()
+        sql = """
+            SELECT * FROM stations
+            WHERE is_alive = 1 OR is_alive IS NULL
+            ORDER BY clickcount DESC
+            LIMIT ?
+        """
+        cursor.execute(sql, (limit,))
+        return [format_station(row) for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"DB error: {e}", flush=True)
+        return []
+
+
+def mark_station_dead(url: str):
+    """방송국을 죽은 것으로 표시"""
+    db = get_db()
+    if not db:
+        return
+
+    try:
+        cursor = db.cursor()
+        cursor.execute("""
+            UPDATE stations
+            SET is_alive = 0, fail_count = COALESCE(fail_count, 0) + 1,
+                last_checked_at = ?
+            WHERE url = ? OR url_resolved = ?
+        """, (datetime.now().isoformat(), url, url))
+        db.commit()
+        print(f"Marked dead: {url}", flush=True)
+    except Exception as e:
+        print(f"DB update error: {e}", flush=True)
+
+
+def is_valid_station(station: dict) -> bool:
+    """방송국이 DB에 추가해도 되는지 검증"""
+    url = station.get("url_resolved") or station.get("url", "")
+
+    # 토큰/세션 파라미터가 있는 URL 제외
+    if "?" in url or "&" in url:
+        return False
+
+    # 의심스러운 도메인 제외
+    blocked_domains = [
+        "duckdns.org", "no-ip.org", "ddns.net", "iptime.org",
+        "zstream.win", "bsod.kr", "localhost", "127.0.0.1"
+    ]
+    url_lower = url.lower()
+    for domain in blocked_domains:
+        if domain in url_lower:
+            return False
+
+    # IP 주소 직접 사용 제외 (예: http://211.33.246.4:port)
+    import re
+    if re.search(r"https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", url_lower):
+        return False
+
+    # 최소 품질 기준
+    if station.get("votes", 0) < 5:
+        return False
+
+    return True
+
+
+def add_station_to_db(station: dict):
+    """새 방송국을 DB에 추가 (검증 통과시에만)"""
+    if not is_valid_station(station):
+        return
+
+    db = get_db()
+    if not db:
+        return
+
+    try:
+        cursor = db.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO stations
+            (stationuuid, name, url, url_resolved, country, countrycode, tags, bitrate, votes, clickcount, is_alive, last_checked_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+        """, (
+            station.get("stationuuid", ""),
+            station.get("name", ""),
+            station.get("url", ""),
+            station.get("url_resolved", ""),
+            station.get("country", ""),
+            station.get("countrycode", ""),
+            station.get("tags", ""),
+            station.get("bitrate", 0),
+            station.get("votes", 0),
+            station.get("clickcount", 0),
+            datetime.now().isoformat()
+        ))
+        db.commit()
+        print(f"Added to DB: {station.get('name')}", flush=True)
+    except Exception as e:
+        print(f"DB insert error: {e}", flush=True)
+
+
 @mcp.tool()
 def search(query: str, limit: int = 20) -> list[dict]:
     """
     Search radio stations by keyword (genre, name, etc.)
+    Merges results from local DB and Radio Browser API.
 
     Args:
         query: Search term (genre like "jazz", "kpop" or station name)
@@ -88,31 +267,55 @@ def search(query: str, limit: int = 20) -> list[dict]:
     Returns:
         List of radio stations
     """
-    # 태그로 검색 (path에 태그 포함)
+    all_results = []
+    seen_urls = set()
+
+    # 1. DB에서 검색
+    db_results = db_search(query, "tags", limit)
+    if not db_results:
+        db_results = db_search(query, "name", limit)
+
+    for r in db_results:
+        if r["url"] not in seen_urls:
+            seen_urls.add(r["url"])
+            all_results.append(r)
+
+    # 2. API에서도 검색 (lastcheckok=1로 살아있는 것만)
     encoded_query = urllib.parse.quote(query)
-    results = api_get(f"stations/bytag/{encoded_query}", {
+    api_results = api_get(f"stations/bytag/{encoded_query}", {
         "limit": limit,
         "order": "clickcount",
         "reverse": "true",
         "lastcheckok": 1
     })
 
-    # 결과 없으면 이름으로 검색
-    if not results:
-        results = api_get(f"stations/byname/{encoded_query}", {
+    if not api_results:
+        api_results = api_get(f"stations/byname/{encoded_query}", {
             "limit": limit,
             "order": "clickcount",
             "reverse": "true",
             "lastcheckok": 1
         })
 
-    return [format_station(s) for s in results]
+    # API 결과 병합 (중복 제외)
+    for s in api_results:
+        url = s.get("url_resolved") or s.get("url", "")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            all_results.append(format_station(s))
+            # 새 방송국 DB에 추가
+            add_station_to_db(s)
+
+    # clickcount 기준 정렬
+    all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+    return all_results[:limit]
 
 
 @mcp.tool()
 def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
     """
-    Search radio stations by country
+    Search radio stations by country.
+    Merges results from local DB and Radio Browser API.
 
     Args:
         country_code: Country code (KR, US, JP, DE, FR, etc.)
@@ -121,20 +324,40 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
     Returns:
         List of radio stations
     """
+    all_results = []
+    seen_urls = set()
+
+    # 1. DB에서 검색
+    db_results = db_search_country(country_code, limit)
+    for r in db_results:
+        if r["url"] not in seen_urls:
+            seen_urls.add(r["url"])
+            all_results.append(r)
+
+    # 2. API에서도 검색
     code = urllib.parse.quote(country_code.upper())
-    results = api_get(f"stations/bycountrycodeexact/{code}", {
+    api_results = api_get(f"stations/bycountrycodeexact/{code}", {
         "limit": limit,
         "order": "clickcount",
         "reverse": "true",
         "lastcheckok": 1
     })
-    return [format_station(s) for s in results]
+
+    for s in api_results:
+        url = s.get("url_resolved") or s.get("url", "")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            all_results.append(format_station(s))
+            add_station_to_db(s)
+
+    all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+    return all_results[:limit]
 
 
 @mcp.tool()
 def get_popular(limit: int = 20) -> list[dict]:
     """
-    Get popular radio stations
+    Get popular radio stations from local DB.
 
     Args:
         limit: Number of results
@@ -142,14 +365,21 @@ def get_popular(limit: int = 20) -> list[dict]:
     Returns:
         List of popular stations
     """
-    results = api_get(f"stations/topclick/{limit}")
-    return [format_station(s) for s in results]
+    # 1. DB에서 가져오기
+    results = db_get_popular(limit)
+
+    # 2. API fallback
+    if not results:
+        api_results = api_get(f"stations/topclick/{limit}")
+        results = [format_station(s) for s in api_results]
+
+    return results
 
 
 @mcp.tool()
 def play(url: str, name: str = "") -> dict:
     """
-    Play a radio station
+    Play a radio station.
 
     Args:
         url: Stream URL
@@ -176,16 +406,24 @@ def play(url: str, name: str = "") -> dict:
             stderr=subprocess.DEVNULL
         )
 
+        # 잠시 대기 후 프로세스 확인
+        time.sleep(1)
+        if player_proc.poll() is not None:
+            # 재생 실패 - DB에 기록
+            mark_station_dead(url)
+            return {"status": "error", "message": "Stream failed to start"}
+
         current_station = {"name": name, "url": url}
         return {"status": "playing", "name": name, "url": url}
     except Exception as e:
+        mark_station_dead(url)
         return {"status": "error", "message": str(e)}
 
 
 @mcp.tool()
 def stop() -> dict:
     """
-    Stop radio playback
+    Stop radio playback.
 
     Returns:
         Stop status
@@ -212,7 +450,7 @@ def stop() -> dict:
 @mcp.tool()
 def now_playing() -> dict:
     """
-    Get current song info
+    Get current song info.
 
     Returns:
         Current song info (title, artist)
@@ -225,7 +463,6 @@ def now_playing() -> dict:
         sock.settimeout(2)
         sock.connect(MPV_SOCKET)
 
-        # icy-title 가져오기
         sock.send(b'{"command": ["get_property", "media-title"]}\n')
         response = sock.recv(4096).decode()
         sock.close()
@@ -233,7 +470,6 @@ def now_playing() -> dict:
         data = json.loads(response)
         title = data.get("data", "")
 
-        # 아티스트 - 제목 파싱
         if " - " in title:
             artist, song = title.split(" - ", 1)
             return {
@@ -260,29 +496,15 @@ def now_playing() -> dict:
 
 @mcp.tool()
 def get_favorites() -> list[dict]:
-    """
-    Get favorite stations list
-
-    Returns:
-        List of favorite stations
-    """
+    """Get favorite stations list."""
     return load_json(FAVORITES_FILE)
 
 
 @mcp.tool()
 def add_favorite(station: dict) -> dict:
-    """
-    Add station to favorites
-
-    Args:
-        station: Station info (name, url required)
-
-    Returns:
-        Add result
-    """
+    """Add station to favorites."""
     favorites = load_json(FAVORITES_FILE)
 
-    # 중복 체크
     for fav in favorites:
         if fav.get("url") == station.get("url"):
             return {"status": "already_exists", "name": station.get("name")}
@@ -294,15 +516,7 @@ def add_favorite(station: dict) -> dict:
 
 @mcp.tool()
 def remove_favorite(index: int) -> dict:
-    """
-    Remove station from favorites
-
-    Args:
-        index: Index to remove (0-based)
-
-    Returns:
-        Remove result
-    """
+    """Remove station from favorites by index (0-based)."""
     favorites = load_json(FAVORITES_FILE)
 
     if 0 <= index < len(favorites):
@@ -315,23 +529,15 @@ def remove_favorite(index: int) -> dict:
 
 @mcp.tool()
 def get_history(limit: int = 20) -> list[dict]:
-    """
-    Get listening history
-
-    Args:
-        limit: Number of results
-
-    Returns:
-        Recent listening history
-    """
+    """Get listening history."""
     history = load_json(HISTORY_FILE)
-    return history[-limit:][::-1]  # 최신순
+    return history[-limit:][::-1]
 
 
 @mcp.tool()
 def recommend(mood: str = "relaxing") -> list[dict]:
     """
-    Get mood-based recommendations
+    Get mood-based recommendations.
 
     Args:
         mood: Mood keyword (relaxing, energetic, focus, sleep, morning, workout, romantic)
@@ -352,26 +558,74 @@ def recommend(mood: str = "relaxing") -> list[dict]:
     tags = mood_tags.get(mood.lower(), [mood])
 
     all_results = []
-    for tag in tags[:2]:  # 상위 2개 태그만
-        encoded_tag = urllib.parse.quote(tag)
-        results = api_get(f"stations/bytag/{encoded_tag}", {
-            "limit": 15,
-            "order": "votes",
-            "reverse": "true",
-            "lastcheckok": 1
-        })
-        all_results.extend(results)
+    for tag in tags[:2]:
+        # DB 먼저
+        results = db_search(tag, "tags", 15)
+        if results:
+            all_results.extend(results)
+        else:
+            # API fallback
+            encoded_tag = urllib.parse.quote(tag)
+            api_results = api_get(f"stations/bytag/{encoded_tag}", {
+                "limit": 15,
+                "order": "votes",
+                "reverse": "true",
+                "lastcheckok": 1
+            })
+            for s in api_results:
+                add_station_to_db(s)
+            all_results.extend([format_station(s) for s in api_results])
 
-    # 중복 제거 및 정렬
+    # 중복 제거
     seen = set()
     unique = []
     for s in all_results:
-        if s.get("stationuuid") not in seen:
-            seen.add(s.get("stationuuid"))
+        key = s.get("url") or s.get("name")
+        if key not in seen:
+            seen.add(key)
             unique.append(s)
 
     unique.sort(key=lambda x: x.get("votes", 0), reverse=True)
-    return [format_station(s) for s in unique[:20]]
+    return unique[:20]
+
+
+@mcp.tool()
+def get_db_stats() -> dict:
+    """
+    Get database statistics.
+
+    Returns:
+        DB stats (total stations, alive, dead, etc.)
+    """
+    db = get_db()
+    if not db:
+        return {"status": "no_db"}
+
+    try:
+        cursor = db.cursor()
+
+        cursor.execute("SELECT COUNT(*) FROM stations")
+        total = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 1")
+        alive = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 0")
+        dead = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(DISTINCT countrycode) FROM stations")
+        countries = cursor.fetchone()[0]
+
+        return {
+            "total": total,
+            "alive": alive,
+            "dead": dead,
+            "unknown": total - alive - dead,
+            "countries": countries,
+            "db_path": [p for p in DB_PATHS if os.path.exists(p)][0] if any(os.path.exists(p) for p in DB_PATHS) else None
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 if __name__ == "__main__":
