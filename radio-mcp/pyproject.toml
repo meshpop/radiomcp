@@ -1,0 +1,15 @@
+[project]
+name = "radio-mcp"
+version = "1.0.0"
+description = "MCP server for internet radio search and playback"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+radio-mcp = "server:mcp.run"
