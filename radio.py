@@ -1195,15 +1195,50 @@ def print_stations(stations):
     print()
     print(f"  {t('press_num')} | m={t('menu')} | g={t('genre')} | c={t('country')} | /{t('searching')}")
 
-def play(url, name=""):
+def get_fresh_url(name):
+    """API에서 방송 이름으로 새 URL 가져오기"""
+    if not name:
+        return None
+    results = api_request("stations/byname/" + urllib.parse.quote(name), {
+        "limit": 5, "order": "clickcount", "reverse": "true", "lastcheckok": 1
+    })
+    for s in results:
+        if s.get("name", "").lower() == name.lower():
+            return s.get("url_resolved") or s.get("url")
+    # 정확한 매칭 없으면 첫번째 결과
+    if results:
+        return results[0].get("url_resolved") or results[0].get("url")
+    return None
+
+def update_station_url(old_url, new_url):
+    """DB에서 방송 URL 업데이트"""
+    if not os.path.exists(DB_PATH) or not new_url:
+        return
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE stations SET url_resolved = ?, fail_count = 0, is_alive = 1
+            WHERE url = ? OR url_resolved = ?
+        """, (new_url, old_url, old_url))
+        conn.commit()
+        conn.close()
+        global _db_cache
+        _db_cache = None
+    except:
+        pass
+
+def play(url, name="", retry_on_fail=True):
     global PLAYER_PROC
     stop()
     if not PLAYER:
         print(f"  {t('no_player')}. brew install mpv")
-        return
+        return False
+
     print(f"\n  ▶ {t('playing')}: {name}")
     print(f"    {url}")
     print(f"    (n: {t('view_current')})\n")
+
     try:
         # 기존 소켓 파일 삭제
         if os.path.exists(MPV_SOCKET):
@@ -1225,8 +1260,28 @@ def play(url, name=""):
                 ["vlc", "--intf", "dummy", url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
+
+        # 2초 대기 후 프로세스 살아있는지 확인
+        time.sleep(2)
+        if PLAYER_PROC and PLAYER_PROC.poll() is not None:
+            # 프로세스 종료됨 = 재생 실패
+            if retry_on_fail and name:
+                print(f"  ⚠ 재생 실패. 새 URL 검색 중...")
+                new_url = get_fresh_url(name)
+                if new_url and new_url != url:
+                    print(f"  → 새 URL 발견: {new_url[:50]}...")
+                    update_station_url(url, new_url)
+                    return play(new_url, name, retry_on_fail=False)
+                else:
+                    mark_station_failed(url)
+                    print(f"  ✗ 새 URL 없음. 방송이 종료되었을 수 있습니다.")
+            return False
+
+        return True
+
     except Exception as e:
         print(f"  {t('play_error')}: {e}")
+        return False
 
 # 광고/필터 키워드
 AD_KEYWORDS = [
