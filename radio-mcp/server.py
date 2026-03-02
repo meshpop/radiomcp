@@ -621,6 +621,24 @@ def api_get(endpoint: str, params: dict = None) -> list:
         return []
 
 
+def get_fresh_url(name: str) -> str:
+    """API에서 방송 이름으로 최신 URL 가져오기 (토큰 만료 대응)"""
+    if not name:
+        return ""
+    encoded = urllib.parse.quote(name)
+    results = api_get(f"stations/byname/{encoded}", {
+        "limit": 5, "order": "clickcount", "reverse": "true", "lastcheckok": 1
+    })
+    # 정확히 일치하는 것 먼저
+    for s in results:
+        if s.get("name", "").lower() == name.lower():
+            return s.get("url_resolved") or s.get("url", "")
+    # 없으면 첫번째 결과
+    if results:
+        return results[0].get("url_resolved") or results[0].get("url", "")
+    return ""
+
+
 def format_station(s) -> dict:
     """방송국 정보 포맷 (dict 또는 sqlite Row)"""
     if isinstance(s, sqlite3.Row):
@@ -1299,6 +1317,15 @@ def play(url: str, name: str = "") -> dict:
     # 기존 재생 중지
     stop()
 
+    # API에서 최신 URL 가져오기 (토큰 만료 대응)
+    play_url = url
+    url_refreshed = False
+    if name:
+        fresh_url = get_fresh_url(name)
+        if fresh_url:
+            play_url = fresh_url
+            url_refreshed = (fresh_url != url)
+
     # mpv로 재생
     try:
         # 기존 소켓 삭제
@@ -1307,7 +1334,7 @@ def play(url: str, name: str = "") -> dict:
 
         player_proc = subprocess.Popen(
             ["mpv", "--no-video", "--no-terminal",
-             f"--input-ipc-server={MPV_SOCKET}", url],
+             f"--input-ipc-server={MPV_SOCKET}", play_url],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
@@ -1319,8 +1346,11 @@ def play(url: str, name: str = "") -> dict:
             mark_station_dead(url)
             return {"status": "error", "message": "Stream failed to start"}
 
-        current_station = {"name": name, "url": url}
-        return {"status": "playing", "name": name, "url": url}
+        current_station = {"name": name, "url": play_url}
+        result = {"status": "playing", "name": name, "url": play_url}
+        if url_refreshed:
+            result["url_refreshed"] = True
+        return result
     except Exception as e:
         mark_station_dead(url)
         return {"status": "error", "message": str(e)}
