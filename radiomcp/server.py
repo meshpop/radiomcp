@@ -560,10 +560,10 @@ def get_db():
         if os.path.exists(path):
             db_conn = sqlite3.connect(path, check_same_thread=False)
             db_conn.row_factory = sqlite3.Row
-            print(f"DB loaded: {path}", flush=True)
+            pass  # DB loaded
             return db_conn
 
-    print("No DB found, using API only", flush=True)
+    pass  # No DB
     return None
 
 
@@ -969,7 +969,7 @@ def db_search(query: str, field: str = "tags", limit: int = 20) -> list:
         cursor.execute(sql, (f"%{query}%", limit))
         return format_stations(cursor.fetchall())
     except Exception as e:
-        print(f"DB error: {e}", flush=True)
+        pass  # DB error
         return []
 
 
@@ -990,7 +990,7 @@ def db_search_country(code: str, limit: int = 20) -> list:
         cursor.execute(sql, (code.upper(), limit))
         return format_stations(cursor.fetchall())
     except Exception as e:
-        print(f"DB error: {e}", flush=True)
+        pass  # DB error
         return []
 
 
@@ -1011,7 +1011,7 @@ def db_get_popular(limit: int = 20) -> list:
         cursor.execute(sql, (limit,))
         return format_stations(cursor.fetchall())
     except Exception as e:
-        print(f"DB error: {e}", flush=True)
+        pass  # DB error
         return []
 
 
@@ -1032,7 +1032,7 @@ def mark_station_dead(url: str):
         db.commit()
         print(f"Marked dead: {url}", flush=True)
     except Exception as e:
-        print(f"DB update error: {e}", flush=True)
+        pass  # DB update error
 
 
 def is_valid_station(station: dict) -> bool:
@@ -1094,9 +1094,9 @@ def add_station_to_db(station: dict):
             datetime.now().isoformat()
         ))
         db.commit()
-        print(f"Added to DB: {station.get('name')}", flush=True)
+        # print(f"Added to DB: {station.get('name')}", flush=True)
     except Exception as e:
-        print(f"DB insert error: {e}", flush=True)
+        pass  # DB insert error
 
 
 def db_advanced_search(
@@ -1155,7 +1155,7 @@ def db_advanced_search(
         cursor.execute(sql, params)
         return format_stations(cursor.fetchall())
     except Exception as e:
-        print(f"DB advanced search error: {e}", flush=True)
+        pass  # DB search error
         return []
 
 
@@ -1590,7 +1590,7 @@ def search_by_language(language: str, limit: int = 20) -> list[dict]:
                     r["source"] = "db"
                     all_results.append(r)
         except Exception as e:
-            print(f"DB error: {e}", flush=True)
+            pass  # DB error
 
     # API 검색 (결과 부족시)
     if len(all_results) < limit:
