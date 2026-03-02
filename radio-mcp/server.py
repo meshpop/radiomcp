@@ -43,25 +43,182 @@ sleep_timer = None  # 슬립 타이머
 # 유사어 매핑 (태그 확장)
 TAG_SYNONYMS = {
     "lounge": ["lounge", "chillout", "cafe", "ambient", "easy listening"],
-    "jazz": ["jazz", "smooth jazz", "jazz lounge", "bossa nova"],
-    "classical": ["classical", "classic", "orchestra", "symphony", "piano"],
-    "rock": ["rock", "classic rock", "hard rock", "alternative"],
-    "pop": ["pop", "top 40", "hits", "chart"],
-    "electronic": ["electronic", "edm", "dance", "house", "techno", "trance"],
-    "ambient": ["ambient", "chillout", "relaxing", "meditation", "sleep"],
-    "hiphop": ["hiphop", "hip-hop", "rap", "r&b", "rnb"],
-    "bossa nova": ["bossa nova", "bossa", "brazilian", "latin jazz"],
+    "jazz": ["jazz", "smooth jazz", "jazz lounge", "bossa nova", "bebop", "swing", "fusion"],
+    "classical": ["classical", "classic", "orchestra", "symphony", "piano", "chamber"],
+    "rock": ["rock", "classic rock", "hard rock", "alternative", "indie rock"],
+    "pop": ["pop", "top 40", "hits", "chart", "mainstream"],
+    "electronic": ["electronic", "edm", "dance", "house", "techno", "trance", "dubstep"],
+    "ambient": ["ambient", "chillout", "relaxing", "meditation", "sleep", "drone"],
+    "hiphop": ["hiphop", "hip-hop", "hip hop", "rap", "r&b", "rnb", "trap"],
+    "bossa nova": ["bossa nova", "bossa", "brazilian", "latin jazz", "mpb"],
     "chillout": ["chillout", "chill", "lounge", "ambient", "downtempo"],
     "cafe": ["cafe", "coffee", "lounge", "acoustic", "bossa nova"],
-    "sleep": ["sleep", "ambient", "relaxing", "meditation", "nature"],
-    "focus": ["focus", "study", "concentration", "instrumental", "classical"],
+    "sleep": ["sleep", "ambient", "relaxing", "meditation", "nature", "calm"],
+    "focus": ["focus", "study", "concentration", "instrumental", "classical", "lo-fi", "lofi"],
     "workout": ["workout", "gym", "exercise", "dance", "electronic", "energetic"],
     "morning": ["morning", "wake up", "breakfast", "pop", "acoustic"],
     "night": ["night", "late night", "jazz", "lounge", "ambient"],
     "rain": ["rain", "nature", "ambient", "relaxing", "piano"],
     "summer": ["summer", "tropical", "beach", "latin", "reggae"],
     "winter": ["winter", "christmas", "cozy", "acoustic", "classical"],
+    "blues": ["blues", "soul", "r&b", "rhythm and blues"],
+    "country": ["country", "americana", "folk", "bluegrass"],
+    "metal": ["metal", "heavy metal", "death metal", "black metal", "thrash"],
+    "reggae": ["reggae", "ska", "dub", "dancehall", "roots"],
+    "soul": ["soul", "r&b", "motown", "funk", "neo soul"],
+    "folk": ["folk", "acoustic", "singer-songwriter", "americana"],
+    "latin": ["latin", "salsa", "merengue", "bachata", "cumbia", "reggaeton"],
+    "world": ["world", "world music", "ethnic", "traditional", "folk"],
+    "news": ["news", "talk", "information", "current affairs", "spoken"],
+    "kpop": ["kpop", "k-pop", "korean pop", "korean"],
+    "jpop": ["jpop", "j-pop", "japanese pop", "japanese"],
+    "anime": ["anime", "japanese", "soundtrack", "ost"],
 }
+
+# ============================================================
+# 다국어 검색 매핑 (v2.0)
+# ============================================================
+
+# 다국어 → 영어 태그 매핑
+LANG_MAP = {
+    # 한국어
+    "재즈": "jazz", "클래식": "classical", "록": "rock", "팝": "pop",
+    "뉴스": "news", "힙합": "hip hop", "발라드": "ballad", "국악": "korean traditional",
+    "트로트": "trot", "인디": "indie", "라운지": "lounge", "앰비언트": "ambient",
+    "일렉트로닉": "electronic", "보사노바": "bossa nova", "케이팝": "kpop",
+    "가요": "kpop", "한국": "korean", "클럽": "club", "댄스": "dance",
+    "알앤비": "r&b", "소울": "soul", "블루스": "blues", "컨트리": "country",
+    "메탈": "metal", "펑크": "punk", "레게": "reggae", "포크": "folk",
+    "어쿠스틱": "acoustic", "피아노": "piano", "수면": "sleep", "명상": "meditation",
+    "집중": "focus", "공부": "study", "운동": "workout", "카페": "cafe",
+    "아침": "morning", "저녁": "evening", "밤": "night", "크리스마스": "christmas",
+    "여름": "summer", "겨울": "winter", "비": "rain", "자연": "nature",
+    "클래시컬": "classical", "오케스트라": "orchestra", "교향곡": "symphony",
+    "오페라": "opera", "뮤지컬": "musical", "영화음악": "soundtrack",
+    "게임음악": "game", "애니메이션": "anime", "동요": "children",
+    "종교": "religious", "찬송가": "gospel", "불교": "buddhist",
+
+    # 일본어
+    "ジャズ": "jazz", "クラシック": "classical", "ロック": "rock", "ポップ": "pop",
+    "ニュース": "news", "ヒップホップ": "hip hop", "演歌": "enka",
+    "アニメ": "anime", "Jポップ": "jpop", "邦楽": "japanese",
+    "洋楽": "western", "ラウンジ": "lounge", "アンビエント": "ambient",
+    "エレクトロニック": "electronic", "ボサノバ": "bossa nova",
+    "カフェ": "cafe", "睡眠": "sleep", "瞑想": "meditation", "勉強": "study",
+    "朝": "morning", "夜": "night", "夏": "summer", "冬": "winter",
+    "ソウル": "soul", "ブルース": "blues", "レゲエ": "reggae",
+    "フォーク": "folk", "メタル": "metal", "パンク": "punk",
+    "ゲーム": "game", "映画": "soundtrack", "童謡": "children",
+
+    # 중국어 (간체)
+    "爵士乐": "jazz", "爵士": "jazz", "古典音乐": "classical", "古典": "classical",
+    "摇滚": "rock", "流行": "pop", "新闻": "news", "嘻哈": "hip hop",
+    "电子": "electronic", "电子音乐": "electronic", "舞曲": "dance",
+    "轻音乐": "easy listening", "休闲": "lounge", "咖啡": "cafe",
+    "睡眠": "sleep", "冥想": "meditation", "学习": "study", "工作": "focus",
+    "早晨": "morning", "夜晚": "night", "夏天": "summer", "冬天": "winter",
+    "灵魂乐": "soul", "蓝调": "blues", "雷鬼": "reggae", "民谣": "folk",
+    "金属": "metal", "朋克": "punk", "动漫": "anime", "游戏": "game",
+    "华语": "chinese", "粤语": "cantonese", "国语": "mandarin",
+
+    # 중국어 (번체)
+    "爵士樂": "jazz", "古典音樂": "classical", "搖滾": "rock", "流行音樂": "pop",
+    "電子音樂": "electronic", "輕音樂": "easy listening",
+
+    # 스페인어
+    "música clásica": "classical", "música pop": "pop", "música rock": "rock",
+    "noticias": "news", "jazz latino": "latin jazz", "salsa": "salsa",
+    "reggaeton": "reggaeton", "bachata": "bachata", "merengue": "merengue",
+    "cumbia": "cumbia", "flamenco": "flamenco", "latina": "latin",
+    "relajante": "relaxing", "dormir": "sleep", "estudiar": "study",
+
+    # 독일어
+    "klassische musik": "classical", "nachrichten": "news", "schlager": "schlager",
+    "volksmusik": "folk", "deutsche musik": "german",
+
+    # 프랑스어
+    "musique classique": "classical", "musique pop": "pop", "actualités": "news",
+    "chanson française": "chanson", "musique française": "french",
+
+    # 포르투갈어
+    "música brasileira": "brazilian", "samba": "samba", "forró": "forro",
+    "sertanejo": "sertanejo", "mpb": "mpb", "axé": "axe",
+
+    # 러시아어
+    "джаз": "jazz", "классика": "classical", "рок": "rock", "поп": "pop",
+    "новости": "news", "электронная": "electronic", "русская": "russian",
+
+    # 아랍어
+    "جاز": "jazz", "كلاسيكي": "classical", "أخبار": "news",
+    "موسيقى عربية": "arabic", "عربي": "arabic",
+
+    # 힌디어
+    "जैज़": "jazz", "शास्त्रीय": "classical", "समाचार": "news",
+    "बॉलीवुड": "bollywood", "हिंदी": "hindi",
+
+    # 베트남어
+    "nhạc jazz": "jazz", "nhạc cổ điển": "classical", "tin tức": "news",
+    "nhạc việt": "vietnamese", "nhạc trẻ": "vpop",
+
+    # 태국어
+    "แจ๊ส": "jazz", "คลาสสิก": "classical", "ข่าว": "news",
+    "เพลงไทย": "thai", "ลูกทุ่ง": "luk thung",
+
+    # 인도네시아어
+    "berita": "news", "musik indonesia": "indonesian", "dangdut": "dangdut",
+}
+
+# 복합 장르 (토큰 병합용)
+COMPOUND_GENRES = {
+    ("bossa", "nova"): "bossa nova",
+    ("hip", "hop"): "hip hop",
+    ("smooth", "jazz"): "smooth jazz",
+    ("deep", "house"): "deep house",
+    ("classic", "rock"): "classic rock",
+    ("hard", "rock"): "hard rock",
+    ("heavy", "metal"): "heavy metal",
+    ("death", "metal"): "death metal",
+    ("neo", "soul"): "neo soul",
+    ("lo", "fi"): "lo-fi",
+    ("easy", "listening"): "easy listening",
+    ("world", "music"): "world music",
+    ("new", "age"): "new age",
+    ("drum", "bass"): "drum and bass",
+    ("drum", "n", "bass"): "drum and bass",
+    ("r", "b"): "r&b",
+    ("rhythm", "blues"): "rhythm and blues",
+    ("k", "pop"): "kpop",
+    ("j", "pop"): "jpop",
+    ("top", "40"): "top 40",
+    ("old", "school"): "old school",
+    ("latin", "jazz"): "latin jazz",
+    ("acid", "jazz"): "acid jazz",
+    ("nu", "jazz"): "nu jazz",
+}
+
+# 알려진 태그 목록 (퍼지 검색용)
+KNOWN_TAGS = [
+    "jazz", "classical", "rock", "pop", "electronic", "ambient", "lounge",
+    "chillout", "hip hop", "r&b", "soul", "blues", "country", "folk",
+    "latin", "reggae", "bossa nova", "indie", "alternative", "metal",
+    "punk", "edm", "techno", "house", "trance", "dubstep", "acoustic",
+    "piano", "instrumental", "meditation", "sleep", "news", "talk",
+    "kpop", "jpop", "anime", "enka", "trot", "world music", "folk",
+    "gospel", "christian", "religious", "christmas", "soundtrack",
+    "80s", "90s", "70s", "60s", "oldies", "retro", "disco", "funk",
+    "smooth jazz", "acid jazz", "nu jazz", "fusion", "bebop", "swing",
+    "lo-fi", "lofi", "study", "focus", "workout", "gym", "morning",
+    "night", "cafe", "coffee", "dinner", "romantic", "relax", "chill",
+    "dance", "club", "party", "summer", "tropical", "beach", "nature",
+    "rain", "spa", "yoga", "new age", "deep house", "progressive",
+    "drum and bass", "breakbeat", "downtempo", "trip hop", "shoegaze",
+    "post rock", "math rock", "grunge", "emo", "hardcore", "ska",
+    "dub", "dancehall", "roots", "afrobeat", "highlife", "afropop",
+    "flamenco", "fado", "celtic", "irish", "scottish", "french",
+    "german", "italian", "spanish", "brazilian", "mexican", "cuban",
+    "korean", "japanese", "chinese", "arabic", "indian", "bollywood",
+    "turkish", "greek", "russian", "polish", "czech", "hungarian",
+]
 
 # 날씨/계절 → 태그 매핑
 WEATHER_TAGS = {
@@ -80,6 +237,207 @@ TIME_TAGS = {
     "evening": ["jazz", "lounge", "dinner", "relaxing"],         # 17-21
     "night": ["ambient", "chillout", "sleep", "lounge"],         # 21-6
 }
+
+
+# ============================================================
+# 검색 엔진 헬퍼 함수 (v2.0)
+# ============================================================
+
+def translate_query(query: str) -> str:
+    """다국어 쿼리를 영어 태그로 변환"""
+    query_lower = query.lower().strip()
+
+    # 1. 정확한 매핑 체크
+    if query in LANG_MAP:
+        return LANG_MAP[query]
+    if query_lower in LANG_MAP:
+        return LANG_MAP[query_lower]
+
+    # 2. 각 단어별 변환
+    words = query.split()
+    translated = []
+    for word in words:
+        if word in LANG_MAP:
+            translated.append(LANG_MAP[word])
+        elif word.lower() in LANG_MAP:
+            translated.append(LANG_MAP[word.lower()])
+        else:
+            translated.append(word)
+
+    return " ".join(translated)
+
+
+def levenshtein_distance(s1: str, s2: str) -> int:
+    """두 문자열 간 편집 거리 계산"""
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+
+    return previous_row[-1]
+
+
+def fuzzy_match(query: str, threshold: int = 2) -> str:
+    """오타 교정 - 가장 가까운 알려진 태그 반환"""
+    query_lower = query.lower().strip()
+
+    # 정확히 일치하면 그대로 반환
+    if query_lower in KNOWN_TAGS:
+        return query_lower
+
+    # 가장 가까운 태그 찾기
+    best_match = None
+    best_distance = threshold + 1
+
+    for tag in KNOWN_TAGS:
+        # 너무 짧거나 긴 태그는 스킵
+        if abs(len(tag) - len(query_lower)) > threshold:
+            continue
+
+        distance = levenshtein_distance(query_lower, tag)
+        if distance < best_distance:
+            best_distance = distance
+            best_match = tag
+
+    return best_match if best_match else query_lower
+
+
+def merge_compound_tokens(tokens: list) -> list:
+    """토큰 리스트에서 복합 장르 병합"""
+    if len(tokens) < 2:
+        return tokens
+
+    result = []
+    i = 0
+    while i < len(tokens):
+        merged = False
+
+        # 3단어 조합 체크
+        if i + 2 < len(tokens):
+            key3 = (tokens[i], tokens[i+1], tokens[i+2])
+            if key3 in COMPOUND_GENRES:
+                result.append(COMPOUND_GENRES[key3])
+                i += 3
+                merged = True
+                continue
+
+        # 2단어 조합 체크
+        if i + 1 < len(tokens):
+            key2 = (tokens[i], tokens[i+1])
+            if key2 in COMPOUND_GENRES:
+                result.append(COMPOUND_GENRES[key2])
+                i += 2
+                merged = True
+                continue
+
+        if not merged:
+            result.append(tokens[i])
+            i += 1
+
+    return result
+
+
+def parse_search_query(query: str) -> dict:
+    """
+    검색 쿼리 파싱 (연산자 지원)
+
+    지원 연산자:
+    - AND: 기본 (공백)
+    - OR: '|' 또는 'OR'
+    - NOT: '-' 접두사
+    - "exact": 따옴표로 정확한 구문
+
+    Returns:
+        {
+            "must": [...],      # AND 조건 (모두 포함)
+            "should": [...],    # OR 조건 (하나 이상)
+            "must_not": [...],  # NOT 조건 (제외)
+            "exact": [...],     # 정확한 구문
+        }
+    """
+    result = {
+        "must": [],
+        "should": [],
+        "must_not": [],
+        "exact": [],
+    }
+
+    # 따옴표로 둘러싸인 정확한 구문 추출
+    import re
+    exact_matches = re.findall(r'"([^"]+)"', query)
+    for match in exact_matches:
+        result["exact"].append(match.lower())
+    query = re.sub(r'"[^"]+"', '', query)
+
+    # OR로 분리
+    if ' OR ' in query or '|' in query:
+        query = query.replace(' OR ', '|')
+        or_parts = [p.strip() for p in query.split('|') if p.strip()]
+        for part in or_parts:
+            if part.startswith('-'):
+                result["must_not"].append(part[1:].lower())
+            else:
+                result["should"].append(part.lower())
+    else:
+        # 공백으로 분리 (AND)
+        tokens = query.split()
+        for token in tokens:
+            token = token.strip()
+            if not token:
+                continue
+            if token.startswith('-'):
+                result["must_not"].append(token[1:].lower())
+            else:
+                result["must"].append(token.lower())
+
+    return result
+
+
+def score_station(station: dict, query_parts: dict, matched_tags: set) -> float:
+    """방송국 점수 계산"""
+    score = 0.0
+
+    # 기본 인기도 점수 (로그 스케일)
+    import math
+    votes = station.get("votes", 0)
+    if votes > 0:
+        score += math.log10(votes + 1)
+
+    # 비트레이트 보너스
+    bitrate = station.get("bitrate", 0)
+    if bitrate >= 320:
+        score += 3
+    elif bitrate >= 256:
+        score += 2
+    elif bitrate >= 192:
+        score += 1
+
+    # 매칭 태그 수 보너스
+    station_tags = station.get("tags", "").lower()
+    match_count = sum(1 for tag in matched_tags if tag in station_tags)
+    score += match_count * 2
+
+    # 정확한 구문 매칭 보너스
+    for exact in query_parts.get("exact", []):
+        if exact in station_tags or exact in station.get("name", "").lower():
+            score += 5
+
+    # must_not 페널티
+    for exclude in query_parts.get("must_not", []):
+        if exclude in station_tags:
+            score -= 100  # 사실상 제외
+
+    return score
 
 
 def ensure_data_dir():
@@ -335,45 +693,121 @@ def add_station_to_db(station: dict):
         print(f"DB insert error: {e}", flush=True)
 
 
+def db_advanced_search(
+    tags: list = None,
+    country: str = None,
+    language: str = None,
+    min_bitrate: int = 0,
+    codec: str = None,
+    limit: int = 50
+) -> list:
+    """DB에서 복합 필터 검색"""
+    db = get_db()
+    if not db:
+        return []
+
+    try:
+        cursor = db.cursor()
+        conditions = ["(is_alive = 1 OR is_alive IS NULL)"]
+        params = []
+
+        # 태그 필터 (OR)
+        if tags:
+            tag_conditions = []
+            for tag in tags:
+                tag_conditions.append("tags LIKE ?")
+                params.append(f"%{tag}%")
+            conditions.append(f"({' OR '.join(tag_conditions)})")
+
+        # 국가 필터
+        if country:
+            conditions.append("countrycode = ?")
+            params.append(country.upper())
+
+        # 언어 필터
+        if language:
+            conditions.append("language LIKE ?")
+            params.append(f"%{language}%")
+
+        # 비트레이트 필터
+        if min_bitrate > 0:
+            conditions.append("bitrate >= ?")
+            params.append(min_bitrate)
+
+        # 코덱 필터
+        if codec:
+            conditions.append("codec LIKE ?")
+            params.append(f"%{codec}%")
+
+        sql = f"""
+            SELECT * FROM stations
+            WHERE {' AND '.join(conditions)}
+            ORDER BY clickcount DESC
+            LIMIT ?
+        """
+        params.append(limit)
+        cursor.execute(sql, params)
+        return [format_station(row) for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"DB advanced search error: {e}", flush=True)
+        return []
+
+
 @mcp.tool()
 def search(query: str, limit: int = 20) -> list[dict]:
     """
     Search radio stations by keyword (genre, name, etc.)
-    Supports complex queries like "bossa nova lounge" with synonym expansion.
+    Supports multilingual queries (Korean, Japanese, Chinese, etc.)
+    and complex queries like "bossa nova lounge".
 
     Args:
-        query: Search term (genre like "jazz", "kpop" or station name)
+        query: Search term - can be in any language (재즈, ジャズ, jazz)
         limit: Number of results (default 20)
 
     Returns:
         List of radio stations
     """
+    # 1. 다국어 번역
+    translated = translate_query(query)
+
+    # 2. 퍼지 매칭 (오타 교정)
+    words = translated.lower().split()
+    corrected_words = [fuzzy_match(w) for w in words]
+
+    # 3. 복합어 병합
+    merged = merge_compound_tokens(corrected_words)
+
+    # 4. 유사어 확장
+    all_tags = set(merged)
+    for word in merged:
+        if word in TAG_SYNONYMS:
+            all_tags.update(TAG_SYNONYMS[word])
+
     all_results = []
     seen_urls = set()
 
-    # 태그 확장 (복합 태그 + 유사어)
-    expanded_tags = expand_tags(query)
-
-    # 1. DB에서 검색 (확장된 태그들로)
-    for tag in expanded_tags[:5]:  # 상위 5개 태그만
-        db_results = db_search(tag, "tags", limit // 2)
+    # 5. DB 검색
+    for tag in list(all_tags)[:8]:
+        db_results = db_search(tag, "tags", limit)
         for r in db_results:
             if r["url"] not in seen_urls:
                 seen_urls.add(r["url"])
                 r["source"] = "db"
+                r["matched_tag"] = tag
                 all_results.append(r)
 
     # 이름으로도 검색
     if len(all_results) < limit // 2:
-        db_results = db_search(query, "name", limit)
-        for r in db_results:
-            if r["url"] not in seen_urls:
-                seen_urls.add(r["url"])
-                r["source"] = "db"
-                all_results.append(r)
+        for word in merged:
+            db_results = db_search(word, "name", limit)
+            for r in db_results:
+                if r["url"] not in seen_urls:
+                    seen_urls.add(r["url"])
+                    r["source"] = "db"
+                    all_results.append(r)
 
-    # 2. Radio Browser API (확장된 태그들로)
-    for tag in expanded_tags[:3]:  # 상위 3개 태그만
+    # 6. Radio Browser API
+    for tag in list(all_tags)[:3]:
         encoded_tag = urllib.parse.quote(tag)
         api_results = api_get(f"stations/bytag/{encoded_tag}", {
             "limit": limit // 2,
@@ -394,6 +828,168 @@ def search(query: str, limit: int = 20) -> list[dict]:
 
     # votes 기준 정렬
     all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+    return all_results[:limit]
+
+
+@mcp.tool()
+def advanced_search(
+    query: str = None,
+    country: str = None,
+    language: str = None,
+    tags: str = None,
+    min_bitrate: int = 0,
+    codec: str = None,
+    sort_by: str = "votes",
+    limit: int = 20
+) -> list[dict]:
+    """
+    Advanced search with multiple filters combined.
+
+    Supports:
+    - Multilingual queries (Korean, Japanese, Chinese, etc.)
+    - Search operators: "exact phrase", -exclude, term1 OR term2
+    - Fuzzy matching for typos
+    - Combined filters (country + genre + bitrate)
+
+    Args:
+        query: Search keywords (supports operators like "smooth jazz" -vocal)
+        country: Country code filter (KR, US, JP, etc.)
+        language: Language filter (korean, english, japanese, etc.)
+        tags: Comma-separated tags (jazz,lounge,chill)
+        min_bitrate: Minimum bitrate in kbps (128, 192, 256, 320)
+        codec: Audio codec filter (MP3, AAC, OGG, FLAC)
+        sort_by: Sort by: votes, bitrate, name (default: votes)
+        limit: Number of results
+
+    Returns:
+        List of matching radio stations
+
+    Examples:
+        - advanced_search(query="재즈")  # Korean → jazz
+        - advanced_search(query="lounge -vocal", min_bitrate=256)
+        - advanced_search(country="KR", tags="pop,kpop")
+        - advanced_search(query='"smooth jazz"', sort_by="bitrate")
+    """
+    all_results = []
+    seen_urls = set()
+    search_tags = []
+
+    # 1. 쿼리 처리
+    if query:
+        # 다국어 번역
+        translated = translate_query(query)
+
+        # 검색 연산자 파싱
+        parsed = parse_search_query(translated)
+
+        # 퍼지 매칭 + 복합어 병합
+        must_tags = []
+        for term in parsed["must"]:
+            corrected = fuzzy_match(term)
+            must_tags.append(corrected)
+
+        # 복합어 병합
+        merged = merge_compound_tokens(must_tags)
+
+        # 유사어 확장
+        for tag in merged:
+            search_tags.append(tag)
+            if tag in TAG_SYNONYMS:
+                search_tags.extend(TAG_SYNONYMS[tag][:3])
+
+        # should (OR) 조건
+        for term in parsed["should"]:
+            corrected = fuzzy_match(term)
+            search_tags.append(corrected)
+
+        # exact 조건 (나중에 필터링)
+        exact_phrases = parsed["exact"]
+
+        # must_not 조건 (나중에 필터링)
+        exclude_terms = parsed["must_not"]
+    else:
+        exact_phrases = []
+        exclude_terms = []
+
+    # 2. 태그 파라미터 처리
+    if tags:
+        for tag in tags.split(","):
+            tag = tag.strip().lower()
+            if tag:
+                search_tags.append(tag)
+
+    # 3. DB 검색
+    db_results = db_advanced_search(
+        tags=search_tags if search_tags else None,
+        country=country,
+        language=language,
+        min_bitrate=min_bitrate,
+        codec=codec,
+        limit=limit * 2
+    )
+
+    for r in db_results:
+        if r["url"] not in seen_urls:
+            # exact phrase 필터
+            if exact_phrases:
+                station_text = f"{r.get('name', '')} {r.get('tags', '')}".lower()
+                if not all(phrase in station_text for phrase in exact_phrases):
+                    continue
+
+            # exclude 필터
+            if exclude_terms:
+                station_tags = r.get("tags", "").lower()
+                if any(term in station_tags for term in exclude_terms):
+                    continue
+
+            seen_urls.add(r["url"])
+            r["source"] = "db"
+            all_results.append(r)
+
+    # 4. API 검색 (결과 부족시)
+    if len(all_results) < limit and search_tags:
+        for tag in search_tags[:3]:
+            params = {
+                "limit": limit,
+                "order": "clickcount",
+                "reverse": "true",
+                "lastcheckok": 1
+            }
+            if country:
+                params["countrycode"] = country.upper()
+            if min_bitrate > 0:
+                params["bitrateMin"] = min_bitrate
+
+            encoded_tag = urllib.parse.quote(tag)
+            api_results = api_get(f"stations/bytag/{encoded_tag}", params)
+
+            for s in api_results:
+                url = s.get("url_resolved") or s.get("url", "")
+                if url and url not in seen_urls:
+                    station = format_station(s)
+
+                    # exact/exclude 필터
+                    station_text = f"{station.get('name', '')} {station.get('tags', '')}".lower()
+                    if exact_phrases and not all(p in station_text for p in exact_phrases):
+                        continue
+                    if exclude_terms and any(t in station.get("tags", "").lower() for t in exclude_terms):
+                        continue
+
+                    seen_urls.add(url)
+                    station["source"] = "api"
+                    all_results.append(station)
+
+                    if is_valid_station(s):
+                        add_station_to_db(s)
+
+    # 5. 정렬
+    if sort_by == "bitrate":
+        all_results.sort(key=lambda x: x.get("bitrate", 0), reverse=True)
+    elif sort_by == "name":
+        all_results.sort(key=lambda x: x.get("name", "").lower())
+    else:  # votes (default)
+        all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+
     return all_results[:limit]
 
 
@@ -441,6 +1037,78 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
             # 정상적인 방송만 DB에 저장
             if is_valid_station(s):
                 add_station_to_db(s)
+
+    all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+    return all_results[:limit]
+
+
+@mcp.tool()
+def search_by_language(language: str, limit: int = 20) -> list[dict]:
+    """
+    Search radio stations by language.
+
+    Args:
+        language: Language name or code (korean, english, japanese, ko, en, ja)
+        limit: Number of results
+
+    Returns:
+        List of radio stations
+    """
+    # 언어 코드 → 전체 이름 매핑
+    LANG_CODES = {
+        "ko": "korean", "en": "english", "ja": "japanese", "de": "german",
+        "fr": "french", "es": "spanish", "pt": "portuguese", "it": "italian",
+        "ru": "russian", "zh": "chinese", "ar": "arabic", "hi": "hindi",
+        "nl": "dutch", "pl": "polish", "tr": "turkish", "vi": "vietnamese",
+        "th": "thai", "id": "indonesian", "ms": "malay", "sv": "swedish",
+    }
+
+    lang = language.lower().strip()
+    if lang in LANG_CODES:
+        lang = LANG_CODES[lang]
+
+    all_results = []
+    seen_urls = set()
+
+    # DB 검색
+    db = get_db()
+    if db:
+        try:
+            cursor = db.cursor()
+            cursor.execute("""
+                SELECT * FROM stations
+                WHERE language LIKE ? AND (is_alive = 1 OR is_alive IS NULL)
+                ORDER BY clickcount DESC
+                LIMIT ?
+            """, (f"%{lang}%", limit))
+            for row in cursor.fetchall():
+                r = format_station(row)
+                if r["url"] not in seen_urls:
+                    seen_urls.add(r["url"])
+                    r["source"] = "db"
+                    all_results.append(r)
+        except Exception as e:
+            print(f"DB error: {e}", flush=True)
+
+    # API 검색 (결과 부족시)
+    if len(all_results) < limit:
+        encoded = urllib.parse.quote(lang)
+        api_results = api_get(f"stations/bylanguage/{encoded}", {
+            "limit": limit,
+            "order": "clickcount",
+            "reverse": "true",
+            "lastcheckok": 1
+        })
+
+        for s in api_results:
+            url = s.get("url_resolved") or s.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                station = format_station(s)
+                station["source"] = "api"
+                all_results.append(station)
+                if is_valid_station(s):
+                    add_station_to_db(s)
 
     all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
     return all_results[:limit]
