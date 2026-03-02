@@ -1117,8 +1117,17 @@ def search(query: str, limit: int = 20) -> list[dict]:
     Returns:
         List of stations with name, url, country, tags, bitrate
     """
+    # 국가명 감지 (한국, korea, 일본, japan 등)
+    detected_country = None
+    query_lower = query.lower()
+    for name, code in COUNTRY_NAMES.items():
+        if name in query_lower:
+            detected_country = code
+            break
+
     name_results = []
     tag_results = []
+    country_results = []
     seen_urls = set()
 
     # 1. 먼저 이름으로 검색 (가장 정확, 최우선)
@@ -1149,8 +1158,37 @@ def search(query: str, limit: int = 20) -> list[dict]:
             if word in TAG_SYNONYMS:
                 all_tags.extend(TAG_SYNONYMS[word][:2])
 
-    # 태그가 있을 때만 검색
-    if all_tags:
+    # 2-1. 국가명 감지 시 해당 국가 방송 먼저 검색 (최우선!)
+    if detected_country and all_tags:
+        # 국가 + 태그 조합 검색
+        db = get_db()
+        if db:
+            try:
+                cursor = db.cursor()
+                # 태그 중 국가명 제외 (korean, japanese 등)
+                search_tags = [t for t in all_tags if t.lower() not in COUNTRY_NAMES]
+                if search_tags:
+                    tag_conditions = " OR ".join(["LOWER(tags) LIKE ?" for _ in search_tags])
+                    params = [f"%{t.lower()}%" for t in search_tags]
+                    sql = f"""
+                        SELECT * FROM stations
+                        WHERE countrycode = ? AND (is_alive = 1 OR is_alive IS NULL)
+                        AND ({tag_conditions})
+                        ORDER BY votes DESC, clickcount DESC
+                        LIMIT ?
+                    """
+                    cursor.execute(sql, [detected_country] + params + [limit])
+                    for r in format_stations(cursor.fetchall()):
+                        if r["url"] not in seen_urls:
+                            seen_urls.add(r["url"])
+                            r["source"] = "db"
+                            r["match_type"] = "country_tag"
+                            country_results.append(r)
+            except Exception:
+                pass
+
+    # 태그가 있을 때만 검색 (국가 검색 결과 부족 시)
+    if all_tags and len(country_results) < limit // 2:
         for r in fast_search_by_tag(all_tags, limit):
             if r["url"] not in seen_urls:
                 seen_urls.add(r["url"])
@@ -1158,11 +1196,24 @@ def search(query: str, limit: int = 20) -> list[dict]:
                 r["match_type"] = "tag"
                 tag_results.append(r)
 
+    # 국가 검색 결과 있으면 최우선으로 반환
+    if country_results:
+        # 국가 매칭 결과 먼저, 부족하면 이름/태그 매칭으로 채움
+        remaining = limit - len(country_results)
+        if remaining > 0:
+            # 이름 매칭 추가 (국가 필터)
+            for r in name_results:
+                if r.get("countrycode", "").upper() == detected_country and r["url"] not in seen_urls:
+                    country_results.append(r)
+                    if len(country_results) >= limit:
+                        break
+        country_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+        return country_results[:limit]
+
     # 이름 매칭 우선 + 태그 매칭으로 채움
     all_results = name_results + tag_results
 
     # 3. API 검색 (이름 매칭이 없고 결과 부족시에만)
-    # 이름으로 찾았으면 API 호출 생략 (속도 향상)
     has_name_match = any(r.get("match_type") == "name" for r in all_results)
     if not has_name_match and len(all_results) < limit // 2:
         for tag in all_tags[:2]:
@@ -1184,14 +1235,6 @@ def search(query: str, limit: int = 20) -> list[dict]:
                     if is_valid_station(s):
                         add_station_to_db(s)
 
-    # 국가명 감지 (한국, korea, 일본, japan 등)
-    detected_country = None
-    query_lower = query.lower()
-    for name, code in COUNTRY_NAMES.items():
-        if name in query_lower:
-            detected_country = code
-            break
-
     # 정렬: 국가 매칭 > 이름 매칭 > votes
     def sort_key(r):
         country_match = 1 if detected_country and r.get("countrycode", "").upper() == detected_country else 0
@@ -1199,14 +1242,8 @@ def search(query: str, limit: int = 20) -> list[dict]:
         votes = r.get("votes", 0)
         return (country_match, name_match, votes)
 
-    if name_results:
-        # 이름 매칭 + 태그 매칭 합쳐서 정렬
-        combined = name_results + tag_results
-        combined.sort(key=sort_key, reverse=True)
-        return combined[:limit]
-    else:
-        all_results.sort(key=sort_key, reverse=True)
-        return all_results[:limit]
+    all_results.sort(key=sort_key, reverse=True)
+    return all_results[:limit]
 
 
 @mcp.tool()
