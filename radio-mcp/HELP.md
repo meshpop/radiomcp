@@ -29,11 +29,23 @@ Internet radio search and playback MCP server for Claude Desktop.
 | `add_favorite` | Add station to favorites |
 | `remove_favorite` | Remove by index (0-based) |
 
-### History
+### History & Personalization
 
 | Tool | Description |
 |------|-------------|
 | `get_history` | Recent listening history |
+| `get_user_profile` | Analyze listening patterns (tags, time, day preferences) |
+| `personalized_recommend` | AI recommendations based on your listening history |
+
+### Context-Aware Features
+
+| Tool | Description |
+|------|-------------|
+| `recommend_by_weather` | Weather-based recommendations (Seoul, etc.) |
+| `sleep_timer` | Auto-stop after N minutes |
+| `set_alarm` | Wake-up alarm with radio |
+| `get_similar` | Find similar stations |
+| `set_volume` | Volume control (0-100) |
 
 ### Database Management
 
@@ -85,6 +97,28 @@ Internet radio search and playback MCP server for Claude Desktop.
 
 "Check health of 50 stations"
 → health_check(limit=50)
+```
+
+### AI Personalization
+
+```
+"What are my listening patterns?"
+→ get_user_profile()
+
+"Recommend based on my taste"
+→ personalized_recommend()
+
+"Recommend music for this weather"
+→ recommend_by_weather("Seoul")
+
+"Set sleep timer for 30 minutes"
+→ sleep_timer(30)
+
+"Wake me up at 7am with jazz"
+→ set_alarm("07:00", "jazz")
+
+"Find similar stations"
+→ get_similar(station_name)
 ```
 
 ### Mood Keywords for recommend()
