@@ -10,6 +10,7 @@ Internet radio search and playback MCP server for Claude Desktop.
 |------|-------------|---------|
 | `search` | Search by genre, name, keyword | "jazz", "BBC", "lounge" |
 | `search_by_country` | Search by country code | "KR", "US", "JP", "DE" |
+| `advanced_search` | Combined filters (country + tag + bitrate) | country="KR", tag="jazz", min_bitrate=128 |
 | `get_popular` | Get top stations by clicks | - |
 | `recommend` | Mood-based recommendations | "relaxing", "energetic", "focus" |
 
@@ -17,9 +18,17 @@ Internet radio search and playback MCP server for Claude Desktop.
 
 | Tool | Description |
 |------|-------------|
-| `play` | Play a radio station (requires url, optional name) |
+| `play` | Play station (auto-fetches fresh URL for token handling) |
 | `stop` | Stop playback |
 | `now_playing` | Get current song info (artist, title) |
+| `set_volume` | Volume control (0-100) |
+
+### Song Recognition
+
+| Tool | Description |
+|------|-------------|
+| `recognize_song` | Shazam-like recognition (AcoustID + Whisper) |
+| `get_recognized_songs` | List of recognized songs history |
 
 ### Favorites
 
@@ -45,7 +54,6 @@ Internet radio search and playback MCP server for Claude Desktop.
 | `sleep_timer` | Auto-stop after N minutes |
 | `set_alarm` | Wake-up alarm with radio |
 | `get_similar` | Find similar stations |
-| `set_volume` | Volume control (0-100) |
 
 ### Database Management
 
@@ -64,8 +72,8 @@ Internet radio search and playback MCP server for Claude Desktop.
 "Play some jazz radio"
 → search("jazz") → play(url, name)
 
-"Find Korean radio stations"
-→ search_by_country("KR")
+"Find Korean news stations"
+→ advanced_search(country="KR", tag="news")
 
 "What song is playing now?"
 → now_playing()
@@ -73,11 +81,27 @@ Internet radio search and playback MCP server for Claude Desktop.
 "I want relaxing music"
 → recommend("relaxing") → play(url, name)
 
-"Add this to favorites"
-→ add_favorite({name, url})
+"Recognize this song"
+→ recognize_song()
+
+"What songs did I hear today?"
+→ get_recognized_songs()
 
 "Stop the radio"
 → stop()
+```
+
+### Advanced Search
+
+```
+"Korean jazz stations"
+→ advanced_search(country="KR", tag="jazz")
+
+"High quality classical"
+→ advanced_search(tag="classical", min_bitrate=192)
+
+"US pop stations over 128k"
+→ advanced_search(country="US", tag="pop", min_bitrate=128)
 ```
 
 ### Database Management
@@ -91,9 +115,6 @@ Internet radio search and playback MCP server for Claude Desktop.
 
 "Sync Korean stations from Radio Browser"
 → sync_with_api(country_code="KR")
-
-"Sync jazz stations"
-→ sync_with_api(tag="jazz")
 
 "Check health of 50 stations"
 → health_check(limit=50)
@@ -116,12 +137,32 @@ Internet radio search and playback MCP server for Claude Desktop.
 
 "Wake me up at 7am with jazz"
 → set_alarm("07:00", "jazz")
-
-"Find similar stations"
-→ get_similar(station_name)
 ```
 
-### Mood Keywords for recommend()
+## Multilingual Search
+
+Supports Korean, Japanese, Chinese, German, French, Spanish keywords:
+
+| Language | Example | Translated |
+|----------|---------|------------|
+| Korean | "재즈", "클래식", "뉴스" | jazz, classical, news |
+| Japanese | "ジャズ", "クラシック" | jazz, classical |
+| Chinese | "爵士乐", "古典音乐" | jazz, classical |
+| Korean | "한국", "미국", "일본" | KR, US, JP |
+
+Related terms also work:
+- "시사", "교양", "보도" → news
+- "토크쇼", "라디오쇼" → talk
+
+## Quality Filters
+
+| Keyword | Filter |
+|---------|--------|
+| "고음질", "HQ", "high quality" | min_bitrate=192 |
+| "최고음질", "HD" | min_bitrate=256 |
+| "저음질", "LQ" | max_bitrate=96 |
+
+## Mood Keywords
 
 | Mood | Tags |
 |------|------|
@@ -133,7 +174,7 @@ Internet radio search and playback MCP server for Claude Desktop.
 | workout | electronic, dance, rock |
 | romantic | jazz, classical |
 
-### Country Codes
+## Country Codes
 
 | Code | Country |
 |------|---------|
@@ -150,29 +191,27 @@ Internet radio search and playback MCP server for Claude Desktop.
 
 ## Search Logic
 
-1. **DB Search** - Local SQLite database (27k+ verified stations)
-2. **API Search** - Radio Browser API (fresh results, `lastcheckok=1`)
+1. **DB Search** - Local SQLite database (24k+ verified stations)
+2. **API Search** - Radio Browser API (fresh results)
 3. **Merge & Dedupe** - Combine both, remove duplicates
-4. **Auto-save** - Valid new stations saved to DB (no tokens/proxies)
+4. **Block Filter** - Remove blocked stations (e.g., propaganda)
 
-Results include `source` field:
-- `"db"` - From local database (verified)
-- `"api"` - From Radio Browser (live)
+## Playback Features
 
-## Station Validation
+### Auto Fresh URL
+When playing a station, the server automatically fetches the latest URL from API.
+This handles token-based streams that expire (KBS, MBC, etc.).
 
-Stations are saved to DB only if:
-- No tokens in URL (no `?` or `&`)
-- No proxy domains (duckdns, no-ip, etc.)
-- No direct IP addresses
-- At least 5 votes
+### Song Tracking
+Songs are automatically tracked and saved to `recognized_songs.json`:
+- Artist, title parsed from stream metadata
+- Station name and timestamp
+- Accessible via `get_recognized_songs()`
 
-## Requirements
+## Block List
 
-- **mpv**: Required for audio playback
-  ```bash
-  brew install mpv
-  ```
+The following stations are permanently blocked:
+- 평양FM, Pyongyang, North Korea, DPRK, 조선중앙
 
 ## Data Storage
 
@@ -181,10 +220,24 @@ All data is stored in `~/.radiocli/`:
 | File | Description |
 |------|-------------|
 | `favorites.json` | Saved favorite stations |
-| `history.json` | Listening history |
+| `history.json` | Listening history (stations) |
+| `recognized_songs.json` | Song recognition history |
+| `songs.json` | Auto-tracked songs (CLI) |
 | `mpv.sock` | mpv IPC socket |
 
 Database: `~/RadioCli/radio_stations.db` (SQLite)
+
+## Requirements
+
+- **mpv**: Required for audio playback
+  ```bash
+  brew install mpv
+  ```
+
+- **chromaprint** (optional): For AcoustID song recognition
+  ```bash
+  brew install chromaprint
+  ```
 
 ## Troubleshooting
 
