@@ -235,7 +235,8 @@ RadioCli (DB)
 a AI추천   t 취향   p 인기   h 고음질
 g 장르     c 국가   f 즐찾(2)  l 리스트
 w 분위기   i 인식   n 현재곡  sl 곡(0)
-s 정지     q 종료   ! 모드   d DJ
+r 이어듣기 s 정지   < 이전   > 다음
+q 종료     ! 모드   d DJ
 ```
 
 ### Command Reference
@@ -251,11 +252,16 @@ s 정지     q 종료   ! 모드   d DJ
 | `g` | Genre selection |
 | `c` | Country selection |
 | `f` | Favorites |
+| `+` | Add to favorites |
+| `-` | Remove from favorites |
+| `<` | Previous favorite |
+| `>` | Next favorite |
 | `l` | Playlists |
 | `n` | Show current song |
 | `sl` | Song history |
 | `st` | Toggle song tracking |
 | `sc` | Clear song history |
+| `r` | Resume last station |
 | `s` | Stop playback |
 | `q` | Quit |
 | `!` | Toggle search mode (DB/API) |
