@@ -20,8 +20,11 @@ Internet radio search and playback MCP server for Claude Desktop.
 |------|-------------|
 | `play` | Play station (auto-fetches fresh URL for token handling) |
 | `stop` | Stop playback |
+| `resume` | Resume last playing station |
 | `now_playing` | Get current song info (artist, title) |
 | `set_volume` | Volume control (0-100) |
+
+Note: When Claude Code exits, the radio automatically stops. Use `resume` to continue where you left off.
 
 ### Song Recognition
 
