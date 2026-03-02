@@ -38,6 +38,48 @@ DB_PATHS = [
 current_station = None
 player_proc = None
 db_conn = None
+sleep_timer = None  # 슬립 타이머
+
+# 유사어 매핑 (태그 확장)
+TAG_SYNONYMS = {
+    "lounge": ["lounge", "chillout", "cafe", "ambient", "easy listening"],
+    "jazz": ["jazz", "smooth jazz", "jazz lounge", "bossa nova"],
+    "classical": ["classical", "classic", "orchestra", "symphony", "piano"],
+    "rock": ["rock", "classic rock", "hard rock", "alternative"],
+    "pop": ["pop", "top 40", "hits", "chart"],
+    "electronic": ["electronic", "edm", "dance", "house", "techno", "trance"],
+    "ambient": ["ambient", "chillout", "relaxing", "meditation", "sleep"],
+    "hiphop": ["hiphop", "hip-hop", "rap", "r&b", "rnb"],
+    "bossa nova": ["bossa nova", "bossa", "brazilian", "latin jazz"],
+    "chillout": ["chillout", "chill", "lounge", "ambient", "downtempo"],
+    "cafe": ["cafe", "coffee", "lounge", "acoustic", "bossa nova"],
+    "sleep": ["sleep", "ambient", "relaxing", "meditation", "nature"],
+    "focus": ["focus", "study", "concentration", "instrumental", "classical"],
+    "workout": ["workout", "gym", "exercise", "dance", "electronic", "energetic"],
+    "morning": ["morning", "wake up", "breakfast", "pop", "acoustic"],
+    "night": ["night", "late night", "jazz", "lounge", "ambient"],
+    "rain": ["rain", "nature", "ambient", "relaxing", "piano"],
+    "summer": ["summer", "tropical", "beach", "latin", "reggae"],
+    "winter": ["winter", "christmas", "cozy", "acoustic", "classical"],
+}
+
+# 날씨/계절 → 태그 매핑
+WEATHER_TAGS = {
+    "rainy": ["jazz", "lounge", "piano", "ambient"],
+    "sunny": ["pop", "bossa nova", "tropical", "summer"],
+    "cloudy": ["indie", "acoustic", "folk", "ambient"],
+    "snowy": ["classical", "christmas", "cozy", "piano"],
+    "hot": ["tropical", "latin", "reggae", "summer"],
+    "cold": ["jazz", "classical", "lounge", "cozy"],
+}
+
+# 시간대 → 태그 매핑
+TIME_TAGS = {
+    "morning": ["pop", "acoustic", "breakfast", "morning"],      # 6-10
+    "daytime": ["pop", "rock", "hits", "energetic"],             # 10-17
+    "evening": ["jazz", "lounge", "dinner", "relaxing"],         # 17-21
+    "night": ["ambient", "chillout", "sleep", "lounge"],         # 21-6
+}
 
 
 def ensure_data_dir():
@@ -105,6 +147,45 @@ def format_station(s) -> dict:
         "bitrate": s.get("bitrate", 0),
         "votes": s.get("votes", 0),
     }
+
+
+def expand_tags(query: str) -> list:
+    """쿼리를 여러 태그로 확장 (복합 태그 + 유사어)"""
+    # 공백으로 분리
+    words = query.lower().strip().split()
+    all_tags = set()
+
+    # 원본 쿼리도 포함
+    all_tags.add(query.lower().strip())
+
+    # 각 단어별 유사어 확장
+    for word in words:
+        all_tags.add(word)
+        if word in TAG_SYNONYMS:
+            all_tags.update(TAG_SYNONYMS[word])
+
+    # 2단어 조합도 체크 (예: "bossa nova")
+    if len(words) >= 2:
+        for i in range(len(words) - 1):
+            combo = f"{words[i]} {words[i+1]}"
+            all_tags.add(combo)
+            if combo in TAG_SYNONYMS:
+                all_tags.update(TAG_SYNONYMS[combo])
+
+    return list(all_tags)
+
+
+def get_time_of_day() -> str:
+    """현재 시간대 반환"""
+    hour = datetime.now().hour
+    if 6 <= hour < 10:
+        return "morning"
+    elif 10 <= hour < 17:
+        return "daytime"
+    elif 17 <= hour < 21:
+        return "evening"
+    else:
+        return "night"
 
 
 def db_search(query: str, field: str = "tags", limit: int = 20) -> list:
@@ -258,7 +339,7 @@ def add_station_to_db(station: dict):
 def search(query: str, limit: int = 20) -> list[dict]:
     """
     Search radio stations by keyword (genre, name, etc.)
-    Merges results from local DB and Radio Browser API.
+    Supports complex queries like "bossa nova lounge" with synonym expansion.
 
     Args:
         query: Search term (genre like "jazz", "kpop" or station name)
@@ -270,45 +351,46 @@ def search(query: str, limit: int = 20) -> list[dict]:
     all_results = []
     seen_urls = set()
 
-    # 1. DB에서 검색 (검증된 방송)
-    db_results = db_search(query, "tags", limit)
-    if not db_results:
+    # 태그 확장 (복합 태그 + 유사어)
+    expanded_tags = expand_tags(query)
+
+    # 1. DB에서 검색 (확장된 태그들로)
+    for tag in expanded_tags[:5]:  # 상위 5개 태그만
+        db_results = db_search(tag, "tags", limit // 2)
+        for r in db_results:
+            if r["url"] not in seen_urls:
+                seen_urls.add(r["url"])
+                r["source"] = "db"
+                all_results.append(r)
+
+    # 이름으로도 검색
+    if len(all_results) < limit // 2:
         db_results = db_search(query, "name", limit)
+        for r in db_results:
+            if r["url"] not in seen_urls:
+                seen_urls.add(r["url"])
+                r["source"] = "db"
+                all_results.append(r)
 
-    for r in db_results:
-        if r["url"] not in seen_urls:
-            seen_urls.add(r["url"])
-            r["source"] = "db"
-            all_results.append(r)
-
-    # 2. Radio Browser API (매일 바뀌는 최신 결과)
-    encoded_query = urllib.parse.quote(query)
-    api_results = api_get(f"stations/bytag/{encoded_query}", {
-        "limit": limit,
-        "order": "clickcount",
-        "reverse": "true",
-        "lastcheckok": 1
-    })
-
-    if not api_results:
-        api_results = api_get(f"stations/byname/{encoded_query}", {
-            "limit": limit,
+    # 2. Radio Browser API (확장된 태그들로)
+    for tag in expanded_tags[:3]:  # 상위 3개 태그만
+        encoded_tag = urllib.parse.quote(tag)
+        api_results = api_get(f"stations/bytag/{encoded_tag}", {
+            "limit": limit // 2,
             "order": "clickcount",
             "reverse": "true",
             "lastcheckok": 1
         })
 
-    # API 결과 병합 (중복 제외)
-    for s in api_results:
-        url = s.get("url_resolved") or s.get("url", "")
-        if url and url not in seen_urls:
-            seen_urls.add(url)
-            station = format_station(s)
-            station["source"] = "api"
-            all_results.append(station)
-            # 정상적인 방송만 DB에 저장 (토큰/프록시 제외)
-            if is_valid_station(s):
-                add_station_to_db(s)
+        for s in api_results:
+            url = s.get("url_resolved") or s.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                station = format_station(s)
+                station["source"] = "api"
+                all_results.append(station)
+                if is_valid_station(s):
+                    add_station_to_db(s)
 
     # votes 기준 정렬
     all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
@@ -798,6 +880,251 @@ def sync_with_api(country_code: str = None, tag: str = None, limit: int = 100) -
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+def set_sleep_timer(minutes: int) -> dict:
+    """
+    Set sleep timer to stop radio after specified minutes.
+
+    Args:
+        minutes: Minutes until auto-stop (0 to cancel)
+
+    Returns:
+        Timer status
+    """
+    global sleep_timer
+    import threading
+
+    # 기존 타이머 취소
+    if sleep_timer:
+        sleep_timer.cancel()
+        sleep_timer = None
+
+    if minutes <= 0:
+        return {"status": "cancelled"}
+
+    def auto_stop():
+        global sleep_timer
+        stop()
+        sleep_timer = None
+        print(f"Sleep timer: stopped after {minutes} minutes", flush=True)
+
+    sleep_timer = threading.Timer(minutes * 60, auto_stop)
+    sleep_timer.start()
+
+    return {"status": "set", "minutes": minutes, "stop_at": (datetime.now() + __import__('datetime').timedelta(minutes=minutes)).strftime("%H:%M")}
+
+
+@mcp.tool()
+def set_alarm(hour: int, minute: int = 0, station_query: str = "pop") -> dict:
+    """
+    Set alarm to start playing radio at specified time.
+
+    Args:
+        hour: Hour (0-23)
+        minute: Minute (0-59)
+        station_query: What to play (default "pop")
+
+    Returns:
+        Alarm status
+    """
+    import threading
+    from datetime import timedelta
+
+    now = datetime.now()
+    alarm_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    # 이미 지난 시간이면 내일로
+    if alarm_time <= now:
+        alarm_time += timedelta(days=1)
+
+    delay = (alarm_time - now).total_seconds()
+
+    def alarm_play():
+        stations = search(station_query, 5)
+        if stations:
+            s = stations[0]
+            play(s["url"], s["name"])
+            print(f"Alarm: playing {s['name']}", flush=True)
+
+    timer = threading.Timer(delay, alarm_play)
+    timer.start()
+
+    return {
+        "status": "set",
+        "alarm_time": alarm_time.strftime("%Y-%m-%d %H:%M"),
+        "station_query": station_query,
+        "delay_minutes": int(delay / 60)
+    }
+
+
+@mcp.tool()
+def set_volume(level: int) -> dict:
+    """
+    Set playback volume.
+
+    Args:
+        level: Volume level (0-100)
+
+    Returns:
+        Volume status
+    """
+    level = max(0, min(100, level))
+
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        sock.connect(MPV_SOCKET)
+        sock.send(f'{{"command": ["set_property", "volume", {level}]}}\n'.encode())
+        sock.close()
+        return {"status": "success", "volume": level}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+def get_volume() -> dict:
+    """
+    Get current volume level.
+
+    Returns:
+        Current volume
+    """
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        sock.connect(MPV_SOCKET)
+        sock.send(b'{"command": ["get_property", "volume"]}\n')
+        response = sock.recv(4096).decode()
+        sock.close()
+        data = json.loads(response)
+        return {"volume": int(data.get("data", 100))}
+    except:
+        return {"volume": 100, "error": "Could not get volume"}
+
+
+@mcp.tool()
+def similar_stations(limit: int = 10) -> list[dict]:
+    """
+    Find similar stations based on currently playing station's tags.
+
+    Args:
+        limit: Number of results
+
+    Returns:
+        List of similar stations
+    """
+    if not current_station:
+        return []
+
+    # 현재 방송국의 태그 가져오기
+    db = get_db()
+    if db:
+        cursor = db.cursor()
+        cursor.execute("SELECT tags FROM stations WHERE url = ? OR url_resolved = ?",
+                      (current_station.get("url"), current_station.get("url")))
+        row = cursor.fetchone()
+        if row and row[0]:
+            tags = row[0].split(",")
+            if tags:
+                # 첫 번째 태그로 검색
+                main_tag = tags[0].strip()
+                results = search(main_tag, limit + 1)
+                # 현재 방송국 제외
+                return [r for r in results if r["url"] != current_station.get("url")][:limit]
+
+    return []
+
+
+@mcp.tool()
+def recommend_by_weather(city: str = "Seoul") -> list[dict]:
+    """
+    Recommend stations based on current weather.
+
+    Args:
+        city: City name for weather (default Seoul)
+
+    Returns:
+        Weather-based recommendations
+    """
+    # wttr.in 무료 API
+    try:
+        url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1"
+        req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+
+        current = data.get("current_condition", [{}])[0]
+        weather_code = int(current.get("weatherCode", 113))
+        temp = int(current.get("temp_C", 20))
+
+        # 날씨 코드 → 분위기
+        if weather_code in [176, 263, 266, 293, 296, 299, 302, 305, 308, 311, 314, 317, 320, 353, 356, 359]:
+            # 비
+            mood = "rainy"
+        elif weather_code in [179, 182, 185, 227, 230, 323, 326, 329, 332, 335, 338, 350, 362, 365, 368, 371, 374, 377, 392, 395]:
+            # 눈
+            mood = "snowy"
+        elif weather_code in [113]:
+            # 맑음
+            mood = "sunny" if temp > 20 else "cold"
+        else:
+            mood = "cloudy"
+
+        # 온도 기반 조정
+        if temp > 28:
+            mood = "hot"
+        elif temp < 5:
+            mood = "cold"
+
+        tags = WEATHER_TAGS.get(mood, ["pop", "jazz"])
+
+        # 검색
+        all_results = []
+        seen = set()
+        for tag in tags[:2]:
+            results = search(tag, 10)
+            for r in results:
+                if r["url"] not in seen:
+                    seen.add(r["url"])
+                    all_results.append(r)
+
+        return {
+            "city": city,
+            "weather": mood,
+            "temp_c": temp,
+            "stations": all_results[:10]
+        }
+    except Exception as e:
+        return {"error": str(e), "stations": []}
+
+
+@mcp.tool()
+def recommend_by_time() -> list[dict]:
+    """
+    Recommend stations based on current time of day.
+
+    Returns:
+        Time-based recommendations
+    """
+    time_of_day = get_time_of_day()
+    tags = TIME_TAGS.get(time_of_day, ["pop"])
+
+    all_results = []
+    seen = set()
+    for tag in tags[:2]:
+        results = search(tag, 10)
+        for r in results:
+            if r["url"] not in seen:
+                seen.add(r["url"])
+                all_results.append(r)
+
+    return {
+        "time_of_day": time_of_day,
+        "hour": datetime.now().hour,
+        "stations": all_results[:10]
+    }
 
 
 if __name__ == "__main__":
