@@ -2458,7 +2458,7 @@ def main():
         # 검색
         if mode == "search":
             print(f"  '{cmd}' {t('searching_for')}...")
-            stations = search(cmd)
+            stations = search_advanced(cmd)
             print_stations(stations)
             if stations:
                 mode = "list"
