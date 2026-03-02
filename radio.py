@@ -22,6 +22,7 @@ DATA_DIR = os.path.expanduser("~/.radiocli")
 FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 SONGS_FILE = os.path.join(DATA_DIR, "songs.json")  # 곡 기록
+LAST_STATION_FILE = os.path.join(DATA_DIR, "last_station.json")  # 마지막 방송
 PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 
 # SQLite DB
@@ -735,6 +736,26 @@ def load_favorites():
 def save_favorites(favs):
     with open(FAVORITES_FILE, "w", encoding="utf-8") as f:
         json.dump(favs, f, ensure_ascii=False, indent=2)
+
+# === 마지막 방송 ===
+def save_last_station(station):
+    """마지막 재생 방송 저장"""
+    if station:
+        try:
+            with open(LAST_STATION_FILE, "w", encoding="utf-8") as f:
+                json.dump(station, f, ensure_ascii=False)
+        except:
+            pass
+
+def load_last_station():
+    """마지막 재생 방송 로드"""
+    if os.path.exists(LAST_STATION_FILE):
+        try:
+            with open(LAST_STATION_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return None
 
 # === 청취 기록 ===
 def load_history():
@@ -2396,7 +2417,8 @@ def show_menu():
   a AI추천   t 취향   p 인기   h 고음질
   g 장르     c 국가   f 즐찾({fav_count})  l 리스트
   w 분위기   i 인식   n 현재곡  sl 곡({songs_count})
-  s 정지     q 종료   ! 모드   d DJ
+  r 이어듣기 s 정지   < 이전   > 다음
+  q 종료     ! 모드   d DJ
 """)
 
 def show_genres():
@@ -2427,6 +2449,7 @@ def main():
     stations = []
     current_station = None  # 현재 재생 중인 방송
     play_start_time = None  # 재생 시작 시간
+    fav_index = -1  # 현재 즐겨찾기 인덱스 (이전/다음용)
     mode = "menu"  # menu, genre, country, search, list, fav
 
     def signal_handler(sig, frame):
@@ -2474,6 +2497,24 @@ def main():
             USE_API = not USE_API
             mode_str = "DB+API" if USE_API else "DB만 (빠름)"
             print(f"  검색 모드: {mode_str}\n")
+            continue
+
+        # 이어듣기 (마지막 방송)
+        if cmd == "r":
+            last = load_last_station()
+            if last:
+                # 기존 재생 기록 저장
+                if PLAYER_PROC and current_station and play_start_time:
+                    duration = int(time.time() - play_start_time)
+                    add_history(current_station, duration)
+                current_station = last
+                url = last.get("url_resolved") or last.get("url")
+                dj_announce_station(last)
+                play(url, last.get("name", ""))
+                play_start_time = time.time()
+                print(f"  {t('help_after_play')}")
+            else:
+                print("  마지막 재생 방송이 없습니다.\n")
             continue
 
         # 정지
@@ -2691,6 +2732,46 @@ def main():
                 print(f"  {t('no_fav')}\n")
             continue
 
+        # 이전 즐겨찾기 방송
+        if cmd == "<" or cmd == ",":
+            favs = load_favorites()
+            if not favs:
+                print("  즐겨찾기가 비어있습니다.\n")
+                continue
+            if PLAYER_PROC and current_station and play_start_time:
+                duration = int(time.time() - play_start_time)
+                add_history(current_station, duration)
+            fav_index = (fav_index - 1) % len(favs)
+            s = favs[fav_index]
+            current_station = s
+            url = s.get("url_resolved") or s.get("url")
+            dj_announce_station(s)
+            play(url, s.get("name", ""))
+            play_start_time = time.time()
+            save_last_station(s)
+            print(f"  [{fav_index + 1}/{len(favs)}] {s.get('name', '')}\n")
+            continue
+
+        # 다음 즐겨찾기 방송
+        if cmd == ">" or cmd == ".":
+            favs = load_favorites()
+            if not favs:
+                print("  즐겨찾기가 비어있습니다.\n")
+                continue
+            if PLAYER_PROC and current_station and play_start_time:
+                duration = int(time.time() - play_start_time)
+                add_history(current_station, duration)
+            fav_index = (fav_index + 1) % len(favs)
+            s = favs[fav_index]
+            current_station = s
+            url = s.get("url_resolved") or s.get("url")
+            dj_announce_station(s)
+            play(url, s.get("name", ""))
+            play_start_time = time.time()
+            save_last_station(s)
+            print(f"  [{fav_index + 1}/{len(favs)}] {s.get('name', '')}\n")
+            continue
+
         # 검색 모드
         if cmd == "/":
             mode = "search"
@@ -2768,6 +2849,7 @@ def main():
                 dj_announce_station(s)
                 play(url, s.get("name", ""))
                 play_start_time = time.time()
+                save_last_station(s)  # 마지막 방송 저장
 
                 # 재생 성공 시 DB에 저장 (API에서 가져온 것만)
                 if s.get("source") == "api":

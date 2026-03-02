@@ -1433,6 +1433,7 @@ def play(url: str, name: str = "") -> dict:
             return {"status": "error", "message": "Stream failed to start"}
 
         current_station = {"name": name, "url": play_url}
+        save_last_station()  # 즉시 저장 (resume용)
         result = {"status": "playing", "name": name, "url": play_url}
         if url_refreshed:
             result["url_refreshed"] = True
