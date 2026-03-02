@@ -25,6 +25,9 @@ PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 # SQLite DB
 DB_PATH = os.path.expanduser("~/RadioCli/radio_stations.db")
 
+# API 모드: True=DB+API, False=DB만 (빠름)
+USE_API = True
+
 # 데이터 디렉토리 생성
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -1025,8 +1028,10 @@ def merge_results(db_results, api_results, limit=30):
     return merged[:limit]
 
 def search(query, limit=20):
-    """DB + API 검색"""
+    """DB + API 검색 (USE_API=False면 DB만)"""
     db_results = db_search(query=query, limit=limit)
+    if not USE_API:
+        return db_results[:limit]
     api_results = api_request("stations/byname/" + urllib.parse.quote(query), {
         "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
@@ -1035,6 +1040,8 @@ def search(query, limit=20):
 def search_by_tag(tag, limit=20):
     """DB + API 태그 검색"""
     db_results = db_search(tag=tag, limit=limit)
+    if not USE_API:
+        return db_results[:limit]
     api_results = api_request("stations/bytag/" + urllib.parse.quote(tag), {
         "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
@@ -1043,12 +1050,19 @@ def search_by_tag(tag, limit=20):
 def search_by_country(code, limit=20):
     """DB + API 국가 검색"""
     db_results = db_search(country=code, limit=limit)
+    if not USE_API:
+        return db_results[:limit]
     api_results = api_request("stations/bycountrycodeexact/" + urllib.parse.quote(code.upper()), {
         "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
     return merge_results(db_results, api_results, limit)
 
 def get_popular(limit=20):
+    """인기 방송 (DB 우선)"""
+    if not USE_API:
+        # DB에서 clickcount 순
+        db_results = db_search(limit=limit)
+        return sorted(db_results, key=lambda x: x.get("clickcount", 0), reverse=True)[:limit]
     return api_request("stations/topclick/" + str(limit))
 
 def get_top_voted(limit=20):
@@ -1223,20 +1237,25 @@ def search_advanced(query, limit=50):
     seen = set()
     expanded_tags = [t for t in expanded_tags if not (t in seen or seen.add(t))]
 
-    # 5. 검색 실행 (속도 우선: API 1회)
+    # 5. 검색 실행
     all_results = []
 
     # 국가 + 태그 조합
     if country and tags:
-        params = {
-            "countrycode": country,
-            "tag": tags[0],  # 메인 태그 1개
-            "limit": limit,
-            "order": "clickcount",
-            "reverse": "true",
-            "lastcheckok": 1
-        }
-        all_results = api_request("stations/search", params)
+        if USE_API:
+            params = {
+                "countrycode": country,
+                "tag": tags[0],
+                "limit": limit,
+                "order": "clickcount",
+                "reverse": "true",
+                "lastcheckok": 1
+            }
+            all_results = api_request("stations/search", params)
+        else:
+            # DB만: 국가 + 태그 필터
+            all_results = [s for s in db_search(country=country, limit=limit*2)
+                          if tags[0].lower() in s.get("tags", "").lower()]
     elif country:
         all_results = search_by_country(country, limit)
     elif tags:
@@ -2319,6 +2338,14 @@ def main():
         if cmd == "q":
             stop()
             break
+
+        # API 모드 토글
+        if cmd == "!":
+            global USE_API
+            USE_API = not USE_API
+            mode_str = "DB+API" if USE_API else "DB만 (빠름)"
+            print(f"  검색 모드: {mode_str}\n")
+            continue
 
         # 정지
         if cmd == "s":
