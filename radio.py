@@ -539,6 +539,21 @@ QUALITY_MAP = {
     "320k": {"min_bitrate": 320},
 }
 
+# 영구 차단 목록 (이름에 포함되면 제외)
+BLOCK_LIST = [
+    "평양", "pyongyang", "north korea", "dprk", "조선중앙",
+]
+
+def is_blocked(name):
+    """차단 목록에 있는지 확인"""
+    if not name:
+        return False
+    name_lower = name.lower()
+    for blocked in BLOCK_LIST:
+        if blocked.lower() in name_lower:
+            return True
+    return False
+
 def get_player():
     for p in ["mpv", "ffplay", "vlc"]:
         if shutil.which(p):
@@ -946,6 +961,10 @@ def save_station_to_db(station):
     if not station or not os.path.exists(DB_PATH):
         return False
 
+    # 차단 목록 확인
+    if is_blocked(station.get("name", "")):
+        return False
+
     url = station.get("url_resolved") or station.get("url", "")
     if not url or "?" in url:  # 토큰 URL 제외
         return False
@@ -979,12 +998,14 @@ def save_station_to_db(station):
         return False
 
 def merge_results(db_results, api_results, limit=30):
-    """DB + API 결과 병합 (중복 제거, DB 쓰기 안 함)"""
+    """DB + API 결과 병합 (중복 제거, 차단 필터링)"""
     seen = set()
     merged = []
 
     # DB 먼저 (검증됨)
     for s in db_results:
+        if is_blocked(s.get("name", "")):
+            continue
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen:
             seen.add(url)
@@ -993,6 +1014,8 @@ def merge_results(db_results, api_results, limit=30):
 
     # API 추가
     for s in api_results:
+        if is_blocked(s.get("name", "")):
+            continue
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen:
             seen.add(url)
@@ -1200,56 +1223,35 @@ def search_advanced(query, limit=50):
     seen = set()
     expanded_tags = [t for t in expanded_tags if not (t in seen or seen.add(t))]
 
-    # 5. 검색 실행
+    # 5. 검색 실행 (속도 우선: API 1회)
     all_results = []
 
     # 국가 + 태그 조합
-    if country and expanded_tags:
-        # 여러 관련 태그로 검색해서 병합
-        for tag in expanded_tags[:3]:  # 최대 3개 태그
-            params = {
-                "countrycode": country,
-                "tag": tag,
-                "limit": limit,
-                "order": "clickcount",
-                "reverse": "true",
-                "lastcheckok": 1
-            }
-            results = api_request("stations/search", params)
-            all_results.extend(results)
-
-        # 태그 결과 적으면 이름 검색도 추가 (해당 국가 내)
-        if len(all_results) < 10:
-            # 원본 쿼리에서 국가 제외한 키워드로 검색
-            search_terms = [w for w in query.split() if w.lower() not in [k.lower() for k in LANG_MAP if LANG_MAP[k] == country]]
-            search_terms.extend(tags[:2])  # 영어 태그도 추가
-            for term in search_terms[:3]:
-                name_results = api_request("stations/byname/" + urllib.parse.quote(term), {
-                    "limit": limit,
-                    "order": "clickcount",
-                    "reverse": "true",
-                    "lastcheckok": 1
-                })
-                # 해당 국가 필터
-                for s in name_results:
-                    if s.get("countrycode", "").upper() == country:
-                        all_results.append(s)
+    if country and tags:
+        params = {
+            "countrycode": country,
+            "tag": tags[0],  # 메인 태그 1개
+            "limit": limit,
+            "order": "clickcount",
+            "reverse": "true",
+            "lastcheckok": 1
+        }
+        all_results = api_request("stations/search", params)
     elif country:
-        all_results = search_by_country(country, limit * 2)
-    elif expanded_tags:
-        # 여러 관련 태그로 검색
-        for tag in expanded_tags[:3]:
-            results = search_by_tag(tag, limit)
-            all_results.extend(results)
+        all_results = search_by_country(country, limit)
+    elif tags:
+        all_results = search_by_tag(tags[0], limit)
     elif name_parts:
         all_results = search(" ".join(name_parts), limit)
     else:
         all_results = search(query, limit)
 
-    # 6. 중복 제거 (URL 기준)
+    # 6. 중복 제거 + 차단 필터 (URL 기준)
     seen_urls = set()
     unique_results = []
     for s in all_results:
+        if is_blocked(s.get("name", "")):
+            continue
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen_urls:
             seen_urls.add(url)
@@ -1277,21 +1279,6 @@ def search_advanced(query, limit=50):
     unique_results.sort(key=lambda x: (x.get("bitrate", 0), x.get("votes", 0)), reverse=True)
 
     return unique_results[:limit]
-
-    # 국가만
-    if country:
-        return search_by_country(country, limit)
-
-    # 태그만
-    if tags:
-        return search_by_tag(tags[0], limit)
-
-    # 이름 검색
-    if name_parts:
-        return search(" ".join(name_parts), limit)
-
-    # 원본 쿼리로 이름 검색
-    return search(query, limit)
 
 def print_stations(stations):
     if not stations:

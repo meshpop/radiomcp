@@ -507,7 +507,7 @@ def build_memory_index():
         """)
         rows = cursor.fetchall()
 
-        _stations_cache = [format_station(row) for row in rows]
+        _stations_cache = format_stations(rows)
         _tag_index = {}
         _name_words_index = {}
 
@@ -639,13 +639,27 @@ def get_fresh_url(name: str) -> str:
     return ""
 
 
+# 영구 차단 목록
+BLOCK_LIST = ["평양", "pyongyang", "north korea", "dprk", "조선중앙"]
+
+def is_blocked(name: str) -> bool:
+    """차단 목록 확인"""
+    if not name:
+        return False
+    name_lower = name.lower()
+    return any(b.lower() in name_lower for b in BLOCK_LIST)
+
+
 def format_station(s) -> dict:
-    """방송국 정보 포맷 (dict 또는 sqlite Row)"""
+    """방송국 정보 포맷 (dict 또는 sqlite Row). 차단이면 None"""
     if isinstance(s, sqlite3.Row):
         s = dict(s)
+    name = s.get("name", "Unknown")
+    if is_blocked(name):
+        return None
     return {
         "id": s.get("stationuuid", ""),
-        "name": s.get("name", "Unknown"),
+        "name": name,
         "url": s.get("url_resolved") or s.get("url", ""),
         "country": s.get("country", ""),
         "countrycode": s.get("countrycode", ""),
@@ -653,6 +667,11 @@ def format_station(s) -> dict:
         "bitrate": s.get("bitrate", 0),
         "votes": s.get("votes", 0),
     }
+
+
+def format_stations(items) -> list:
+    """여러 방송국 포맷 (차단 필터링)"""
+    return [s for s in (format_station(x) for x in items) if s]
 
 
 def expand_tags(query: str) -> list:
@@ -709,7 +728,7 @@ def db_search(query: str, field: str = "tags", limit: int = 20) -> list:
             LIMIT ?
         """
         cursor.execute(sql, (f"%{query}%", limit))
-        return [format_station(row) for row in cursor.fetchall()]
+        return format_stations(cursor.fetchall())
     except Exception as e:
         print(f"DB error: {e}", flush=True)
         return []
@@ -730,7 +749,7 @@ def db_search_country(code: str, limit: int = 20) -> list:
             LIMIT ?
         """
         cursor.execute(sql, (code.upper(), limit))
-        return [format_station(row) for row in cursor.fetchall()]
+        return format_stations(cursor.fetchall())
     except Exception as e:
         print(f"DB error: {e}", flush=True)
         return []
@@ -751,7 +770,7 @@ def db_get_popular(limit: int = 20) -> list:
             LIMIT ?
         """
         cursor.execute(sql, (limit,))
-        return [format_station(row) for row in cursor.fetchall()]
+        return format_stations(cursor.fetchall())
     except Exception as e:
         print(f"DB error: {e}", flush=True)
         return []
@@ -895,7 +914,7 @@ def db_advanced_search(
         """
         params.append(limit)
         cursor.execute(sql, params)
-        return [format_station(row) for row in cursor.fetchall()]
+        return format_stations(cursor.fetchall())
     except Exception as e:
         print(f"DB advanced search error: {e}", flush=True)
         return []
@@ -1295,7 +1314,7 @@ def get_popular(limit: int = 20) -> list[dict]:
     # 2. API fallback
     if not results:
         api_results = api_get(f"stations/topclick/{limit}")
-        results = [format_station(s) for s in api_results]
+        results = format_stations(api_results)
 
     return results
 
