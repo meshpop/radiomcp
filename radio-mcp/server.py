@@ -637,5 +637,168 @@ def get_db_stats() -> dict:
         return {"status": "error", "message": str(e)}
 
 
+@mcp.tool()
+def purge_dead() -> dict:
+    """
+    Delete all dead stations from database.
+
+    Returns:
+        Number of deleted stations
+    """
+    db = get_db()
+    if not db:
+        return {"status": "no_db"}
+
+    try:
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 0")
+        count = cursor.fetchone()[0]
+
+        cursor.execute("DELETE FROM stations WHERE is_alive = 0")
+        db.commit()
+
+        return {"status": "success", "deleted": count}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+def health_check(limit: int = 100) -> dict:
+    """
+    Check health of stations by testing URLs.
+    Updates is_alive status in database.
+
+    Args:
+        limit: Number of stations to check (default 100)
+
+    Returns:
+        Health check results
+    """
+    db = get_db()
+    if not db:
+        return {"status": "no_db"}
+
+    try:
+        cursor = db.cursor()
+        # 오래된 검증 또는 미검증 방송 우선
+        cursor.execute("""
+            SELECT stationuuid, name, url, url_resolved
+            FROM stations
+            WHERE is_alive = 1 OR is_alive IS NULL
+            ORDER BY last_checked_at ASC NULLS FIRST
+            LIMIT ?
+        """, (limit,))
+
+        stations = cursor.fetchall()
+        alive = 0
+        dead = 0
+
+        for s in stations:
+            url = s[3] or s[2]  # url_resolved or url
+            try:
+                req = urllib.request.Request(url, method='HEAD',
+                    headers={"User-Agent": "RadioMCP/1.0"})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    if resp.status < 400:
+                        cursor.execute("""
+                            UPDATE stations SET is_alive = 1, fail_count = 0,
+                                last_checked_at = ? WHERE stationuuid = ?
+                        """, (datetime.now().isoformat(), s[0]))
+                        alive += 1
+                    else:
+                        raise Exception("Bad status")
+            except:
+                cursor.execute("""
+                    UPDATE stations SET is_alive = 0,
+                        fail_count = COALESCE(fail_count, 0) + 1,
+                        last_checked_at = ? WHERE stationuuid = ?
+                """, (datetime.now().isoformat(), s[0]))
+                dead += 1
+
+        db.commit()
+        return {"checked": len(stations), "alive": alive, "dead": dead}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+def sync_with_api(country_code: str = None, tag: str = None, limit: int = 100) -> dict:
+    """
+    Sync database with Radio Browser API.
+    Fetches new/updated stations and compares with local DB.
+
+    Args:
+        country_code: Filter by country (optional)
+        tag: Filter by tag/genre (optional)
+        limit: Max stations to fetch (default 100)
+
+    Returns:
+        Sync results (new, updated, unchanged)
+    """
+    db = get_db()
+    if not db:
+        return {"status": "no_db"}
+
+    # API에서 가져오기
+    if country_code:
+        code = urllib.parse.quote(country_code.upper())
+        api_results = api_get(f"stations/bycountrycodeexact/{code}", {
+            "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
+        })
+    elif tag:
+        encoded_tag = urllib.parse.quote(tag)
+        api_results = api_get(f"stations/bytag/{encoded_tag}", {
+            "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
+        })
+    else:
+        api_results = api_get(f"stations/topclick/{limit}")
+
+    if not api_results:
+        return {"status": "error", "message": "API returned no results"}
+
+    try:
+        cursor = db.cursor()
+        new_count = 0
+        updated = 0
+        skipped = 0
+
+        for s in api_results:
+            uuid = s.get("stationuuid", "")
+            url = s.get("url_resolved") or s.get("url", "")
+
+            # 유효성 검사
+            if not is_valid_station(s):
+                skipped += 1
+                continue
+
+            # DB에 있는지 확인
+            cursor.execute("SELECT stationuuid, url_resolved FROM stations WHERE stationuuid = ?", (uuid,))
+            existing = cursor.fetchone()
+
+            if not existing:
+                # 신규 추가
+                add_station_to_db(s)
+                new_count += 1
+            elif existing[1] != url:
+                # URL 변경됨 - 업데이트
+                cursor.execute("""
+                    UPDATE stations SET url = ?, url_resolved = ?,
+                        is_alive = 1, last_checked_at = ?
+                    WHERE stationuuid = ?
+                """, (s.get("url"), url, datetime.now().isoformat(), uuid))
+                updated += 1
+
+        db.commit()
+        return {
+            "status": "success",
+            "fetched": len(api_results),
+            "new": new_count,
+            "updated": updated,
+            "skipped": skipped
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 if __name__ == "__main__":
     mcp.run()
