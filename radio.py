@@ -457,11 +457,14 @@ LANG_MAP = {
     # K-pop
     "케이팝": "kpop", "kpop": "kpop", "k-pop": "kpop", "케이-팝": "kpop",
     "韓国ポップ": "kpop", "韩流": "kpop",
-    # 뉴스
+    # 뉴스 (확장)
     "뉴스": "news", "news": "news", "ニュース": "news", "新闻": "news",
     "nachrichten": "news", "nouvelles": "news", "noticias": "news",
-    # 토크
+    "시사": "news", "교양": "news", "정보": "news", "보도": "news",
+    "information": "news", "current affairs": "news",
+    # 토크 (확장)
     "토크": "talk", "talk": "talk", "トーク": "talk", "谈话": "talk",
+    "라디오쇼": "talk", "radio show": "talk", "talkshow": "talk", "토크쇼": "talk",
     # 라운지
     "라운지": "lounge", "lounge": "lounge", "ラウンジ": "lounge",
     "chillout": "lounge", "chill": "lounge", "칠아웃": "lounge",
@@ -501,6 +504,39 @@ LANG_MAP = {
     "올디스": "oldies", "oldies": "oldies", "オールディーズ": "oldies",
     "80년대": "80s", "80s": "80s", "90년대": "90s", "90s": "90s",
     "70년대": "70s", "70s": "70s", "60년대": "60s", "60s": "60s",
+}
+
+# 태그 확장 (관련 태그 함께 검색)
+TAG_EXPAND = {
+    "news": ["news", "talk", "information"],
+    "talk": ["talk", "news", "spoken word"],
+    "classical": ["classical", "classic", "orchestra", "symphony"],
+    "jazz": ["jazz", "smooth jazz", "bebop", "swing"],
+    "rock": ["rock", "classic rock", "alternative", "indie"],
+    "pop": ["pop", "top 40", "hits", "charts"],
+    "electronic": ["electronic", "edm", "techno", "house", "trance"],
+    "lounge": ["lounge", "chillout", "ambient", "easy listening"],
+    "hiphop": ["hiphop", "hip-hop", "rap", "urban"],
+    "kpop": ["kpop", "k-pop", "korean pop"],
+}
+
+# 품질 필터
+QUALITY_MAP = {
+    # 한국어
+    "고음질": {"min_bitrate": 192},
+    "저음질": {"max_bitrate": 96},
+    "최고음질": {"min_bitrate": 256},
+    "hd": {"min_bitrate": 256},
+    # 영어
+    "high quality": {"min_bitrate": 192},
+    "hq": {"min_bitrate": 192},
+    "low quality": {"max_bitrate": 96},
+    "lq": {"max_bitrate": 96},
+    # 구체적
+    "128k": {"min_bitrate": 128, "max_bitrate": 160},
+    "192k": {"min_bitrate": 192, "max_bitrate": 224},
+    "256k": {"min_bitrate": 256, "max_bitrate": 320},
+    "320k": {"min_bitrate": 320},
 }
 
 def get_player():
@@ -1112,23 +1148,23 @@ def natural_language_search(query, limit=30):
     # 키워드 못 찾으면 일반 검색
     return None
 
-def search_advanced(query, limit=30):
-    """스마트 검색: 키워드 → 일반검색 (LLM 미사용)"""
-    # 1. 키워드 기반 자연어 검색 (빠름)
-    nl_results = natural_language_search(query, limit)
-    if nl_results:
-        return nl_results
-
-    # LLM 검색 비활성화 (속도 문제)
-
+def search_advanced(query, limit=50):
+    """스마트 검색: 국가 + 장르 + 품질 복합 지원"""
     query_lower = query.lower().strip()
 
     country = None
     tags = []
+    quality = {}  # {"min_bitrate": 192} 등
     name_parts = []
 
-    # 먼저 전체 쿼리에서 다중 단어 매핑 확인 (예: "south korea", "hip hop")
+    # 1. 품질 필터 추출
     remaining = query_lower
+    for phrase, q in sorted(QUALITY_MAP.items(), key=lambda x: -len(x[0])):
+        if phrase.lower() in remaining:
+            quality.update(q)
+            remaining = remaining.replace(phrase.lower(), " ")
+
+    # 2. 다중 단어 매핑 확인 (예: "south korea", "hip hop")
     for phrase, val in sorted(LANG_MAP.items(), key=lambda x: -len(x[0])):
         phrase_lower = phrase.lower()
         if phrase_lower in remaining:
@@ -1140,7 +1176,7 @@ def search_advanced(query, limit=30):
                     tags.append(val)
             remaining = remaining.replace(phrase_lower, " ")
 
-    # 남은 단어들 처리
+    # 3. 남은 단어들 처리
     words = remaining.split()
     for w in words:
         w = w.strip()
@@ -1153,16 +1189,94 @@ def search_advanced(query, limit=30):
         elif len(w) > 1:
             name_parts.append(w)
 
-    # 국가 + 태그 조합 검색
-    if country and tags:
-        params = {
-            "countrycode": country,
-            "tag": tags[0],
-            "limit": limit,
-            "order": "clickcount",
-            "reverse": "true"
-        }
-        return api_request("stations/search", params)
+    # 4. 태그 확장 (관련 태그 포함)
+    expanded_tags = []
+    for tag in tags:
+        if tag in TAG_EXPAND:
+            expanded_tags.extend(TAG_EXPAND[tag])
+        else:
+            expanded_tags.append(tag)
+    # 중복 제거, 순서 유지
+    seen = set()
+    expanded_tags = [t for t in expanded_tags if not (t in seen or seen.add(t))]
+
+    # 5. 검색 실행
+    all_results = []
+
+    # 국가 + 태그 조합
+    if country and expanded_tags:
+        # 여러 관련 태그로 검색해서 병합
+        for tag in expanded_tags[:3]:  # 최대 3개 태그
+            params = {
+                "countrycode": country,
+                "tag": tag,
+                "limit": limit,
+                "order": "clickcount",
+                "reverse": "true",
+                "lastcheckok": 1
+            }
+            results = api_request("stations/search", params)
+            all_results.extend(results)
+
+        # 태그 결과 적으면 이름 검색도 추가 (해당 국가 내)
+        if len(all_results) < 10:
+            # 원본 쿼리에서 국가 제외한 키워드로 검색
+            search_terms = [w for w in query.split() if w.lower() not in [k.lower() for k in LANG_MAP if LANG_MAP[k] == country]]
+            search_terms.extend(tags[:2])  # 영어 태그도 추가
+            for term in search_terms[:3]:
+                name_results = api_request("stations/byname/" + urllib.parse.quote(term), {
+                    "limit": limit,
+                    "order": "clickcount",
+                    "reverse": "true",
+                    "lastcheckok": 1
+                })
+                # 해당 국가 필터
+                for s in name_results:
+                    if s.get("countrycode", "").upper() == country:
+                        all_results.append(s)
+    elif country:
+        all_results = search_by_country(country, limit * 2)
+    elif expanded_tags:
+        # 여러 관련 태그로 검색
+        for tag in expanded_tags[:3]:
+            results = search_by_tag(tag, limit)
+            all_results.extend(results)
+    elif name_parts:
+        all_results = search(" ".join(name_parts), limit)
+    else:
+        all_results = search(query, limit)
+
+    # 6. 중복 제거 (URL 기준)
+    seen_urls = set()
+    unique_results = []
+    for s in all_results:
+        url = s.get("url_resolved") or s.get("url", "")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            unique_results.append(s)
+
+    # 7. 품질 필터 적용 (결과 있으면)
+    if quality and unique_results:
+        filtered = []
+        for s in unique_results:
+            bitrate = s.get("bitrate", 0)
+            if bitrate:
+                if "min_bitrate" in quality and bitrate < quality["min_bitrate"]:
+                    continue
+                if "max_bitrate" in quality and bitrate > quality["max_bitrate"]:
+                    continue
+            filtered.append(s)
+        # 필터 결과 있으면 사용, 없으면 원본 유지 (필터 완화)
+        if filtered:
+            unique_results = filtered
+        else:
+            # 품질 필터로 결과 없으면 정렬만 (높은 비트레이트 우선)
+            pass
+
+    # 8. 정렬: bitrate 높은 순 → votes 높은 순
+    unique_results.sort(key=lambda x: (x.get("bitrate", 0), x.get("votes", 0)), reverse=True)
+
+    return unique_results[:limit]
 
     # 국가만
     if country:
