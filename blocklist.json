@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "updated": "2026-03-02",
   "blocked": [
     {
@@ -25,6 +25,21 @@
     {
       "pattern": "조선중앙",
       "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "KBS",
+      "reason": "token-based URL expires",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "MBC",
+      "reason": "token-based URL expires",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "SBS",
+      "reason": "token-based URL expires",
       "added": "2026-03-02"
     }
   ],
