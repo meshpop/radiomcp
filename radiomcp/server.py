@@ -712,29 +712,45 @@ BLOCK_LIST = ["평양", "pyongyang", "north korea", "dprk", "조선중앙"]
 BLOCKED_URLS = set()
 BLOCKED_UUIDS = set()
 
-# 원격 블록 리스트 URL (GitHub raw)
-REMOTE_BLOCKLIST_URL = "https://raw.githubusercontent.com/dragonflydiy/radiomcp/main/blocklist.json"
+# 원격 블록 리스트 URL (GitHub → Cloudflare 폴백)
+BLOCKLIST_URLS = [
+    "https://raw.githubusercontent.com/dragonflydiy/radiomcp/main/blocklist.json",  # GitHub (primary)
+    "https://radiomcp.pages.dev/blocklist.json",  # Cloudflare Pages (fallback)
+]
+REMOTE_BLOCKLIST_URL = BLOCKLIST_URLS[0]  # 하위 호환성
 
 def fetch_remote_blocklist():
-    """GitHub에서 최신 블록 리스트 가져오기"""
+    """블록 리스트 가져오기 (GitHub → Cloudflare 폴백)"""
     global BLOCK_LIST, BLOCKED_URLS, BLOCKED_UUIDS
-    try:
-        req = urllib.request.Request(REMOTE_BLOCKLIST_URL, headers={"User-Agent": "RadioMCP/1.0"})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            # 패턴 블록 (이름 매칭)
-            remote_patterns = [b["pattern"] for b in data.get("blocked", [])]
-            for p in remote_patterns:
-                if p not in BLOCK_LIST:
-                    BLOCK_LIST.append(p)
-            # URL 블록
-            BLOCKED_URLS.update(data.get("blocked_urls", []))
-            # UUID 블록
-            BLOCKED_UUIDS.update(data.get("blocked_uuids", []))
-            # DB에서 블록된 방송 제거
-            purge_blocked_from_db()
-    except Exception:
-        pass  # 네트워크 실패 시 로컬 블록 리스트만 사용
+
+    data = None
+    last_error = None
+
+    # 순서대로 시도
+    for url in BLOCKLIST_URLS:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                break  # 성공하면 중단
+        except Exception as e:
+            last_error = e
+            continue  # 다음 URL 시도
+
+    if not data:
+        return  # 모든 소스 실패 시 로컬만 사용
+
+    # 패턴 블록 (이름 매칭)
+    remote_patterns = [b["pattern"] for b in data.get("blocked", [])]
+    for p in remote_patterns:
+        if p not in BLOCK_LIST:
+            BLOCK_LIST.append(p)
+    # URL 블록
+    BLOCKED_URLS.update(data.get("blocked_urls", []))
+    # UUID 블록
+    BLOCKED_UUIDS.update(data.get("blocked_uuids", []))
+    # DB에서 블록된 방송 제거
+    purge_blocked_from_db()
 
 def purge_blocked_from_db():
     """DB에서 블록된 방송 제거"""
@@ -2583,7 +2599,7 @@ def get_blocklist() -> dict:
         "patterns": BLOCK_LIST,
         "blocked_urls": list(BLOCKED_URLS),
         "blocked_uuids": list(BLOCKED_UUIDS),
-        "source": REMOTE_BLOCKLIST_URL
+        "sources": BLOCKLIST_URLS
     }
 
 
