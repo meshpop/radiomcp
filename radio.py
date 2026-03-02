@@ -956,17 +956,13 @@ def natural_language_search(query, limit=30):
     return None
 
 def search_advanced(query, limit=30):
-    """스마트 검색: 키워드 → LLM → 일반검색"""
+    """스마트 검색: 키워드 → 일반검색 (LLM 미사용)"""
     # 1. 키워드 기반 자연어 검색 (빠름)
     nl_results = natural_language_search(query, limit)
     if nl_results:
         return nl_results
 
-    # 2. LLM 검색 시도 (키워드 못 찾으면)
-    if LLM_PROVIDER != "none":
-        llm_results = llm_search(query, limit)
-        if llm_results:
-            return llm_results
+    # LLM 검색 비활성화 (속도 문제)
 
     query_lower = query.lower().strip()
 
