@@ -819,17 +819,17 @@ def api_request(endpoint, params=None):
 
 def search(query, limit=20):
     return api_request("stations/byname/" + urllib.parse.quote(query), {
-        "limit": limit, "order": "clickcount", "reverse": "true"
+        "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
 
 def search_by_tag(tag, limit=20):
     return api_request("stations/bytag/" + urllib.parse.quote(tag), {
-        "limit": limit, "order": "clickcount", "reverse": "true"
+        "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
 
 def search_by_country(code, limit=20):
     return api_request("stations/bycountrycodeexact/" + urllib.parse.quote(code.upper()), {
-        "limit": limit, "order": "clickcount", "reverse": "true"
+        "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
 
 def get_popular(limit=20):
@@ -845,7 +845,8 @@ def get_high_quality(limit=30):
         "bitrateMin": 256,
         "limit": limit,
         "order": "votes",
-        "reverse": "true"
+        "reverse": "true",
+        "lastcheckok": 1
     }
     return api_request("stations/search", params)
 
@@ -855,7 +856,8 @@ def get_premium(limit=30):
         "bitrateMin": 192,
         "order": "votes",
         "reverse": "true",
-        "limit": limit
+        "limit": limit,
+        "lastcheckok": 1
     }
     results = api_request("stations/search", params)
     # votes가 높은 것만 필터링
