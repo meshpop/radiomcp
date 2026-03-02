@@ -1036,6 +1036,7 @@ def print_stations(stations):
         quality = f"{bitrate}k" if bitrate else ""
         print(f"  {i:<3} {name:<30} {country:<4} {tags:<20} {quality:<6}")
     print()
+    print(f"  {t('press_num')} | m={t('menu')} | g={t('genre')} | c={t('country')} | /{t('searching')}")
 
 def play(url, name=""):
     global PLAYER_PROC

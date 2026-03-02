@@ -124,7 +124,8 @@
     "country_de": "독일",
     "country_fr": "프랑스",
     "country_cn": "중국",
-    "dj_on_speak": "DJ 모드가 켜졌습니다"
+    "dj_on_speak": "DJ 모드가 켜졌습니다",
+    "menu": "메뉴"
   },
   "en": {
     "name": "English",
@@ -251,7 +252,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ja": {
     "name": "日本語",
@@ -378,7 +380,8 @@
     "country_de": "ドイツ",
     "country_fr": "フランス",
     "country_cn": "中国",
-    "dj_on_speak": "DJモードがオンになりました"
+    "dj_on_speak": "DJモードがオンになりました",
+    "menu": "メニュー"
   },
   "zh": {
     "name": "中文",
@@ -505,7 +508,8 @@
     "country_de": "德国",
     "country_fr": "法国",
     "country_cn": "中国",
-    "dj_on_speak": "DJ模式已开启"
+    "dj_on_speak": "DJ模式已开启",
+    "menu": "菜单"
   },
   "zh-tw": {
     "name": "繁體中文",
@@ -632,7 +636,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "es": {
     "name": "Español",
@@ -759,7 +764,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "fr": {
     "name": "Français",
@@ -886,7 +892,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "de": {
     "name": "Deutsch",
@@ -1013,7 +1020,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "it": {
     "name": "Italiano",
@@ -1140,7 +1148,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "pt": {
     "name": "Português",
@@ -1267,7 +1276,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ru": {
     "name": "Русский",
@@ -1394,7 +1404,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ar": {
     "name": "العربية",
@@ -1521,7 +1532,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "hi": {
     "name": "हिन्दी",
@@ -1648,7 +1660,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "bn": {
     "name": "বাংলা",
@@ -1775,7 +1788,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "id": {
     "name": "Bahasa Indonesia",
@@ -1902,7 +1916,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ms": {
     "name": "Bahasa Melayu",
@@ -2029,7 +2044,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "th": {
     "name": "ไทย",
@@ -2156,7 +2172,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "vi": {
     "name": "Tiếng Việt",
@@ -2283,7 +2300,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "tl": {
     "name": "Filipino",
@@ -2410,7 +2428,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "tr": {
     "name": "Türkçe",
@@ -2537,7 +2556,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "pl": {
     "name": "Polski",
@@ -2664,7 +2684,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "nl": {
     "name": "Nederlands",
@@ -2791,7 +2812,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "sv": {
     "name": "Svenska",
@@ -2918,7 +2940,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "no": {
     "name": "Norsk",
@@ -3045,7 +3068,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "da": {
     "name": "Dansk",
@@ -3172,7 +3196,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "fi": {
     "name": "Suomi",
@@ -3299,7 +3324,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "cs": {
     "name": "Čeština",
@@ -3426,7 +3452,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "sk": {
     "name": "Slovenčina",
@@ -3553,7 +3580,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "hu": {
     "name": "Magyar",
@@ -3680,7 +3708,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ro": {
     "name": "Română",
@@ -3807,7 +3836,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "bg": {
     "name": "Български",
@@ -3934,7 +3964,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "uk": {
     "name": "Українська",
@@ -4061,7 +4092,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "hr": {
     "name": "Hrvatski",
@@ -4188,7 +4220,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "sr": {
     "name": "Српски",
@@ -4315,7 +4348,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "sl": {
     "name": "Slovenščina",
@@ -4442,7 +4476,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "et": {
     "name": "Eesti",
@@ -4569,7 +4604,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "lv": {
     "name": "Latviešu",
@@ -4696,7 +4732,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "lt": {
     "name": "Lietuvių",
@@ -4823,7 +4860,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "el": {
     "name": "Ελληνικά",
@@ -4950,7 +4988,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "he": {
     "name": "עברית",
@@ -5077,7 +5116,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "fa": {
     "name": "فارسی",
@@ -5204,7 +5244,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ur": {
     "name": "اردو",
@@ -5331,7 +5372,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "sw": {
     "name": "Kiswahili",
@@ -5458,7 +5500,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "af": {
     "name": "Afrikaans",
@@ -5585,7 +5628,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "am": {
     "name": "አማርኛ",
@@ -5712,7 +5756,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "zu": {
     "name": "isiZulu",
@@ -5839,7 +5884,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "xh": {
     "name": "isiXhosa",
@@ -5966,7 +6012,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ca": {
     "name": "Català",
@@ -6093,7 +6140,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "eu": {
     "name": "Euskara",
@@ -6220,7 +6268,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "gl": {
     "name": "Galego",
@@ -6347,7 +6396,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "cy": {
     "name": "Cymraeg",
@@ -6474,7 +6524,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ga": {
     "name": "Gaeilge",
@@ -6601,7 +6652,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "mt": {
     "name": "Malti",
@@ -6728,7 +6780,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "is": {
     "name": "Íslenska",
@@ -6855,7 +6908,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "sq": {
     "name": "Shqip",
@@ -6982,7 +7036,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "mk": {
     "name": "Македонски",
@@ -7109,7 +7164,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "bs": {
     "name": "Bosanski",
@@ -7236,7 +7292,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "me": {
     "name": "Crnogorski",
@@ -7363,7 +7420,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "be": {
     "name": "Беларуская",
@@ -7490,7 +7548,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "kk": {
     "name": "Қазақша",
@@ -7617,7 +7676,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "uz": {
     "name": "O'zbek",
@@ -7744,7 +7804,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ky": {
     "name": "Кыргызча",
@@ -7871,7 +7932,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "tg": {
     "name": "Тоҷикӣ",
@@ -7998,7 +8060,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "mn": {
     "name": "Монгол",
@@ -8125,7 +8188,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ne": {
     "name": "नेपाली",
@@ -8252,7 +8316,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "si": {
     "name": "සිංහල",
@@ -8379,7 +8444,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "my": {
     "name": "မြန်မာ",
@@ -8506,7 +8572,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "km": {
     "name": "ភាសាខ្មែរ",
@@ -8633,7 +8700,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "lo": {
     "name": "ລາວ",
@@ -8760,7 +8828,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ka": {
     "name": "ქართული",
@@ -8887,7 +8956,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "hy": {
     "name": "Հայերdelays",
@@ -9014,7 +9084,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "az": {
     "name": "Azərbaycan",
@@ -9141,7 +9212,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "pa": {
     "name": "ਪੰਜਾਬੀ",
@@ -9268,7 +9340,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ta": {
     "name": "தமிழ்",
@@ -9395,7 +9468,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "te": {
     "name": "తెలుగు",
@@ -9522,7 +9596,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "mr": {
     "name": "मराठी",
@@ -9649,7 +9724,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "gu": {
     "name": "ગુજરાતી",
@@ -9776,7 +9852,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "kn": {
     "name": "ಕನ್ನಡ",
@@ -9903,7 +9980,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ml": {
     "name": "മലയാളം",
@@ -10030,7 +10108,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "or": {
     "name": "ଓଡ଼ିଆ",
@@ -10157,7 +10236,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "as": {
     "name": "অসমীয়া",
@@ -10284,7 +10364,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "fy": {
     "name": "Frysk",
@@ -10411,7 +10492,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "lb": {
     "name": "Lëtzebuergesch",
@@ -10538,7 +10620,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "fo": {
     "name": "Føroyskt",
@@ -10665,7 +10748,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "gd": {
     "name": "Gàidhlig",
@@ -10792,7 +10876,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "br": {
     "name": "Brezhoneg",
@@ -10919,7 +11004,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "oc": {
     "name": "Occitan",
@@ -11046,7 +11132,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "co": {
     "name": "Corsu",
@@ -11173,7 +11260,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ht": {
     "name": "Kreyòl Ayisyen",
@@ -11300,7 +11388,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "mi": {
     "name": "Te Reo Māori",
@@ -11427,7 +11516,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "haw": {
     "name": "ʻŌlelo Hawaiʻi",
@@ -11554,7 +11644,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "sm": {
     "name": "Gagana Sāmoa",
@@ -11681,7 +11772,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "to": {
     "name": "Lea Faka-Tonga",
@@ -11808,7 +11900,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "fj": {
     "name": "Vosa Vakaviti",
@@ -11935,7 +12028,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "wo": {
     "name": "Wolof",
@@ -12062,7 +12156,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "yo": {
     "name": "Yorùbá",
@@ -12189,7 +12284,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ig": {
     "name": "Igbo",
@@ -12316,7 +12412,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "ha": {
     "name": "Hausa",
@@ -12443,7 +12540,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "rw": {
     "name": "Ikinyarwanda",
@@ -12570,7 +12668,8 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   },
   "sn": {
     "name": "ChiShona",
@@ -12697,6 +12796,7 @@
     "country_de": "Germany",
     "country_fr": "France",
     "country_cn": "China",
-    "dj_on_speak": "DJ mode is now on"
+    "dj_on_speak": "DJ mode is now on",
+    "menu": "menu"
   }
 }
