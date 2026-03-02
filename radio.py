@@ -12,7 +12,6 @@ import shutil
 import signal
 import os
 import time
-import sqlite3
 from datetime import datetime
 from collections import Counter
 
@@ -21,12 +20,6 @@ DATA_DIR = os.path.expanduser("~/.radiocli")
 FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
-
-# SQLite DB 경로
-DB_PATHS = [
-    os.path.join(DATA_DIR, "radio_stations.db"),
-    os.path.expanduser("~/RadioCli/radio_stations.db"),
-]
 
 # 데이터 디렉토리 생성
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -278,124 +271,6 @@ PLAYER = None
 PLAYER_PROC = None
 CURRENT_SONG_FILE = os.path.join(DATA_DIR, "current_song.txt")
 MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
-
-# === SQLite DB + 메모리 인덱스 ===
-_db_conn = None
-_stations_cache = None
-_tag_index = None
-_name_index = None
-
-def get_db():
-    """SQLite DB 연결"""
-    global _db_conn
-    if _db_conn:
-        return _db_conn
-    for path in DB_PATHS:
-        if os.path.exists(path):
-            _db_conn = sqlite3.connect(path, check_same_thread=False)
-            _db_conn.row_factory = sqlite3.Row
-            return _db_conn
-    return None
-
-def build_index():
-    """메모리 인덱스 구축 (최초 1회)"""
-    global _stations_cache, _tag_index, _name_index
-    if _stations_cache is not None:
-        return
-
-    db = get_db()
-    if not db:
-        _stations_cache = []
-        _tag_index = {}
-        _name_index = {}
-        return
-
-    try:
-        cursor = db.cursor()
-        cursor.execute("""
-            SELECT * FROM stations
-            WHERE is_alive = 1 OR is_alive IS NULL
-            ORDER BY clickcount DESC
-        """)
-        _stations_cache = []
-        _tag_index = {}
-        _name_index = {}
-
-        for row in cursor.fetchall():
-            station = dict(row)
-            idx = len(_stations_cache)
-            _stations_cache.append(station)
-
-            # 태그 인덱스
-            for tag in station.get("tags", "").lower().split(","):
-                tag = tag.strip()
-                if tag:
-                    _tag_index.setdefault(tag, []).append(idx)
-
-            # 이름 인덱스
-            for word in station.get("name", "").lower().split():
-                if len(word) >= 2:
-                    _name_index.setdefault(word, []).append(idx)
-    except:
-        _stations_cache = []
-        _tag_index = {}
-        _name_index = {}
-
-def db_search_name(query, limit=20):
-    """DB에서 이름으로 검색 (메모리 인덱스)"""
-    build_index()
-    if not _stations_cache:
-        return []
-
-    query_lower = query.lower()
-    results = []
-    seen = set()
-
-    # 전체 이름 매칭
-    for idx, s in enumerate(_stations_cache):
-        if query_lower in s.get("name", "").lower():
-            if idx not in seen:
-                seen.add(idx)
-                results.append(s)
-                if len(results) >= limit:
-                    break
-
-    return results
-
-def db_search_tag(tags, limit=20):
-    """DB에서 태그로 검색 (메모리 인덱스)"""
-    build_index()
-    if not _stations_cache or not _tag_index:
-        return []
-
-    indices = set()
-    for tag in tags:
-        tag_lower = tag.lower()
-        if tag_lower in _tag_index:
-            indices.update(_tag_index[tag_lower][:100])
-        else:
-            # 부분 매칭
-            for k, v in _tag_index.items():
-                if tag_lower in k:
-                    indices.update(v[:30])
-
-    sorted_idx = sorted(indices)[:limit]
-    return [_stations_cache[i] for i in sorted_idx]
-
-def db_search_country(code, limit=20):
-    """DB에서 국가로 검색"""
-    build_index()
-    if not _stations_cache:
-        return []
-
-    code_upper = code.upper()
-    results = []
-    for s in _stations_cache:
-        if s.get("countrycode", "").upper() == code_upper:
-            results.append(s)
-            if len(results) >= limit:
-                break
-    return results
 
 # 인기 장르 (tag, translation_key)
 GENRES = {
@@ -943,123 +818,19 @@ def api_request(endpoint, params=None):
         return []
 
 def search(query, limit=20):
-    """DB 우선 검색 + API 병합"""
-    results = []
-    seen = set()
-
-    # 언어 → 국가 코드 매핑
-    LANG_COUNTRY = {
-        "한국": "KR", "korea": "KR", "korean": "KR",
-        "일본": "JP", "japan": "JP", "japanese": "JP",
-        "중국": "CN", "china": "CN", "chinese": "CN",
-        "미국": "US", "america": "US", "usa": "US",
-        "영국": "GB", "uk": "GB", "british": "GB",
-        "프랑스": "FR", "france": "FR", "french": "FR",
-        "독일": "DE", "germany": "DE", "german": "DE",
-    }
-
-    # 1. DB에서 이름 검색 (즉시)
-    for s in db_search_name(query, limit):
-        url = s.get("url_resolved") or s.get("url", "")
-        if url and url not in seen:
-            seen.add(url)
-            s["source"] = "db"
-            results.append(s)
-
-    # 2. 국가 키워드 포함 시 국가별 검색도 추가
-    query_lower = query.lower()
-    country_code = None
-    for keyword, code in LANG_COUNTRY.items():
-        if keyword in query_lower:
-            country_code = code
-            break
-
-    if country_code:
-        for s in db_search_country(country_code, limit):
-            url = s.get("url_resolved") or s.get("url", "")
-            if url and url not in seen:
-                seen.add(url)
-                s["source"] = "db"
-                results.append(s)
-
-    # 3. API에서 이름 검색
-    api_results = api_request("stations/byname/" + urllib.parse.quote(query), {
+    return api_request("stations/byname/" + urllib.parse.quote(query), {
         "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
-    for s in api_results:
-        url = s.get("url_resolved") or s.get("url", "")
-        if url and url not in seen:
-            seen.add(url)
-            s["source"] = "api"
-            results.append(s)
-
-    # 4. 국가 키워드면 국가별 API도 검색
-    if country_code:
-        api_results = api_request("stations/bycountrycodeexact/" + country_code, {
-            "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
-        })
-        for s in api_results:
-            url = s.get("url_resolved") or s.get("url", "")
-            if url and url not in seen:
-                seen.add(url)
-                s["source"] = "api"
-                results.append(s)
-
-    return results[:limit]
 
 def search_by_tag(tag, limit=20):
-    """DB 우선 태그 검색 + API 병합"""
-    results = []
-    seen = set()
-
-    # 1. DB에서 태그 검색
-    for s in db_search_tag([tag], limit):
-        url = s.get("url_resolved") or s.get("url", "")
-        if url and url not in seen:
-            seen.add(url)
-            s["source"] = "db"
-            results.append(s)
-
-    # 2. API에서 검색
-    if len(results) < limit:
-        api_results = api_request("stations/bytag/" + urllib.parse.quote(tag), {
-            "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
-        })
-        for s in api_results:
-            url = s.get("url_resolved") or s.get("url", "")
-            if url and url not in seen:
-                seen.add(url)
-                s["source"] = "api"
-                results.append(s)
-
-    return results[:limit]
+    return api_request("stations/bytag/" + urllib.parse.quote(tag), {
+        "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
+    })
 
 def search_by_country(code, limit=20):
-    """DB 우선 국가 검색 + API 병합"""
-    results = []
-    seen = set()
-
-    # 1. DB에서 국가 검색
-    for s in db_search_country(code, limit):
-        url = s.get("url_resolved") or s.get("url", "")
-        if url and url not in seen:
-            seen.add(url)
-            s["source"] = "db"
-            results.append(s)
-
-    # 2. API에서 검색
-    if len(results) < limit:
-        api_results = api_request("stations/bycountrycodeexact/" + urllib.parse.quote(code.upper()), {
-            "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
-        })
-        for s in api_results:
-            url = s.get("url_resolved") or s.get("url", "")
-            if url and url not in seen:
-                seen.add(url)
-                s["source"] = "api"
-                results.append(s)
-
-    return results[:limit]
+    return api_request("stations/bycountrycodeexact/" + urllib.parse.quote(code.upper()), {
+        "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
+    })
 
 def get_popular(limit=20):
     return api_request("stations/topclick/" + str(limit))
