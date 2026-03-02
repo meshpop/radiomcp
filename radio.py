@@ -1228,15 +1228,29 @@ def update_station_url(old_url, new_url):
     except:
         pass
 
-def play(url, name="", retry_on_fail=True):
+def play(url, name="", use_fresh_url=True):
+    """
+    라디오 재생
+    use_fresh_url=True: API에서 최신 URL 먼저 가져옴 (토큰 만료 대응)
+    """
     global PLAYER_PROC
     stop()
     if not PLAYER:
         print(f"  {t('no_player')}. brew install mpv")
         return False
 
+    # API에서 최신 URL 가져오기 (토큰 방식 방송 대응)
+    play_url = url
+    if use_fresh_url and name:
+        fresh_url = get_fresh_url(name)
+        if fresh_url:
+            play_url = fresh_url
+            if fresh_url != url:
+                print(f"  ↻ 최신 URL 사용")
+                update_station_url(url, fresh_url)
+
     print(f"\n  ▶ {t('playing')}: {name}")
-    print(f"    {url}")
+    print(f"    {play_url[:70]}{'...' if len(play_url) > 70 else ''}")
     print(f"    (n: {t('view_current')})\n")
 
     try:
@@ -1247,17 +1261,17 @@ def play(url, name="", retry_on_fail=True):
         if PLAYER == "mpv":
             PLAYER_PROC = subprocess.Popen(
                 ["mpv", "--no-video", "--really-quiet",
-                 f"--input-ipc-server={MPV_SOCKET}", url],
+                 f"--input-ipc-server={MPV_SOCKET}", play_url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
         elif PLAYER == "ffplay":
             PLAYER_PROC = subprocess.Popen(
-                ["ffplay", "-nodisp", "-loglevel", "quiet", url],
+                ["ffplay", "-nodisp", "-loglevel", "quiet", play_url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
         elif PLAYER == "vlc":
             PLAYER_PROC = subprocess.Popen(
-                ["vlc", "--intf", "dummy", url],
+                ["vlc", "--intf", "dummy", play_url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
 
@@ -1265,16 +1279,8 @@ def play(url, name="", retry_on_fail=True):
         time.sleep(2)
         if PLAYER_PROC and PLAYER_PROC.poll() is not None:
             # 프로세스 종료됨 = 재생 실패
-            if retry_on_fail and name:
-                print(f"  ⚠ 재생 실패. 새 URL 검색 중...")
-                new_url = get_fresh_url(name)
-                if new_url and new_url != url:
-                    print(f"  → 새 URL 발견: {new_url[:50]}...")
-                    update_station_url(url, new_url)
-                    return play(new_url, name, retry_on_fail=False)
-                else:
-                    mark_station_failed(url)
-                    print(f"  ✗ 새 URL 없음. 방송이 종료되었을 수 있습니다.")
+            mark_station_failed(url)
+            print(f"  ✗ 재생 실패. 방송이 종료되었거나 접속 불가합니다.")
             return False
 
         return True
