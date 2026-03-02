@@ -930,7 +930,11 @@ def natural_language_search(query, limit=30):
         if keyword.lower() in query_lower and not (len(val) == 2 and val.isupper()):
             found_tags.append(val)
 
-    # 태그 빈도순 정렬
+    # 국가만 찾으면 국가별 검색
+    if found_country and not found_tags:
+        return search_by_country(found_country, limit)
+
+    # 태그 찾으면 태그 검색
     if found_tags:
         from collections import Counter
         tag_counts = Counter(found_tags)
