@@ -2767,6 +2767,180 @@ def get_radio_status() -> dict:
     return status
 
 
+@mcp.tool()
+def check_stream(url: str) -> dict:
+    """
+    Check if a stream URL is alive before playing.
+    Use this to avoid playing dead streams.
+
+    Args:
+        url: Stream URL to check
+
+    Returns:
+        Stream status (alive, dead, or error)
+    """
+    try:
+        req = urllib.request.Request(url, method='HEAD')
+        req.add_header('User-Agent', 'RadioMCP/1.0')
+        req.add_header('Icy-MetaData', '1')
+
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            content_type = resp.headers.get('Content-Type', '')
+            icy_name = resp.headers.get('icy-name', '')
+
+            # 스트림 타입 확인
+            is_stream = any(t in content_type.lower() for t in
+                          ['audio/', 'application/ogg', 'mpegurl', 'x-scpls'])
+
+            return {
+                "status": "alive",
+                "url": url,
+                "content_type": content_type,
+                "icy_name": icy_name,
+                "is_stream": is_stream
+            }
+    except urllib.error.HTTPError as e:
+        return {"status": "dead", "url": url, "error": f"HTTP {e.code}"}
+    except urllib.error.URLError as e:
+        return {"status": "dead", "url": url, "error": str(e.reason)}
+    except Exception as e:
+        return {"status": "error", "url": url, "error": str(e)}
+
+
+@mcp.tool()
+def get_categories() -> dict:
+    """
+    Get major station categories for quick navigation.
+
+    Returns:
+        Categories with example search queries
+    """
+    return {
+        "music": {
+            "description": "Music stations",
+            "genres": ["pop", "rock", "jazz", "classical", "electronic", "hip hop",
+                      "country", "r&b", "metal", "indie", "ambient", "lounge"],
+            "search_tip": "search('jazz') or recommend('relaxing')"
+        },
+        "news": {
+            "description": "News & Talk radio",
+            "types": ["news", "talk", "public radio", "npr"],
+            "search_tip": "search('news') or search_by_country('US', 'news')"
+        },
+        "sports": {
+            "description": "Sports radio",
+            "types": ["sports", "football", "baseball"],
+            "search_tip": "search('sports')"
+        },
+        "culture": {
+            "description": "Culture & Entertainment",
+            "types": ["culture", "entertainment", "comedy"],
+            "search_tip": "search('culture')"
+        },
+        "regional": {
+            "description": "By country/region",
+            "examples": ["KR (Korea)", "US (USA)", "JP (Japan)", "DE (Germany)", "FR (France)"],
+            "search_tip": "search_by_country('KR') or search_by_country('JP', 'jazz')"
+        },
+        "mood": {
+            "description": "By mood/activity",
+            "moods": ["relaxing", "energetic", "focus", "sleep", "workout", "romantic"],
+            "search_tip": "recommend('relaxing') or recommend('focus')"
+        }
+    }
+
+
+@mcp.tool()
+def get_listening_stats(period: str = "week") -> dict:
+    """
+    Get listening statistics for a specific period.
+
+    Args:
+        period: Time period - "today", "week", "month", "all"
+
+    Returns:
+        Listening stats: total time, top stations, top genres, daily breakdown
+    """
+    from datetime import timedelta
+
+    history = load_json(HISTORY_FILE)
+    if not history:
+        return {"status": "no_history", "message": "No listening history yet"}
+
+    now = datetime.now()
+
+    # 기간 필터
+    if period == "today":
+        cutoff = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        cutoff = now - timedelta(days=7)
+    elif period == "month":
+        cutoff = now - timedelta(days=30)
+    else:  # all
+        cutoff = datetime.min
+
+    # 필터링
+    filtered = []
+    for entry in history:
+        try:
+            ts = datetime.fromisoformat(entry.get("timestamp", ""))
+            if ts >= cutoff:
+                filtered.append(entry)
+        except:
+            if period == "all":
+                filtered.append(entry)
+
+    if not filtered:
+        return {"status": "no_data", "period": period, "message": f"No listening data for {period}"}
+
+    # 통계 계산
+    total_duration = sum(e.get("duration", 60) for e in filtered)
+
+    # 방송국별 청취
+    station_times = {}
+    for e in filtered:
+        name = e.get("name", "Unknown")
+        station_times[name] = station_times.get(name, 0) + e.get("duration", 60)
+
+    top_stations = sorted(station_times.items(), key=lambda x: -x[1])[:5]
+
+    # 장르별 청취
+    tag_times = {}
+    for e in filtered:
+        tags = e.get("tags", "").split(",")
+        duration = e.get("duration", 60)
+        for tag in tags:
+            tag = tag.strip().lower()
+            if tag:
+                tag_times[tag] = tag_times.get(tag, 0) + duration
+
+    top_tags = sorted(tag_times.items(), key=lambda x: -x[1])[:5]
+
+    # 일별 청취 시간 (최근 7일)
+    daily = {}
+    for e in filtered:
+        try:
+            ts = datetime.fromisoformat(e.get("timestamp", ""))
+            day = ts.strftime("%Y-%m-%d")
+            daily[day] = daily.get(day, 0) + e.get("duration", 60)
+        except:
+            pass
+
+    # 최근 7일만
+    recent_days = sorted(daily.items(), reverse=True)[:7]
+
+    return {
+        "period": period,
+        "total_listens": len(filtered),
+        "total_minutes": round(total_duration / 60, 1),
+        "total_hours": round(total_duration / 3600, 1),
+        "top_stations": [{"name": n, "minutes": round(m/60, 1)} for n, m in top_stations],
+        "top_genres": [{"tag": t, "minutes": round(m/60, 1)} for t, m in top_tags],
+        "daily_minutes": [{"date": d, "minutes": round(m/60, 1)} for d, m in recent_days],
+        "average_per_day": round(total_duration / 60 / max(len(daily), 1), 1)
+    }
+
+
 def main():
     """Entry point for radiomcp command"""
     mcp.run()
