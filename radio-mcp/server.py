@@ -8,6 +8,7 @@ import os
 import subprocess
 import socket
 import urllib.request
+import urllib.parse
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -45,11 +46,11 @@ def save_json(filepath: str, data: list):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def api_search(endpoint: str, params: dict = None) -> list:
-    """Radio Browser API 호출"""
+def api_get(endpoint: str, params: dict = None) -> list:
+    """Radio Browser API GET 호출"""
     url = f"{API_BASE}/{endpoint}"
     if params:
-        query = "&".join(f"{k}={v}" for k, v in params.items())
+        query = urllib.parse.urlencode(params)
         url = f"{url}?{query}"
 
     try:
@@ -57,6 +58,7 @@ def api_search(endpoint: str, params: dict = None) -> list:
         with urllib.request.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read().decode())
     except Exception as e:
+        print(f"API error: {e}", flush=True)
         return []
 
 
@@ -67,6 +69,7 @@ def format_station(s: dict) -> dict:
         "name": s.get("name", "Unknown"),
         "url": s.get("url_resolved") or s.get("url", ""),
         "country": s.get("country", ""),
+        "countrycode": s.get("countrycode", ""),
         "tags": s.get("tags", ""),
         "bitrate": s.get("bitrate", 0),
         "votes": s.get("votes", 0),
@@ -76,30 +79,31 @@ def format_station(s: dict) -> dict:
 @mcp.tool()
 def search(query: str, limit: int = 20) -> list[dict]:
     """
-    라디오 방송국 검색
+    Search radio stations by keyword (genre, name, etc.)
 
     Args:
-        query: 검색어 (장르, 국가, 이름 등)
-        limit: 결과 개수 (기본 20)
+        query: Search term (genre like "jazz", "kpop" or station name)
+        limit: Number of results (default 20)
 
     Returns:
-        방송국 목록
+        List of radio stations
     """
-    # 태그로 검색
-    results = api_search("stations/bytag", {
-        "tag": query,
+    # 태그로 검색 (path에 태그 포함)
+    encoded_query = urllib.parse.quote(query)
+    results = api_get(f"stations/bytag/{encoded_query}", {
         "limit": limit,
         "order": "clickcount",
-        "reverse": "true"
+        "reverse": "true",
+        "lastcheckok": 1
     })
 
     # 결과 없으면 이름으로 검색
     if not results:
-        results = api_search("stations/byname", {
-            "name": query,
+        results = api_get(f"stations/byname/{encoded_query}", {
             "limit": limit,
             "order": "clickcount",
-            "reverse": "true"
+            "reverse": "true",
+            "lastcheckok": 1
         })
 
     return [format_station(s) for s in results]
@@ -108,20 +112,21 @@ def search(query: str, limit: int = 20) -> list[dict]:
 @mcp.tool()
 def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
     """
-    국가별 라디오 검색
+    Search radio stations by country
 
     Args:
-        country_code: 국가 코드 (KR, US, JP 등)
-        limit: 결과 개수
+        country_code: Country code (KR, US, JP, DE, FR, etc.)
+        limit: Number of results
 
     Returns:
-        방송국 목록
+        List of radio stations
     """
-    results = api_search("stations/bycountrycodeexact", {
-        "countrycode": country_code.upper(),
+    code = urllib.parse.quote(country_code.upper())
+    results = api_get(f"stations/bycountrycodeexact/{code}", {
         "limit": limit,
         "order": "clickcount",
-        "reverse": "true"
+        "reverse": "true",
+        "lastcheckok": 1
     })
     return [format_station(s) for s in results]
 
@@ -129,29 +134,29 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
 @mcp.tool()
 def get_popular(limit: int = 20) -> list[dict]:
     """
-    인기 라디오 방송국
+    Get popular radio stations
 
     Args:
-        limit: 결과 개수
+        limit: Number of results
 
     Returns:
-        인기 방송국 목록
+        List of popular stations
     """
-    results = api_search("stations/topvote", {"limit": limit})
+    results = api_get(f"stations/topclick/{limit}")
     return [format_station(s) for s in results]
 
 
 @mcp.tool()
 def play(url: str, name: str = "") -> dict:
     """
-    라디오 재생
+    Play a radio station
 
     Args:
-        url: 스트림 URL
-        name: 방송국 이름 (선택)
+        url: Stream URL
+        name: Station name (optional)
 
     Returns:
-        재생 상태
+        Playback status
     """
     global current_station, player_proc
 
@@ -180,10 +185,10 @@ def play(url: str, name: str = "") -> dict:
 @mcp.tool()
 def stop() -> dict:
     """
-    라디오 정지
+    Stop radio playback
 
     Returns:
-        정지 상태
+        Stop status
     """
     global player_proc, current_station
 
@@ -207,10 +212,10 @@ def stop() -> dict:
 @mcp.tool()
 def now_playing() -> dict:
     """
-    현재 재생 중인 곡 정보
+    Get current song info
 
     Returns:
-        현재 곡 정보 (제목, 아티스트 등)
+        Current song info (title, artist)
     """
     if not current_station:
         return {"status": "not_playing"}
@@ -256,10 +261,10 @@ def now_playing() -> dict:
 @mcp.tool()
 def get_favorites() -> list[dict]:
     """
-    즐겨찾기 목록
+    Get favorite stations list
 
     Returns:
-        즐겨찾기 방송국 목록
+        List of favorite stations
     """
     return load_json(FAVORITES_FILE)
 
@@ -267,13 +272,13 @@ def get_favorites() -> list[dict]:
 @mcp.tool()
 def add_favorite(station: dict) -> dict:
     """
-    즐겨찾기 추가
+    Add station to favorites
 
     Args:
-        station: 방송국 정보 (name, url 필수)
+        station: Station info (name, url required)
 
     Returns:
-        추가 결과
+        Add result
     """
     favorites = load_json(FAVORITES_FILE)
 
@@ -290,13 +295,13 @@ def add_favorite(station: dict) -> dict:
 @mcp.tool()
 def remove_favorite(index: int) -> dict:
     """
-    즐겨찾기 삭제
+    Remove station from favorites
 
     Args:
-        index: 삭제할 인덱스 (0부터 시작)
+        index: Index to remove (0-based)
 
     Returns:
-        삭제 결과
+        Remove result
     """
     favorites = load_json(FAVORITES_FILE)
 
@@ -311,13 +316,13 @@ def remove_favorite(index: int) -> dict:
 @mcp.tool()
 def get_history(limit: int = 20) -> list[dict]:
     """
-    청취 기록
+    Get listening history
 
     Args:
-        limit: 결과 개수
+        limit: Number of results
 
     Returns:
-        최근 청취 기록
+        Recent listening history
     """
     history = load_json(HISTORY_FILE)
     return history[-limit:][::-1]  # 최신순
@@ -326,33 +331,34 @@ def get_history(limit: int = 20) -> list[dict]:
 @mcp.tool()
 def recommend(mood: str = "relaxing") -> list[dict]:
     """
-    분위기 기반 추천
+    Get mood-based recommendations
 
     Args:
-        mood: 분위기 (relaxing, energetic, focus, sleep 등)
+        mood: Mood keyword (relaxing, energetic, focus, sleep, morning, workout, romantic)
 
     Returns:
-        추천 방송국 목록
+        Recommended stations
     """
     mood_tags = {
         "relaxing": ["lounge", "ambient", "classical", "jazz"],
         "energetic": ["dance", "electronic", "pop", "rock"],
-        "focus": ["classical", "ambient", "lofi", "instrumental"],
-        "sleep": ["ambient", "nature", "classical", "sleep"],
-        "morning": ["pop", "jazz", "news"],
-        "workout": ["electronic", "dance", "rock", "hiphop"],
-        "romantic": ["jazz", "ballad", "classical"],
+        "focus": ["classical", "ambient", "instrumental"],
+        "sleep": ["ambient", "classical"],
+        "morning": ["pop", "jazz"],
+        "workout": ["electronic", "dance", "rock"],
+        "romantic": ["jazz", "classical"],
     }
 
     tags = mood_tags.get(mood.lower(), [mood])
 
     all_results = []
     for tag in tags[:2]:  # 상위 2개 태그만
-        results = api_search("stations/bytag", {
-            "tag": tag,
-            "limit": 10,
+        encoded_tag = urllib.parse.quote(tag)
+        results = api_get(f"stations/bytag/{encoded_tag}", {
+            "limit": 15,
             "order": "votes",
-            "reverse": "true"
+            "reverse": "true",
+            "lastcheckok": 1
         })
         all_results.extend(results)
 
