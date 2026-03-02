@@ -14,22 +14,54 @@ Both share the same SQLite database and support multilingual search, song recogn
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      User Interface                          │
-├──────────────────────┬──────────────────────────────────────┤
-│   CLI (radio.py)     │    MCP Server (server.py)            │
-│   - Terminal UI      │    - Claude Desktop integration       │
-│   - Direct input     │    - Natural language commands        │
-└──────────┬───────────┴──────────────┬───────────────────────┘
-           │                          │
-           ▼                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Core Components                           │
-├─────────────────────────────────────────────────────────────┤
-│  SQLite DB (24k+ stations)  │  Radio Browser API (fallback) │
-│  mpv Player (IPC socket)    │  Song Recognition (AcoustID)  │
-│  Favorites/History (JSON)   │  TTS DJ Mode (edge-tts)       │
-└─────────────────────────────────────────────────────────────┘
++---------------------------+---------------------------+
+|      CLI (radio.py)       |    MCP Server (server.py) |
+|      - Terminal UI        |    - Claude Desktop       |
+|      - Direct input       |    - Natural language     |
++-------------+-------------+-------------+-------------+
+              |                           |
+              v                           v
++-----------------------------------------------------------+
+|                     Core Components                        |
++-----------------------------------------------------------+
+|  SQLite DB        |  Radio Browser API  |  mpv Player     |
+|  (24k+ stations)  |  (fallback search)  |  (IPC socket)   |
++-------------------+---------------------+-----------------+
+|  Favorites/History (JSON)  |  Song Recognition (AcoustID) |
++----------------------------+------------------------------+
+|  DJ Mode (edge-tts)        |  LLM Integration (optional)  |
++----------------------------+------------------------------+
+```
+
+---
+
+## File Structure
+
+```
+RadioCli/
+|-- radio.py                 # Main CLI application
+|-- radio_stations.db        # SQLite database (24k+ stations)
+|-- languages.json           # UI translations (ko, en, ja, zh)
+|-- README.md                # Project readme
+|
+|-- radio-mcp/               # MCP Server
+|   |-- server.py            # MCP server implementation
+|   |-- README.md            # MCP setup guide
+|   |-- HELP.md              # MCP tool reference
+|   +-- daily_maintenance.py # DB maintenance script
+|
++-- docs/                    # Documentation
+    |-- DOCUMENTATION.md     # English docs
+    +-- DOCUMENTATION_KO.md  # Korean docs
+
+~/.radiocli/                 # User Data Directory
+|-- favorites.json           # Saved favorite stations
+|-- history.json             # Listening history
+|-- playlists.json           # Custom playlists
+|-- recognized_songs.json    # Song recognition history
+|-- songs.json               # Auto-tracked songs (CLI)
+|-- last_station.json        # Last playing (for resume)
++-- mpv.sock                 # mpv IPC socket (runtime)
 ```
 
 ---
