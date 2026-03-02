@@ -4,9 +4,9 @@
 
 ### 1. PyPI 패키지 등록
 - [ ] `setup.py` 또는 `pyproject.toml` 작성
-- [ ] 패키지 이름 결정 (예: `radio-mcp`)
+- [ ] 패키지 이름 결정 (예: `radiomcp`)
 - [ ] PyPI 계정 준비
-- [ ] `pip install radio-mcp`로 설치 가능하게
+- [ ] `pip install radiomcp`로 설치 가능하게
 
 ### 2. MCP Registry 등록
 - [ ] PyPI 등록 후 진행

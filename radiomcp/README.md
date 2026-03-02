@@ -21,7 +21,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "radio": {
       "command": "python3",
-      "args": ["/path/to/radio-mcp/server.py"]
+      "args": ["/path/to/radiomcp/server.py"]
     }
   }
 }

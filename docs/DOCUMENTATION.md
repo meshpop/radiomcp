@@ -44,7 +44,7 @@ RadioCli/
 |-- languages.json           # UI translations (ko, en, ja, zh)
 |-- README.md                # Project readme
 |
-|-- radio-mcp/               # MCP Server
+|-- radiomcp/               # MCP Server
 |   |-- server.py            # MCP server implementation
 |   |-- README.md            # MCP setup guide
 |   |-- HELP.md              # MCP tool reference
