@@ -2356,26 +2356,30 @@ def get_llm_status():
 def show_menu():
     fav_count = len(load_favorites())
     history_count = len(load_history())
+    songs_count = len(load_songs())
     llm_status = get_llm_status()
-    print(f"""
-  ╭─────────────────────────────────────╮
-  │         {t('title'):^25}   │
-  ├─────────────────────────────────────┤
-  │  {t('search_hint'):<35}│
-  │  {t('search_examples'):<35}│
-  ├─────────────────────────────────────┤
-  │  a  {t('ai_recommend'):<10} t  {t('my_taste'):<13}│
-  │  w  {t('mood_now'):<10} i  {t('song_recognize'):<13}│
-  │  p  {t('popular'):<10} h  {t('hq'):<13}│
-  │  g  {t('genre'):<10} c  {t('country'):<13}│
-  │  f  {t('favorites')}({fav_count})    l  {t('playlist'):<13}│
-  │  r  {t('premium'):<10} d  {t('dj_mode'):<13}│
-  ├─────────────────────────────────────┤
-  │  s  {t('stop'):<10} q  {t('quit'):<13}│
-  │  lang {t('lang_setting'):<24}│
-  ╰─────────────────────────────────────╯
-  {t('llm')}: {llm_status} | {t('history')}: {history_count}
-""")
+    search_mode = "DB" if not USE_API else "DB+API"
+
+    print("""
+  ┌───────────────────────────────────┐
+  │           🎵 RadioCli 🎵          │
+  ├───────────────────────────────────┤
+  │  검색: 자연어로 입력               │
+  │  예) 한국 재즈, 신나는 음악        │
+  ├───────────────────────────────────┤""")
+    print(f"  │  [a] AI추천    [t] 내 취향        │")
+    print(f"  │  [w] 분위기    [i] 곡 인식        │")
+    print(f"  │  [p] 인기      [h] 고음질         │")
+    print(f"  │  [g] 장르      [c] 국가           │")
+    print(f"  │  [f] 즐겨찾기({fav_count}) [l] 플레이리스트  │")
+    print(f"  │  [r] 프리미엄  [d] DJ모드         │")
+    print(f"  ├───────────────────────────────────┤")
+    print(f"  │  [n] 현재곡    [sl] 곡기록({songs_count})    │")
+    print(f"  │  [s] 정지      [q] 종료           │")
+    print(f"  │  [!] 검색모드  [lang] 언어        │")
+    print(f"  └───────────────────────────────────┘")
+    print(f"  {llm_status} | 기록:{history_count} | 모드:{search_mode}")
+    print()
 
 def show_genres():
     print(f"\n  {t('genre_select')}:")
