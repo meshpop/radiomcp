@@ -698,7 +698,7 @@ def health_check(limit: int = 100) -> dict:
             try:
                 req = urllib.request.Request(url, method='HEAD',
                     headers={"User-Agent": "RadioMCP/1.0"})
-                with urllib.request.urlopen(req, timeout=5) as resp:
+                with urllib.request.urlopen(req, timeout=3) as resp:
                     if resp.status < 400:
                         cursor.execute("""
                             UPDATE stations SET is_alive = 1, fail_count = 0,

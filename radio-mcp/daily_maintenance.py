@@ -47,9 +47,9 @@ def main():
 
     log(f"총 {total_new}개 신규 추가")
 
-    # 4. 헬스체크 (1,500개 배치 - 2주 사이클)
-    log("--- 헬스체크 (1,500개) ---")
-    health = server.health_check(limit=1500)
+    # 4. 헬스체크 (500개 배치 - 부하 분산)
+    log("--- 헬스체크 (500개) ---")
+    health = server.health_check(limit=500)
     log(f"  checked: {health.get('checked', 0)}, alive: {health.get('alive', 0)}, dead: {health.get('dead', 0)}")
 
     # 5. 죽은 방송 정리
