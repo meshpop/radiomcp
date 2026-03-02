@@ -13,6 +13,8 @@ import urllib.request
 import urllib.parse
 import time
 import shutil
+import atexit
+import signal
 from typing import Any
 from datetime import datetime
 
@@ -43,6 +45,54 @@ current_station = None
 player_proc = None
 db_conn = None
 sleep_timer = None  # 슬립 타이머
+
+LAST_STATION_FILE = os.path.join(DATA_DIR, "last_station.json")
+
+def save_last_station():
+    """마지막 재생 방송 저장"""
+    if current_station:
+        try:
+            with open(LAST_STATION_FILE, "w", encoding="utf-8") as f:
+                json.dump(current_station, f, ensure_ascii=False)
+        except:
+            pass
+
+def load_last_station():
+    """마지막 재생 방송 로드"""
+    if os.path.exists(LAST_STATION_FILE):
+        try:
+            with open(LAST_STATION_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return None
+
+def cleanup():
+    """종료 시 플레이어 정리"""
+    global player_proc
+    # 마지막 방송 저장
+    save_last_station()
+    if player_proc:
+        try:
+            player_proc.terminate()
+            player_proc.wait(timeout=2)
+        except:
+            try:
+                player_proc.kill()
+            except:
+                pass
+        player_proc = None
+    # mpv 소켓 정리
+    if os.path.exists(MPV_SOCKET):
+        try:
+            os.remove(MPV_SOCKET)
+        except:
+            pass
+
+# 종료 핸들러 등록
+atexit.register(cleanup)
+signal.signal(signal.SIGTERM, lambda s, f: (cleanup(), exit(0)))
+signal.signal(signal.SIGINT, lambda s, f: (cleanup(), exit(0)))
 
 # 유사어 매핑 (태그 확장)
 TAG_SYNONYMS = {
@@ -1400,6 +1450,26 @@ def stop() -> dict:
 
     current_station = None
     return {"status": "stopped"}
+
+
+@mcp.tool()
+def resume() -> dict:
+    """
+    Resume last playing station.
+
+    Returns:
+        Playback status or error if no last station
+    """
+    last = load_last_station()
+    if not last:
+        return {"status": "error", "message": "No last station found"}
+
+    url = last.get("url", "")
+    name = last.get("name", "")
+    if not url:
+        return {"status": "error", "message": "No URL in last station"}
+
+    return play(url, name)
 
 
 @mcp.tool()
