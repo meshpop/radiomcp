@@ -13,6 +13,7 @@ import signal
 import os
 import time
 import sqlite3
+import threading
 from datetime import datetime
 from collections import Counter
 
@@ -20,6 +21,7 @@ from collections import Counter
 DATA_DIR = os.path.expanduser("~/.radiocli")
 FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
+SONGS_FILE = os.path.join(DATA_DIR, "songs.json")  # 곡 기록
 PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 
 # SQLite DB
@@ -1403,6 +1405,8 @@ def play(url, name="", use_fresh_url=True):
             print(f"  ✗ 재생 실패. 방송이 종료되었거나 접속 불가합니다.")
             return False
 
+        # 곡 모니터링 시작
+        start_song_monitor(name)
         return True
 
     except Exception as e:
@@ -1470,6 +1474,108 @@ def show_current_song():
             print(f"\n  ♪ {t('current_song')}: {song['title']}\n")
     else:
         print(f"\n  {t('no_song_info')}\n")
+
+# === 곡 기록 ===
+_last_song_title = None
+
+def load_songs():
+    """곡 기록 로드"""
+    if os.path.exists(SONGS_FILE):
+        try:
+            with open(SONGS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return []
+
+def save_songs(songs):
+    """곡 기록 저장"""
+    with open(SONGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(songs[-1000:], f, ensure_ascii=False, indent=2)  # 최대 1000곡
+
+def parse_song_info(raw_title):
+    """'Artist - Title' 형식 파싱"""
+    if not raw_title:
+        return None, None
+    if " - " in raw_title:
+        parts = raw_title.split(" - ", 1)
+        return parts[0].strip(), parts[1].strip()
+    return None, raw_title.strip()
+
+def add_song_to_history(raw_title, station_name):
+    """곡 기록 추가"""
+    global _last_song_title
+    if not raw_title or raw_title == _last_song_title:
+        return
+    _last_song_title = raw_title
+
+    artist, title = parse_song_info(raw_title)
+    songs = load_songs()
+    songs.append({
+        "artist": artist or "",
+        "title": title or raw_title,
+        "station": station_name,
+        "timestamp": datetime.now().isoformat(),
+        "raw": raw_title
+    })
+    save_songs(songs)
+
+def check_song_change(station_name):
+    """곡 변경 감지하고 기록"""
+    song = get_current_song()
+    if song and song.get("title") and not song.get("is_ad"):
+        add_song_to_history(song["title"], station_name)
+
+def show_song_history(limit=20):
+    """곡 기록 표시"""
+    songs = load_songs()
+    if not songs:
+        print(f"\n  곡 기록 없음\n")
+        return
+    print(f"\n  최근 들은 곡 ({len(songs)}개 중 {min(limit, len(songs))}개)")
+    print(f"  {'시간':<6} {'방송':<20} {'아티스트':<20} {'곡':<25}")
+    print("  " + "-" * 75)
+    for s in reversed(songs[-limit:]):
+        ts = s.get("timestamp", "")
+        time_str = ts[11:16] if ts else ""
+        station = s.get("station", "")[:18]
+        artist = s.get("artist", "-")[:18]
+        title = s.get("title", "")[:23]
+        print(f"  {time_str:<6} {station:<20} {artist:<20} {title:<25}")
+    print()
+
+# 곡 모니터링 설정
+_song_monitor_thread = None
+_song_monitor_running = False
+SONG_MONITOR_ENABLED = True  # 곡 기록 온/오프
+
+def start_song_monitor(station_name):
+    """곡 변경 모니터링 시작 (백그라운드)"""
+    global _song_monitor_thread, _song_monitor_running
+    if not SONG_MONITOR_ENABLED:
+        return
+
+    def monitor():
+        while _song_monitor_running and PLAYER_PROC:
+            check_song_change(station_name)
+            time.sleep(10)  # 10초마다 체크
+
+    _song_monitor_running = True
+    _song_monitor_thread = threading.Thread(target=monitor, daemon=True)
+    _song_monitor_thread.start()
+
+def stop_song_monitor():
+    """곡 모니터링 중지"""
+    global _song_monitor_running
+    _song_monitor_running = False
+
+def clear_song_history():
+    """곡 기록 전체 삭제"""
+    if os.path.exists(SONGS_FILE):
+        os.remove(SONGS_FILE)
+    global _last_song_title
+    _last_song_title = None
+    print("  곡 기록 삭제됨\n")
 
 # === DJ 기능 (TTS) ===
 DJ_ENABLED = os.environ.get("RADIOCLI_DJ", "0") == "1"
@@ -2223,6 +2329,7 @@ def delete_playlist(name):
 
 def stop():
     global PLAYER_PROC
+    stop_song_monitor()  # 곡 모니터링 중지
     if PLAYER_PROC:
         PLAYER_PROC.terminate()
         PLAYER_PROC = None
@@ -2385,6 +2492,24 @@ def main():
         # 인식된 곡 목록
         if cmd == "il":
             show_recognized_songs()
+            continue
+
+        # 곡 기록 보기
+        if cmd == "sl":
+            show_song_history()
+            continue
+
+        # 곡 기록 토글 (온/오프)
+        if cmd == "st":
+            global SONG_MONITOR_ENABLED
+            SONG_MONITOR_ENABLED = not SONG_MONITOR_ENABLED
+            status = "ON" if SONG_MONITOR_ENABLED else "OFF"
+            print(f"  곡 기록: {status}\n")
+            continue
+
+        # 곡 기록 삭제
+        if cmd == "sc":
+            clear_song_history()
             continue
 
         # DJ 모드 토글
