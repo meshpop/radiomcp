@@ -2390,41 +2390,21 @@ def show_menu():
     history_count = len(load_history())
     songs_count = len(load_songs())
     llm_status = get_llm_status()
-    search_mode = "DB" if not USE_API else "API"
-
-    W = 39  # 내부 너비
-    border = "─" * W
-
-    def row(content):
-        """행 출력 (너비 맞춤)"""
-        content = truncate(content, W - 2)
-        print(f"  │ {pad_right(content, W-2)}│")
-
-    def row2(l_key, l_text, r_key, r_text):
-        """2열 행"""
-        left = f"[{l_key}] {truncate(l_text, 9)}"
-        right = f"[{r_key}] {truncate(r_text, 10)}"
-        content = f"{pad_right(left, 17)} {right}"
-        row(content)
+    mode = "DB" if not USE_API else "API"
 
     print()
-    print(f"  ┌{border}┐")
-    print(f"  │{' ' * ((W-16)//2)}🎵 RadioCli 🎵{' ' * ((W-15)//2)}│")
-    print(f"  ├{border}┤")
-    row(f"{t('search_hint')}: {t('search_examples')}")
-    print(f"  ├{border}┤")
-    row2('a', t('ai_recommend'), 't', t('my_taste'))
-    row2('w', t('mood_now'), 'i', t('song_recognize'))
-    row2('p', t('popular'), 'h', t('hq'))
-    row2('g', t('genre'), 'c', t('country'))
-    row2('f', f"{t('favorites')}({fav_count})", 'l', t('playlist'))
-    row2('r', t('premium'), 'd', t('dj_mode'))
-    print(f"  ├{border}┤")
-    row2('n', 'NowPlay', 'sl', f"Songs({songs_count})")
-    row2('s', t('stop'), 'q', t('quit'))
-    row(f"[!] Mode:{search_mode}  [lang] Language")
-    print(f"  └{border}┘")
-    print(f"  {llm_status} | {t('history')}:{history_count}")
+    print("  +-------------------------------------+")
+    print("  |            RadioCli                 |")
+    print("  +-------------------------------------+")
+    print(f"  |  a AI       t Taste    p Popular   |")
+    print(f"  |  w Mood     i Shazam   h HQ        |")
+    print(f"  |  g Genre    c Country  r Premium   |")
+    print(f"  |  f Fav({fav_count})   l List     d DJ       |")
+    print("  +-------------------------------------+")
+    print(f"  |  n Now      sl Songs({songs_count})  s Stop   |")
+    print(f"  |  ! Mode     lang       q Quit      |")
+    print("  +-------------------------------------+")
+    print(f"  {llm_status} | rec:{history_count} | {mode}")
     print()
 
 def show_genres():
