@@ -966,9 +966,14 @@ def search(query, limit=20):
             s["source"] = "db"
             results.append(s)
 
-    # 2. 국가 키워드면 국가별 검색도 추가
+    # 2. 국가 키워드 포함 시 국가별 검색도 추가
     query_lower = query.lower()
-    country_code = LANG_COUNTRY.get(query_lower)
+    country_code = None
+    for keyword, code in LANG_COUNTRY.items():
+        if keyword in query_lower:
+            country_code = code
+            break
+
     if country_code:
         for s in db_search_country(country_code, limit):
             url = s.get("url_resolved") or s.get("url", "")
