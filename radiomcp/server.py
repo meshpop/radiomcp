@@ -1159,21 +1159,28 @@ def search(query: str, limit: int = 20) -> list[dict]:
                 all_tags.extend(TAG_SYNONYMS[word][:2])
 
     # 2-1. 국가명 감지 시 해당 국가 방송 먼저 검색 (최우선!)
-    if detected_country and all_tags:
-        # 국가 + 태그 조합 검색
+    if detected_country:
+        # 국가 + 태그/이름 조합 검색
         db = get_db()
         if db:
             try:
                 cursor = db.cursor()
-                # 태그 중 국가명 제외 (korean, japanese 등)
-                search_tags = [t for t in all_tags if t.lower() not in COUNTRY_NAMES]
-                if search_tags:
-                    tag_conditions = " OR ".join(["LOWER(tags) LIKE ?" for _ in search_tags])
-                    params = [f"%{t.lower()}%" for t in search_tags]
+                # 원본 쿼리 + 번역된 태그 모두 검색 (한글 "뉴스" + 영어 "news")
+                original_words = [w for w in query.split() if w.lower() not in COUNTRY_NAMES]
+                search_terms = list(set(original_words + [t for t in all_tags if t.lower() not in COUNTRY_NAMES]))
+
+                if search_terms:
+                    # 태그 OR 이름에서 검색
+                    conditions = []
+                    params = []
+                    for term in search_terms:
+                        conditions.append("(LOWER(tags) LIKE ? OR LOWER(name) LIKE ?)")
+                        params.extend([f"%{term.lower()}%", f"%{term.lower()}%"])
+
                     sql = f"""
                         SELECT * FROM stations
                         WHERE countrycode = ? AND (is_alive = 1 OR is_alive IS NULL)
-                        AND ({tag_conditions})
+                        AND ({' OR '.join(conditions)})
                         ORDER BY votes DESC, clickcount DESC
                         LIMIT ?
                     """
@@ -1381,7 +1388,13 @@ def advanced_search(
             for s in api_results:
                 url = s.get("url_resolved") or s.get("url", "")
                 if url and url not in seen_urls:
+                    # 국가 필터 강제 적용 (API가 무시할 수 있으므로)
+                    if country and s.get("countrycode", "").upper() != country.upper():
+                        continue
+
                     station = format_station(s)
+                    if not station:
+                        continue
 
                     # exact/exclude 필터
                     station_text = f"{station.get('name', '')} {station.get('tags', '')}".lower()
@@ -1441,12 +1454,17 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
         "lastcheckok": 1
     })
 
-    # API 결과 병합
+    # API 결과 병합 (국가 필터 강제 적용)
     for s in api_results:
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen_urls:
-            seen_urls.add(url)
+            # 국가 코드 검증 (API가 무시할 수 있으므로)
+            if s.get("countrycode", "").upper() != country_code.upper():
+                continue
             station = format_station(s)
+            if not station:
+                continue
+            seen_urls.add(url)
             station["source"] = "api"
             all_results.append(station)
             # 정상적인 방송만 DB에 저장
