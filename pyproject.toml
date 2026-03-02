@@ -1,0 +1,72 @@
+[project]
+name = "radiomcp"
+version = "1.0.0"
+description = "MCP server for internet radio - 24,000+ stations, song recognition, AI recommendations"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "dragonflydiy"}
+]
+keywords = [
+    "mcp",
+    "radio",
+    "internet-radio",
+    "streaming",
+    "claude",
+    "ai",
+    "music"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Internet",
+]
+dependencies = [
+    "mcp[cli]>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dragonflydiy/radiomcp"
+Repository = "https://github.com/dragonflydiy/radiomcp"
+Issues = "https://github.com/dragonflydiy/radiomcp/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["radiomcp"]
+include-package-data = true
+
+[tool.hatch.build.targets.wheel.force-include]
+"radio_stations.db" = "radiomcp/radio_stations.db"
+"blocklist.json" = "radiomcp/blocklist.json"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "radiomcp/",
+    "radio_stations.db",
+    "blocklist.json",
+    "pyproject.toml",
+    "README.md",
+]
+
+[project.scripts]
+radiomcp = "radiomcp:main"

@@ -34,11 +34,12 @@ MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
 API_BASE = "https://de1.api.radio-browser.info/json"
 ACOUSTID_API_KEY = os.environ.get("ACOUSTID_API_KEY", "vQEDUkpM7e")
 
-# DB 경로 (우선순위: 로컬 > 프로젝트)
+# DB 경로 (우선순위: 로컬 > 패키지 > 프로젝트)
+PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATHS = [
     os.path.join(DATA_DIR, "radio_stations.db"),
+    os.path.join(PACKAGE_DIR, "radio_stations.db"),  # 패키지 내 DB
     os.path.expanduser("~/RadioCli/radio_stations.db"),
-    "/Users/dragon/RadioCli/radio_stations.db",
 ]
 
 # 전역 상태
@@ -2734,5 +2735,10 @@ def get_radio_status() -> dict:
     return status
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for radiomcp command"""
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
