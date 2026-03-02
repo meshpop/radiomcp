@@ -2387,25 +2387,17 @@ def truncate(s, max_width):
 
 def show_menu():
     fav_count = len(load_favorites())
-    history_count = len(load_history())
     songs_count = len(load_songs())
-    llm_status = get_llm_status()
     mode = "DB" if not USE_API else "API"
 
-    print()
-    print("  +-------------------------------------+")
-    print("  |            RadioCli                 |")
-    print("  +-------------------------------------+")
-    print(f"  |  a AI       t Taste    p Popular   |")
-    print(f"  |  w Mood     i Shazam   h HQ        |")
-    print(f"  |  g Genre    c Country  r Premium   |")
-    print(f"  |  f Fav({fav_count})   l List     d DJ       |")
-    print("  +-------------------------------------+")
-    print(f"  |  n Now      sl Songs({songs_count})  s Stop   |")
-    print(f"  |  ! Mode     lang       q Quit      |")
-    print("  +-------------------------------------+")
-    print(f"  {llm_status} | rec:{history_count} | {mode}")
-    print()
+    print(f"""
+  RadioCli ({mode})
+
+  a AI추천   t 취향   p 인기   h 고음질
+  g 장르     c 국가   f 즐찾({fav_count})  l 리스트
+  w 분위기   i 인식   n 현재곡  sl 곡({songs_count})
+  s 정지     q 종료   ! 모드   d DJ
+""")
 
 def show_genres():
     print(f"\n  {t('genre_select')}:")
