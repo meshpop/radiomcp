@@ -1101,6 +1101,180 @@ def recommend_by_weather(city: str = "Seoul") -> list[dict]:
 
 
 @mcp.tool()
+def get_user_profile() -> dict:
+    """
+    Analyze listening history to build user preference profile.
+
+    Returns:
+        User profile with top tags, time preferences, day preferences
+    """
+    history = load_json(HISTORY_FILE)
+    if not history:
+        return {"status": "no_history", "message": "Listen to some radio first"}
+
+    # 태그 가중치 (duration 기반)
+    tag_weights = {}
+
+    # 시간대별 선호
+    time_prefs = {
+        "morning": {},    # 6-10
+        "daytime": {},    # 10-17
+        "evening": {},    # 17-21
+        "night": {},      # 21-6
+    }
+
+    # 요일별 선호
+    day_prefs = {i: {} for i in range(7)}  # 0=월요일
+
+    total_duration = 0
+    total_listens = len(history)
+
+    for entry in history:
+        tags_str = entry.get("tags", "")
+        duration = entry.get("duration", 60)  # 기본 1분
+        timestamp = entry.get("timestamp", "")
+
+        total_duration += duration
+
+        # 태그 파싱
+        tags = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
+        if not tags:
+            continue
+
+        # duration 가중치 (분 단위, 최대 10점)
+        weight = min(duration / 60, 10)
+
+        # 시간 파싱
+        try:
+            dt = datetime.fromisoformat(timestamp)
+            hour = dt.hour
+            weekday = dt.weekday()
+
+            # 시간대 결정
+            if 6 <= hour < 10:
+                time_slot = "morning"
+            elif 10 <= hour < 17:
+                time_slot = "daytime"
+            elif 17 <= hour < 21:
+                time_slot = "evening"
+            else:
+                time_slot = "night"
+        except:
+            time_slot = "daytime"
+            weekday = 0
+
+        for tag in tags:
+            # 전체 가중치
+            tag_weights[tag] = tag_weights.get(tag, 0) + weight
+
+            # 시간대별
+            time_prefs[time_slot][tag] = time_prefs[time_slot].get(tag, 0) + weight
+
+            # 요일별
+            day_prefs[weekday][tag] = day_prefs[weekday].get(tag, 0) + weight
+
+    # 정렬
+    top_tags = sorted(tag_weights.items(), key=lambda x: -x[1])[:10]
+
+    # 시간대별 상위 태그
+    time_top = {}
+    for slot, tags in time_prefs.items():
+        if tags:
+            time_top[slot] = sorted(tags.items(), key=lambda x: -x[1])[:5]
+
+    # 요일별 상위 태그
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    day_top = {}
+    for day, tags in day_prefs.items():
+        if tags:
+            day_top[day_names[day]] = sorted(tags.items(), key=lambda x: -x[1])[:3]
+
+    return {
+        "total_listens": total_listens,
+        "total_minutes": round(total_duration / 60, 1),
+        "top_tags": top_tags,
+        "time_preferences": time_top,
+        "day_preferences": day_top,
+    }
+
+
+@mcp.tool()
+def personalized_recommend(limit: int = 10) -> list[dict]:
+    """
+    Recommend stations based on user's listening patterns.
+    Considers time of day, day of week, and overall preferences.
+
+    Args:
+        limit: Number of results
+
+    Returns:
+        Personalized recommendations
+    """
+    profile = get_user_profile()
+    if profile.get("status") == "no_history":
+        # 기록 없으면 시간대 기반 추천
+        return recommend_by_time()
+
+    # 현재 컨텍스트
+    now = datetime.now()
+    hour = now.hour
+    weekday = now.weekday()
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    # 시간대
+    if 6 <= hour < 10:
+        time_slot = "morning"
+    elif 10 <= hour < 17:
+        time_slot = "daytime"
+    elif 17 <= hour < 21:
+        time_slot = "evening"
+    else:
+        time_slot = "night"
+
+    # 태그 수집 (우선순위: 시간대+요일 > 시간대 > 전체)
+    recommended_tags = []
+
+    # 1. 해당 요일 선호 태그
+    day_prefs = profile.get("day_preferences", {}).get(day_names[weekday], [])
+    for tag, _ in day_prefs[:2]:
+        recommended_tags.append(tag)
+
+    # 2. 해당 시간대 선호 태그
+    time_prefs = profile.get("time_preferences", {}).get(time_slot, [])
+    for tag, _ in time_prefs[:3]:
+        if tag not in recommended_tags:
+            recommended_tags.append(tag)
+
+    # 3. 전체 선호 태그
+    for tag, _ in profile.get("top_tags", [])[:5]:
+        if tag not in recommended_tags:
+            recommended_tags.append(tag)
+
+    # 검색
+    all_results = []
+    seen = set()
+
+    for tag in recommended_tags[:4]:
+        results = search(tag, limit // 2)
+        for r in results:
+            if r["url"] not in seen:
+                seen.add(r["url"])
+                r["matched_tag"] = tag
+                all_results.append(r)
+
+    all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+
+    return {
+        "context": {
+            "time_slot": time_slot,
+            "day": day_names[weekday],
+            "recommended_tags": recommended_tags[:5],
+        },
+        "stations": all_results[:limit]
+    }
+
+
+@mcp.tool()
 def recommend_by_time() -> list[dict]:
     """
     Recommend stations based on current time of day.
