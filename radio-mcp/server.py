@@ -270,7 +270,7 @@ def search(query: str, limit: int = 20) -> list[dict]:
     all_results = []
     seen_urls = set()
 
-    # 1. DB에서 검색
+    # 1. DB에서 검색 (검증된 방송)
     db_results = db_search(query, "tags", limit)
     if not db_results:
         db_results = db_search(query, "name", limit)
@@ -278,9 +278,10 @@ def search(query: str, limit: int = 20) -> list[dict]:
     for r in db_results:
         if r["url"] not in seen_urls:
             seen_urls.add(r["url"])
+            r["source"] = "db"
             all_results.append(r)
 
-    # 2. API에서도 검색 (lastcheckok=1로 살아있는 것만)
+    # 2. Radio Browser API (매일 바뀌는 최신 결과)
     encoded_query = urllib.parse.quote(query)
     api_results = api_get(f"stations/bytag/{encoded_query}", {
         "limit": limit,
@@ -302,11 +303,14 @@ def search(query: str, limit: int = 20) -> list[dict]:
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen_urls:
             seen_urls.add(url)
-            all_results.append(format_station(s))
-            # 새 방송국 DB에 추가
-            add_station_to_db(s)
+            station = format_station(s)
+            station["source"] = "api"
+            all_results.append(station)
+            # 정상적인 방송만 DB에 저장 (토큰/프록시 제외)
+            if is_valid_station(s):
+                add_station_to_db(s)
 
-    # clickcount 기준 정렬
+    # votes 기준 정렬
     all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
     return all_results[:limit]
 
@@ -327,14 +331,15 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
     all_results = []
     seen_urls = set()
 
-    # 1. DB에서 검색
+    # 1. DB에서 검색 (검증된 방송)
     db_results = db_search_country(country_code, limit)
     for r in db_results:
         if r["url"] not in seen_urls:
             seen_urls.add(r["url"])
+            r["source"] = "db"
             all_results.append(r)
 
-    # 2. API에서도 검색
+    # 2. Radio Browser API (최신 결과)
     code = urllib.parse.quote(country_code.upper())
     api_results = api_get(f"stations/bycountrycodeexact/{code}", {
         "limit": limit,
@@ -343,12 +348,17 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
         "lastcheckok": 1
     })
 
+    # API 결과 병합
     for s in api_results:
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen_urls:
             seen_urls.add(url)
-            all_results.append(format_station(s))
-            add_station_to_db(s)
+            station = format_station(s)
+            station["source"] = "api"
+            all_results.append(station)
+            # 정상적인 방송만 DB에 저장
+            if is_valid_station(s):
+                add_station_to_db(s)
 
     all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
     return all_results[:limit]
@@ -556,37 +566,36 @@ def recommend(mood: str = "relaxing") -> list[dict]:
     }
 
     tags = mood_tags.get(mood.lower(), [mood])
-
     all_results = []
-    for tag in tags[:2]:
-        # DB 먼저
-        results = db_search(tag, "tags", 15)
-        if results:
-            all_results.extend(results)
-        else:
-            # API fallback
-            encoded_tag = urllib.parse.quote(tag)
-            api_results = api_get(f"stations/bytag/{encoded_tag}", {
-                "limit": 15,
-                "order": "votes",
-                "reverse": "true",
-                "lastcheckok": 1
-            })
-            for s in api_results:
-                add_station_to_db(s)
-            all_results.extend([format_station(s) for s in api_results])
-
-    # 중복 제거
     seen = set()
-    unique = []
-    for s in all_results:
-        key = s.get("url") or s.get("name")
-        if key not in seen:
-            seen.add(key)
-            unique.append(s)
 
-    unique.sort(key=lambda x: x.get("votes", 0), reverse=True)
-    return unique[:20]
+    for tag in tags[:2]:
+        # DB 검색
+        db_results = db_search(tag, "tags", 15)
+        for r in db_results:
+            if r["url"] not in seen:
+                seen.add(r["url"])
+                r["source"] = "db"
+                all_results.append(r)
+
+        # API 검색
+        encoded_tag = urllib.parse.quote(tag)
+        api_results = api_get(f"stations/bytag/{encoded_tag}", {
+            "limit": 15,
+            "order": "votes",
+            "reverse": "true",
+            "lastcheckok": 1
+        })
+        for s in api_results:
+            url = s.get("url_resolved") or s.get("url", "")
+            if url and url not in seen:
+                seen.add(url)
+                station = format_station(s)
+                station["source"] = "api"
+                all_results.append(station)
+
+    all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+    return all_results[:20]
 
 
 @mcp.tool()
