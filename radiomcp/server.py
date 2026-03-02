@@ -1505,9 +1505,41 @@ def play(url: str, name: str = "") -> dict:
             mark_station_dead(url)
             return {"status": "error", "message": "Stream failed to start"}
 
-        current_station = {"name": name, "url": play_url}
+        # DB에서 방송국 상세 정보 가져오기
+        station_info = {"name": name, "url": play_url}
+        db = get_db()
+        if db and name:
+            try:
+                cursor = db.cursor()
+                cursor.execute(
+                    "SELECT country, countrycode, tags, bitrate, votes FROM stations WHERE name = ? LIMIT 1",
+                    (name,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    station_info["country"] = row[0] or ""
+                    station_info["countrycode"] = row[1] or ""
+                    station_info["tags"] = row[2] or ""
+                    station_info["bitrate"] = row[3] or 0
+                    station_info["votes"] = row[4] or 0
+            except:
+                pass
+
+        current_station = station_info
         save_last_station()  # 즉시 저장 (resume용)
-        result = {"status": "playing", "name": name, "url": play_url}
+
+        # AI가 소개하기 좋게 상세 정보 리턴
+        result = {
+            "status": "playing",
+            "name": name,
+            "url": play_url,
+            "country": station_info.get("country", ""),
+            "countrycode": station_info.get("countrycode", ""),
+            "tags": station_info.get("tags", ""),
+            "bitrate": station_info.get("bitrate", 0),
+            "votes": station_info.get("votes", 0),
+            "tip": "You can describe: genre, country, audio quality to the user"
+        }
         if url_refreshed:
             result["url_refreshed"] = True
         return result
