@@ -1,15 +1,15 @@
-# Radio MCP Server
+# radiomcp
 
-MCP server for internet radio search and playback with Claude Desktop.
+MCP server for internet radio - search and play 24,000+ stations from 197 countries.
 
 ## Installation
 
 ```bash
-# Install dependencies
-pip install "mcp[cli]"
+pip install radiomcp
 
-# Install mpv (required for playback)
-brew install mpv
+# Required for playback
+brew install mpv  # macOS
+# apt install mpv  # Linux
 ```
 
 ## Claude Desktop Setup
@@ -21,51 +21,65 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "radio": {
       "command": "python3",
-      "args": ["/path/to/radiomcp/server.py"]
+      "args": ["-m", "radiomcp"]
     }
   }
 }
 ```
 
-Restart Claude Desktop after configuration.
-
-## Tools
-
-| Tool | Description |
-|------|-------------|
-| `search` | Search radio stations by keyword |
-| `search_by_country` | Search by country code (KR, US, JP...) |
-| `get_popular` | Get popular stations |
-| `play` | Play a radio stream |
-| `stop` | Stop playback |
-| `now_playing` | Get current song info |
-| `get_favorites` | List favorites |
-| `add_favorite` | Add to favorites |
-| `remove_favorite` | Remove from favorites |
-| `get_history` | Listening history |
-| `recommend` | Mood-based recommendations |
+Restart Claude Desktop.
 
 ## Usage
 
 Just ask Claude naturally:
 
 - "Play some jazz radio"
-- "Find Korean radio stations"
-- "What's playing now?"
+- "Find Korean news stations"
+- "What song is playing?"
 - "I want relaxing music"
 - "Stop the radio"
-- "Add this to favorites"
 
-## API
+## Features
 
-Uses [Radio Browser API](https://api.radio-browser.info/) for station data.
+- **24,000+ stations** from 197 countries
+- **Fast search** (~5ms local DB)
+- **Song recognition** (stream metadata + AcoustID)
+- **AI recommendations** (mood, time, weather)
+- **Multilingual** (Korean, Japanese, Chinese, etc.)
+- **Favorites & history**
+- **Auto URL refresh** (handles token expiration)
+- **Remote blocklist** (GitHub-based updates)
+
+## Tools
+
+| Tool | Description |
+|------|-------------|
+| `search` | Search by keyword |
+| `search_by_country` | Search by country code |
+| `get_popular` | Popular stations |
+| `recommend` | Mood-based (relaxing, energetic, focus) |
+| `play` | Start playback |
+| `stop` | Stop playback |
+| `resume` | Resume last station |
+| `now_playing` | Current song info |
+| `get_favorites` | List favorites |
+| `add_favorite` | Save to favorites |
+| `get_radio_guide` | Full usage guide for AI |
 
 ## Requirements
 
 - Python 3.10+
-- mcp[cli]
-- mpv
+- mpv (audio playback)
+
+## Data Sources
+
+- [Radio Browser API](https://api.radio-browser.info/) - station database
+- [AcoustID](https://acoustid.org/) - song recognition
 
 ## License
 
-MIT
+MIT - See [LICENSE](LICENSE)
+
+## Disclaimer
+
+See [DISCLAIMER.md](DISCLAIMER.md) for terms of use.

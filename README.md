@@ -1,4 +1,42 @@
-# RadioCli
+# RadioCli / radiomcp
+
+24,000+ 인터넷 라디오 방송국 검색 및 재생
+
+## Components
+
+| 컴포넌트 | 설명 |
+|---------|------|
+| **radiomcp** | MCP 서버 - Claude Desktop과 연동 |
+| **radio.py** | CLI 앱 - 터미널에서 직접 사용 |
+
+## radiomcp (MCP Server)
+
+```bash
+pip install radiomcp
+```
+
+Claude Desktop 설정 (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "radio": {
+      "command": "python3",
+      "args": ["-m", "radiomcp"]
+    }
+  }
+}
+```
+
+사용법: Claude에게 자연어로 요청
+- "재즈 라디오 틀어줘"
+- "지금 뭐 나와?"
+- "즐겨찾기 추가해"
+
+자세한 내용: [radiomcp/README.md](radiomcp/README.md)
+
+---
+
+## radio.py (CLI)
 
 터미널에서 전세계 인터넷 라디오를 검색하고 듣는 CLI 앱
 
