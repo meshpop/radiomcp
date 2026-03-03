@@ -2636,6 +2636,8 @@ def show_menu():
   r 이어듣기 s 정지   < 이전   > 다음
   v 볼륨     v+/v-   check   share
   hl 기록({history_count})  q 종료  ! 모드  d DJ
+
+  🔍 검색: 아무거나 입력 (예: jazz, 한국 뉴스, lounge)
 """)
 
 def show_genres():
