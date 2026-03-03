@@ -2213,6 +2213,128 @@ def mpv_command(cmd):
     except:
         return False
 
+def mpv_get_property(prop):
+    """mpv IPC로 속성 가져오기"""
+    if not os.path.exists(MPV_SOCKET):
+        return None
+    try:
+        import socket
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        sock.connect(MPV_SOCKET)
+        sock.send((json.dumps({"command": ["get_property", prop]}) + "\n").encode())
+        response = sock.recv(1024).decode()
+        sock.close()
+        data = json.loads(response)
+        return data.get("data")
+    except:
+        return None
+
+# ============================================================
+# 볼륨 조절
+# ============================================================
+def set_volume(level):
+    """볼륨 설정 (0-100)"""
+    if PLAYER != "mpv":
+        print(f"  {t('volume_mpv_only')}\n")
+        return False
+    if not 0 <= level <= 100:
+        print(f"  {t('volume_range')}\n")
+        return False
+    if mpv_command(["set_property", "volume", level]):
+        print(f"  🔊 {t('volume_label')}: {level}%\n")
+        return True
+    return False
+
+def get_volume():
+    """현재 볼륨 가져오기"""
+    if PLAYER != "mpv":
+        return None
+    return mpv_get_property("volume")
+
+def volume_up(step=10):
+    """볼륨 올리기"""
+    vol = get_volume()
+    if vol is not None:
+        new_vol = min(100, int(vol) + step)
+        set_volume(new_vol)
+
+def volume_down(step=10):
+    """볼륨 내리기"""
+    vol = get_volume()
+    if vol is not None:
+        new_vol = max(0, int(vol) - step)
+        set_volume(new_vol)
+
+def show_volume():
+    """현재 볼륨 표시"""
+    vol = get_volume()
+    if vol is not None:
+        print(f"  🔊 {t('volume_label')}: {int(vol)}%\n")
+    else:
+        print(f"  {t('volume_error')}\n")
+
+# ============================================================
+# 스테이션 상태 체크
+# ============================================================
+def check_station_url(url):
+    """스테이션 URL 상태 체크"""
+    try:
+        req = urllib.request.Request(url, method='HEAD', headers={
+            'User-Agent': 'RadioCli/1.0'
+        })
+        response = urllib.request.urlopen(req, timeout=10)
+        content_type = response.headers.get('Content-Type', '')
+        is_audio = "audio" in content_type.lower() or "mpegurl" in content_type.lower()
+        return {"status": "alive", "content_type": content_type, "is_audio": is_audio}
+    except urllib.error.HTTPError as e:
+        return {"status": "dead", "error": f"HTTP {e.code}"}
+    except urllib.error.URLError as e:
+        return {"status": "dead", "error": str(e.reason)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+def check_current_station(station):
+    """현재 방송 상태 체크"""
+    if not station:
+        print(f"  {t('no_playing')}\n")
+        return
+    url = station.get("url_resolved") or station.get("url")
+    print(f"  {t('checking')}: {station.get('name', '')}...")
+    result = check_station_url(url)
+    if result["status"] == "alive":
+        if result.get("is_audio"):
+            print(f"  ✓ {t('station_alive')}\n")
+        else:
+            print(f"  ⚠ {t('station_response')} ({result.get('content_type', '')})\n")
+    else:
+        print(f"  ✗ {t('station_dead')}: {result.get('error', '')}\n")
+
+# ============================================================
+# 스테이션 공유
+# ============================================================
+def share_station(station):
+    """방송 공유 정보"""
+    if not station:
+        print(f"  {t('no_playing')}\n")
+        return
+    name = station.get("name", "")
+    url = station.get("url_resolved") or station.get("url", "")
+    tags = station.get("tags", "")
+    country = station.get("country", "")
+    homepage = station.get("homepage", "")
+
+    print(f"\n  📻 {name}")
+    print(f"  ├─ {t('share_url')}: {url}")
+    if tags:
+        print(f"  ├─ {t('genre')}: {tags}")
+    if country:
+        print(f"  ├─ {t('country')}: {country}")
+    if homepage:
+        print(f"  ├─ {t('share_homepage')}: {homepage}")
+    print(f"  └─ {t('share_label')}: 🎵 {name} - {tags}")
+    print()
+
 def pause_radio():
     """라디오 일시정지"""
     mpv_command(["set_property", "pause", True])
@@ -2494,6 +2616,7 @@ def show_menu():
   g 장르     c 국가   f 즐찾({fav_count})  l 리스트
   w 분위기   i 인식   n 현재곡  sl 곡({songs_count})
   r 이어듣기 s 정지   < 이전   > 다음
+  v 볼륨     v+/v-   check   share
   q 종료     ! 모드   d DJ
 """)
 
@@ -2611,6 +2734,30 @@ def main():
             song = get_current_song()
             if song and song.get("title"):
                 dj_announce_song(song["title"], current_station)
+            continue
+
+        # 볼륨 조절
+        if cmd == "v" or cmd == "v?":
+            show_volume()
+            continue
+        if cmd == "v+":
+            volume_up()
+            continue
+        if cmd == "v-":
+            volume_down()
+            continue
+        if cmd.startswith("v") and cmd[1:].isdigit():
+            set_volume(int(cmd[1:]))
+            continue
+
+        # 스테이션 상태 체크
+        if cmd == "check":
+            check_current_station(current_station)
+            continue
+
+        # 스테이션 공유
+        if cmd == "share":
+            share_station(current_station)
             continue
 
         # 곡 인식 (Shazam-like)

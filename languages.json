@@ -125,7 +125,18 @@
     "country_fr": "프랑스",
     "country_cn": "중국",
     "dj_on_speak": "DJ 모드가 켜졌습니다",
-    "menu": "메뉴"
+    "menu": "메뉴",
+    "volume_mpv_only": "볼륨 조절은 mpv에서만 지원됩니다",
+    "volume_range": "볼륨: 0-100 사이 값",
+    "volume_label": "볼륨",
+    "volume_error": "볼륨 정보를 가져올 수 없습니다",
+    "checking": "체크 중",
+    "station_alive": "정상 (오디오 스트림)",
+    "station_response": "응답 있음",
+    "station_dead": "오류",
+    "share_url": "URL",
+    "share_homepage": "홈페이지",
+    "share_label": "공유"
   },
   "en": {
     "name": "English",
@@ -253,7 +264,18 @@
     "country_fr": "France",
     "country_cn": "China",
     "dj_on_speak": "DJ mode is now on",
-    "menu": "menu"
+    "menu": "menu",
+    "volume_mpv_only": "Volume control only works with mpv",
+    "volume_range": "Volume: 0-100",
+    "volume_label": "Volume",
+    "volume_error": "Cannot get volume info",
+    "checking": "Checking",
+    "station_alive": "OK (audio stream)",
+    "station_response": "Response",
+    "station_dead": "Error",
+    "share_url": "URL",
+    "share_homepage": "Homepage",
+    "share_label": "Share"
   },
   "ja": {
     "name": "日本語",
