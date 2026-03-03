@@ -555,7 +555,15 @@
     "country_fr": "法国",
     "country_cn": "中国",
     "dj_on_speak": "DJ模式已开启",
-    "menu": "菜单"
+    "menu": "菜单",
+    "resume": "继续",
+    "prev": "上一个",
+    "next": "下一个",
+    "volume": "音量",
+    "mode": "模式",
+    "ai_search": "AI搜索",
+    "type_anything": "随便输入",
+    "search_hint_menu": "搜索: g 类型 | c 国家 | 关键词 (jazz, pop, news)"
   },
   "zh-tw": {
     "name": "繁體中文",
