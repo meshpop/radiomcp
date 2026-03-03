@@ -11,11 +11,27 @@
 
 ## radiomcp (MCP Server)
 
+### 설치
+
 ```bash
 pip install radiomcp
 ```
 
-Claude Desktop 설정 (`claude_desktop_config.json`):
+### 플레이어 설치 (선택)
+
+아래 중 하나를 설치하면 더 좋은 품질로 재생됩니다. 아무것도 없으면 브라우저에서 재생됩니다.
+
+| 플레이어 | macOS | Linux | Windows |
+|----------|-------|-------|---------|
+| **mpv** (추천) | `brew install mpv` | `apt install mpv` | `winget install mpv` |
+| **VLC** | `brew install vlc` | `apt install vlc` | [vlc.io](https://vlc.io) |
+| **ffplay** | `brew install ffmpeg` | `apt install ffmpeg` | [ffmpeg.org](https://ffmpeg.org) |
+
+**자동 감지 우선순위:** mpv > vlc > ffplay > browser
+
+### Claude Desktop 설정
+
+`claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
@@ -27,10 +43,22 @@ Claude Desktop 설정 (`claude_desktop_config.json`):
 }
 ```
 
-사용법: Claude에게 자연어로 요청
+### 사용법
+
+Claude에게 자연어로 요청:
 - "재즈 라디오 틀어줘"
+- "한국 뉴스 방송 찾아줘"
 - "지금 뭐 나와?"
-- "즐겨찾기 추가해"
+- "라디오 꺼줘"
+
+### 플레이어 백엔드
+
+| 백엔드 | 설명 |
+|--------|------|
+| **mpv** | 최고 품질, 자동 재연결, ICY 메타데이터 |
+| **vlc** | 널리 설치됨, 안정적 |
+| **ffplay** | ffmpeg 포함, 가벼움 |
+| **browser** | 설치 불필요, 자동 fallback |
 
 자세한 내용: [radiomcp/README.md](radiomcp/README.md)
 

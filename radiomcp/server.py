@@ -26,29 +26,31 @@ from mcp.server.fastmcp import FastMCP
 # ============================================================
 # 플레이어 백엔드 추상화
 # ============================================================
-# 우선순위: mpv > miniaudio > browser
+# 우선순위: mpv > vlc > ffplay > browser
 # ============================================================
 
-PLAYER_BACKEND = None  # 'mpv', 'miniaudio', 'browser'
+PLAYER_BACKEND = None  # 'mpv', 'vlc', 'ffplay', 'browser'
 
 def detect_player_backend():
     """사용 가능한 플레이어 백엔드 감지"""
     global PLAYER_BACKEND
 
-    # 1. mpv 확인
+    # 1. mpv (최고)
     if shutil.which("mpv"):
         PLAYER_BACKEND = "mpv"
         return "mpv"
 
-    # 2. miniaudio 확인
-    try:
-        import miniaudio
-        PLAYER_BACKEND = "miniaudio"
-        return "miniaudio"
-    except ImportError:
-        pass
+    # 2. VLC (널리 설치됨)
+    if shutil.which("vlc") or shutil.which("cvlc"):
+        PLAYER_BACKEND = "vlc"
+        return "vlc"
 
-    # 3. 브라우저 fallback (항상 가능)
+    # 3. ffplay (ffmpeg 포함)
+    if shutil.which("ffplay"):
+        PLAYER_BACKEND = "ffplay"
+        return "ffplay"
+
+    # 4. 브라우저 fallback (항상 가능)
     PLAYER_BACKEND = "browser"
     return "browser"
 
@@ -132,6 +134,132 @@ def get_miniaudio_player():
     if _miniaudio_player is None:
         _miniaudio_player = MiniaudioPlayer()
     return _miniaudio_player
+
+# ============================================================
+# VLC 플레이어
+# ============================================================
+class VLCPlayer:
+    """VLC 기반 플레이어 (cvlc 사용)"""
+
+    def __init__(self):
+        self.process = None
+        self.pid_file = os.path.join(os.path.expanduser("~/.radiocli"), "vlc.pid")
+
+    def play(self, url):
+        """VLC로 재생"""
+        self.stop()
+        try:
+            # cvlc (콘솔 VLC) 사용
+            vlc_cmd = shutil.which("cvlc") or shutil.which("vlc")
+            self.process = subprocess.Popen(
+                [vlc_cmd, "--intf", "dummy", "--no-video", url],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                preexec_fn=os.setpgrp
+            )
+            with open(self.pid_file, 'w') as f:
+                f.write(str(self.process.pid))
+            return True
+        except Exception:
+            return False
+
+    def stop(self):
+        """VLC 종료"""
+        if self.process:
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=2)
+            except:
+                try:
+                    self.process.kill()
+                except:
+                    pass
+            self.process = None
+        # PID 파일로 종료
+        if os.path.exists(self.pid_file):
+            try:
+                with open(self.pid_file) as f:
+                    pid = int(f.read().strip())
+                os.kill(pid, signal.SIGTERM)
+            except:
+                pass
+            try:
+                os.remove(self.pid_file)
+            except:
+                pass
+
+    def is_playing(self):
+        return self.process is not None and self.process.poll() is None
+
+_vlc_player = None
+
+def get_vlc_player():
+    global _vlc_player
+    if _vlc_player is None:
+        _vlc_player = VLCPlayer()
+    return _vlc_player
+
+# ============================================================
+# FFplay 플레이어
+# ============================================================
+class FFplayPlayer:
+    """ffplay 기반 플레이어 (ffmpeg 포함)"""
+
+    def __init__(self):
+        self.process = None
+        self.pid_file = os.path.join(os.path.expanduser("~/.radiocli"), "ffplay.pid")
+
+    def play(self, url):
+        """ffplay로 재생"""
+        self.stop()
+        try:
+            self.process = subprocess.Popen(
+                ["ffplay", "-nodisp", "-loglevel", "quiet", url],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                preexec_fn=os.setpgrp
+            )
+            with open(self.pid_file, 'w') as f:
+                f.write(str(self.process.pid))
+            return True
+        except Exception:
+            return False
+
+    def stop(self):
+        """ffplay 종료"""
+        if self.process:
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=2)
+            except:
+                try:
+                    self.process.kill()
+                except:
+                    pass
+            self.process = None
+        # PID 파일로 종료
+        if os.path.exists(self.pid_file):
+            try:
+                with open(self.pid_file) as f:
+                    pid = int(f.read().strip())
+                os.kill(pid, signal.SIGTERM)
+            except:
+                pass
+            try:
+                os.remove(self.pid_file)
+            except:
+                pass
+
+    def is_playing(self):
+        return self.process is not None and self.process.poll() is None
+
+_ffplay_player = None
+
+def get_ffplay_player():
+    global _ffplay_player
+    if _ffplay_player is None:
+        _ffplay_player = FFplayPlayer()
+    return _ffplay_player
 
 # ============================================================
 # 브라우저 플레이어 (최후의 fallback)
@@ -2014,11 +2142,21 @@ def play(url: str, name: str = "") -> dict:
                 mark_station_dead(url)
                 return {"status": "error", "message": "Stream failed to start"}
 
-        elif PLAYER_BACKEND == "miniaudio":
-            # === miniaudio 백엔드 ===
-            player = get_miniaudio_player()
+        elif PLAYER_BACKEND == "vlc":
+            # === VLC 백엔드 ===
+            player = get_vlc_player()
             if not player.play(play_url):
-                return {"status": "error", "message": "miniaudio failed to start"}
+                return {"status": "error", "message": "VLC failed to start"}
+            time.sleep(1)
+            if not player.is_playing():
+                mark_station_dead(url)
+                return {"status": "error", "message": "Stream failed to start"}
+
+        elif PLAYER_BACKEND == "ffplay":
+            # === ffplay 백엔드 ===
+            player = get_ffplay_player()
+            if not player.play(play_url):
+                return {"status": "error", "message": "ffplay failed to start"}
             time.sleep(1)
             if not player.is_playing():
                 mark_station_dead(url)
@@ -2091,8 +2229,11 @@ def stop() -> dict:
     if PLAYER_BACKEND == "mpv":
         kill_existing_mpv()
         player_proc = None
-    elif PLAYER_BACKEND == "miniaudio":
-        player = get_miniaudio_player()
+    elif PLAYER_BACKEND == "vlc":
+        player = get_vlc_player()
+        player.stop()
+    elif PLAYER_BACKEND == "ffplay":
+        player = get_ffplay_player()
         player.stop()
     elif PLAYER_BACKEND == "browser":
         player = get_browser_player()
@@ -2112,20 +2253,37 @@ def get_player_backend() -> dict:
         Current backend and available options
     """
     available = []
+    install_guide = []
+
     if shutil.which("mpv"):
         available.append("mpv")
-    try:
-        import miniaudio
-        available.append("miniaudio")
-    except ImportError:
-        pass
+    else:
+        install_guide.append("mpv: brew install mpv (macOS) / apt install mpv (Linux)")
+
+    if shutil.which("vlc") or shutil.which("cvlc"):
+        available.append("vlc")
+    else:
+        install_guide.append("vlc: brew install vlc (macOS) / apt install vlc (Linux)")
+
+    if shutil.which("ffplay"):
+        available.append("ffplay")
+    else:
+        install_guide.append("ffplay: brew install ffmpeg (macOS) / apt install ffmpeg (Linux)")
+
     available.append("browser")  # 항상 가능
 
-    return {
+    result = {
         "current": PLAYER_BACKEND,
         "available": available,
         "recommendation": available[0] if available else "browser"
     }
+
+    # 플레이어가 browser만 있으면 설치 안내
+    if len(available) == 1:
+        result["install_guide"] = install_guide
+        result["note"] = "더 좋은 재생 품질을 위해 mpv, vlc, 또는 ffmpeg를 설치하세요"
+
+    return result
 
 
 @mcp.tool()
@@ -2134,25 +2292,24 @@ def set_player_backend(backend: str) -> dict:
     Set player backend.
 
     Args:
-        backend: 'mpv', 'miniaudio', or 'browser'
+        backend: 'mpv', 'vlc', 'ffplay', or 'browser'
 
     Returns:
         New backend status
     """
     global PLAYER_BACKEND
 
-    valid_backends = ["mpv", "miniaudio", "browser"]
+    valid_backends = ["mpv", "vlc", "ffplay", "browser"]
     if backend not in valid_backends:
         return {"status": "error", "message": f"Invalid backend. Choose from: {valid_backends}"}
 
     # 백엔드 사용 가능 여부 확인
     if backend == "mpv" and not shutil.which("mpv"):
-        return {"status": "error", "message": "mpv not installed. Install with: brew install mpv"}
-    if backend == "miniaudio":
-        try:
-            import miniaudio
-        except ImportError:
-            return {"status": "error", "message": "miniaudio not installed. Install with: pip install miniaudio"}
+        return {"status": "error", "message": "mpv not installed. Install: brew install mpv (macOS) / apt install mpv (Linux)"}
+    if backend == "vlc" and not (shutil.which("vlc") or shutil.which("cvlc")):
+        return {"status": "error", "message": "VLC not installed. Install: brew install vlc (macOS) / apt install vlc (Linux)"}
+    if backend == "ffplay" and not shutil.which("ffplay"):
+        return {"status": "error", "message": "ffplay not installed. Install: brew install ffmpeg (macOS) / apt install ffmpeg (Linux)"}
 
     PLAYER_BACKEND = backend
     return {"status": "ok", "backend": PLAYER_BACKEND}

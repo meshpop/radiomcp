@@ -41,9 +41,7 @@ Repository = "https://github.com/dragonflydiy/radiomcp"
 Issues = "https://github.com/dragonflydiy/radiomcp/issues"
 
 [project.optional-dependencies]
-audio = [
-    "miniaudio>=1.60",  # mpv 없이 재생 가능
-]
+# audio = ["miniaudio>=1.60"]  # TODO: 스트리밍 지원 후 활성화
 dev = [
     "pytest",
     "black",
