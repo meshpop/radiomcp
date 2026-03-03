@@ -136,7 +136,15 @@
     "station_dead": "오류",
     "share_url": "URL",
     "share_homepage": "홈페이지",
-    "share_label": "공유"
+    "share_label": "공유",
+    "resume": "이어듣기",
+    "prev": "이전",
+    "next": "다음",
+    "volume": "볼륨",
+    "mode": "모드",
+    "ai_search": "AI 검색",
+    "type_anything": "아무거나 입력",
+    "search_hint_menu": "검색: g 장르 | c 국가 | 키워드 (jazz, pop, news)"
   },
   "en": {
     "name": "English",
@@ -275,7 +283,15 @@
     "station_dead": "Error",
     "share_url": "URL",
     "share_homepage": "Homepage",
-    "share_label": "Share"
+    "share_label": "Share",
+    "resume": "Resume",
+    "prev": "Prev",
+    "next": "Next",
+    "volume": "Vol",
+    "mode": "Mode",
+    "ai_search": "AI Search",
+    "type_anything": "type anything",
+    "search_hint_menu": "Search: g Genre | c Country | keyword (jazz, pop, news)"
   },
   "ja": {
     "name": "日本語",
@@ -403,7 +419,15 @@
     "country_fr": "フランス",
     "country_cn": "中国",
     "dj_on_speak": "DJモードがオンになりました",
-    "menu": "メニュー"
+    "menu": "メニュー",
+    "resume": "続き",
+    "prev": "前",
+    "next": "次",
+    "volume": "音量",
+    "mode": "モード",
+    "ai_search": "AI検索",
+    "type_anything": "何でも入力",
+    "search_hint_menu": "検索: g ジャンル | c 国 | キーワード (jazz, pop, news)"
   },
   "zh": {
     "name": "中文",

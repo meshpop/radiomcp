@@ -2784,19 +2784,19 @@ def show_menu():
 
     # LLM 상태에 따른 검색 힌트
     if llm != "off" and llm != "keyword":
-        search_hint = f"  🤖 AI 검색 ({llm}): 아무거나 입력"
+        search_hint = f"  🤖 {t('ai_search')} ({llm}): {t('type_anything')}"
     else:
-        search_hint = "  🔍 검색: g 장르 | c 국가 | 키워드 (jazz, pop, news)"
+        search_hint = f"  🔍 {t('search_hint_menu')}"
 
     print(f"""
   RadioCli ({mode})
 
-  a AI추천   t 취향   p 인기   h 고음질
-  g 장르     c 국가   f 즐찾({fav_count})  l 리스트
-  w 분위기   i 인식   n 현재곡  sl 곡({songs_count})
-  r 이어듣기 s 정지   < 이전   > 다음
-  v 볼륨     v+/v-   check   share
-  hl 기록({history_count})  q 종료  ! 모드  d DJ
+  a {t('ai_recommend'):<6} t {t('my_taste'):<5} p {t('popular'):<5} h {t('hq')}
+  g {t('genre'):<6} c {t('country'):<5} f {t('favorites')}({fav_count})  l {t('playlist')}
+  w {t('mood_now'):<6} i {t('song_recognize'):<5} n {t('current_song'):<5} sl {t('songs')}({songs_count})
+  r {t('resume'):<6} s {t('stop'):<5} < {t('prev'):<5} > {t('next')}
+  v {t('volume'):<6} v+/v-   check   share
+  hl {t('history')}({history_count})  q {t('quit')}  ! {t('mode')}  d DJ
 
 {search_hint}
 """)
