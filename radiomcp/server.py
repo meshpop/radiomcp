@@ -3681,6 +3681,159 @@ def get_listening_stats(period: str = "week") -> dict:
     }
 
 
+# ============================================================
+# 볼륨 조절 (mpv IPC)
+# ============================================================
+@mcp.tool()
+def set_volume(level: int) -> dict:
+    """
+    Set playback volume.
+
+    Args:
+        level: Volume level (0-100)
+
+    Returns:
+        Volume status
+    """
+    if not 0 <= level <= 100:
+        return {"status": "error", "message": "Volume must be 0-100"}
+
+    if PLAYER_BACKEND != "mpv":
+        return {"status": "error", "message": f"Volume control only works with mpv (current: {PLAYER_BACKEND})"}
+
+    if not os.path.exists(MPV_SOCKET):
+        return {"status": "error", "message": "No active playback"}
+
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        sock.connect(MPV_SOCKET)
+        sock.send(f'{{"command": ["set_property", "volume", {level}]}}\n'.encode())
+        sock.close()
+        return {"status": "ok", "volume": level}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+def get_volume() -> dict:
+    """
+    Get current playback volume.
+
+    Returns:
+        Current volume level
+    """
+    if PLAYER_BACKEND != "mpv":
+        return {"status": "error", "message": f"Volume control only works with mpv (current: {PLAYER_BACKEND})"}
+
+    if not os.path.exists(MPV_SOCKET):
+        return {"status": "error", "message": "No active playback"}
+
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        sock.connect(MPV_SOCKET)
+        sock.send(b'{"command": ["get_property", "volume"]}\n')
+        response = sock.recv(1024).decode()
+        sock.close()
+        data = json.loads(response)
+        return {"status": "ok", "volume": int(data.get("data", 100))}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# ============================================================
+# 스테이션 상태 체크
+# ============================================================
+@mcp.tool()
+def check_station(url: str) -> dict:
+    """
+    Check if a radio station URL is alive.
+
+    Args:
+        url: Stream URL to check
+
+    Returns:
+        Station status (alive, dead, or error)
+    """
+    try:
+        req = urllib.request.Request(url, method='HEAD', headers={
+            'User-Agent': 'RadioMCP/1.0'
+        })
+        response = urllib.request.urlopen(req, timeout=10)
+        content_type = response.headers.get('Content-Type', '')
+
+        return {
+            "status": "alive",
+            "url": url,
+            "content_type": content_type,
+            "is_audio": "audio" in content_type.lower() or "mpegurl" in content_type.lower()
+        }
+    except urllib.error.HTTPError as e:
+        return {"status": "dead", "url": url, "error": f"HTTP {e.code}"}
+    except urllib.error.URLError as e:
+        return {"status": "dead", "url": url, "error": str(e.reason)}
+    except Exception as e:
+        return {"status": "error", "url": url, "error": str(e)}
+
+
+# ============================================================
+# 스테이션 공유
+# ============================================================
+@mcp.tool()
+def share_station(name: str = "") -> dict:
+    """
+    Get shareable info for current or specified station.
+
+    Args:
+        name: Station name (optional, uses current if empty)
+
+    Returns:
+        Shareable station info
+    """
+    station = None
+
+    if name:
+        # DB에서 검색
+        db = get_db()
+        if db:
+            try:
+                cursor = db.cursor()
+                cursor.execute(
+                    "SELECT name, url, country, tags, homepage FROM stations WHERE name LIKE ? LIMIT 1",
+                    (f"%{name}%",)
+                )
+                row = cursor.fetchone()
+                if row:
+                    station = {
+                        "name": row[0],
+                        "url": row[1],
+                        "country": row[2],
+                        "tags": row[3],
+                        "homepage": row[4] or ""
+                    }
+            except:
+                pass
+    else:
+        # 현재 재생 중인 방송
+        station = current_station
+
+    if not station:
+        return {"status": "error", "message": "No station found"}
+
+    return {
+        "status": "ok",
+        "share": {
+            "name": station.get("name", ""),
+            "url": station.get("url", ""),
+            "country": station.get("country", ""),
+            "tags": station.get("tags", ""),
+            "homepage": station.get("homepage", ""),
+            "text": f"🎵 {station.get('name', '')} - {station.get('tags', '')}"
+        }
+    }
+
+
 def main():
     """Entry point for radiomcp command"""
     # 싱글톤 락 비활성화 - Claude Desktop이 여러 서버 띄울 수 있음
