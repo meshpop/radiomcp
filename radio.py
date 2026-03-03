@@ -2778,8 +2778,16 @@ def show_menu():
     fav_count = len(load_favorites())
     songs_count = len(load_songs())
     mode = "DB" if not USE_API else "API"
+    llm = get_llm_status()
 
     history_count = len(load_history())
+
+    # LLM 상태에 따른 검색 힌트
+    if llm != "off" and llm != "keyword":
+        search_hint = f"  🤖 AI 검색 ({llm}): 아무거나 입력"
+    else:
+        search_hint = "  🔍 검색: g 장르 | c 국가 | 키워드 (jazz, pop, news)"
+
     print(f"""
   RadioCli ({mode})
 
@@ -2790,7 +2798,7 @@ def show_menu():
   v 볼륨     v+/v-   check   share
   hl 기록({history_count})  q 종료  ! 모드  d DJ
 
-  🔍 검색: 아무거나 입력 (예: jazz, 한국 뉴스, lounge)
+{search_hint}
 """)
 
 def show_genres():
