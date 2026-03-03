@@ -16,10 +16,153 @@ import shutil
 import atexit
 import signal
 import threading
+import webbrowser
+import sys
 from typing import Any
 from datetime import datetime
 
 from mcp.server.fastmcp import FastMCP
+
+# ============================================================
+# 플레이어 백엔드 추상화
+# ============================================================
+# 우선순위: mpv > miniaudio > browser
+# ============================================================
+
+PLAYER_BACKEND = None  # 'mpv', 'miniaudio', 'browser'
+
+def detect_player_backend():
+    """사용 가능한 플레이어 백엔드 감지"""
+    global PLAYER_BACKEND
+
+    # 1. mpv 확인
+    if shutil.which("mpv"):
+        PLAYER_BACKEND = "mpv"
+        return "mpv"
+
+    # 2. miniaudio 확인
+    try:
+        import miniaudio
+        PLAYER_BACKEND = "miniaudio"
+        return "miniaudio"
+    except ImportError:
+        pass
+
+    # 3. 브라우저 fallback (항상 가능)
+    PLAYER_BACKEND = "browser"
+    return "browser"
+
+# 초기화 시 백엔드 감지
+detect_player_backend()
+
+# ============================================================
+# Miniaudio 플레이어 (mpv 없을 때 사용)
+# ============================================================
+class MiniaudioPlayer:
+    """miniaudio 기반 스트리밍 플레이어"""
+
+    def __init__(self):
+        self.stream_thread = None
+        self.playing = False
+        self.device = None
+
+    def play(self, url):
+        """URL 스트리밍 재생"""
+        self.stop()
+        self.playing = True
+
+        def stream_worker():
+            try:
+                import miniaudio
+                import urllib.request
+
+                # HTTP 스트림 열기
+                req = urllib.request.Request(url, headers={
+                    'User-Agent': 'RadioMCP/1.0',
+                    'Icy-MetaData': '1'
+                })
+                response = urllib.request.urlopen(req, timeout=30)
+
+                # miniaudio 디코더 설정
+                def read_data(num_bytes):
+                    if not self.playing:
+                        return b''
+                    return response.read(num_bytes)
+
+                # 스트림 재생
+                self.device = miniaudio.PlaybackDevice()
+                stream = miniaudio.stream_any(
+                    source=response,
+                    source_format=miniaudio.FileFormat.MP3
+                )
+                self.device.start(stream)
+
+                while self.playing:
+                    time.sleep(0.1)
+
+            except Exception as e:
+                pass
+            finally:
+                self.playing = False
+                if self.device:
+                    self.device.close()
+
+        self.stream_thread = threading.Thread(target=stream_worker, daemon=True)
+        self.stream_thread.start()
+        return True
+
+    def stop(self):
+        """재생 중지"""
+        self.playing = False
+        if self.device:
+            try:
+                self.device.close()
+            except:
+                pass
+            self.device = None
+
+    def is_playing(self):
+        return self.playing
+
+# 전역 miniaudio 플레이어 인스턴스
+_miniaudio_player = None
+
+def get_miniaudio_player():
+    global _miniaudio_player
+    if _miniaudio_player is None:
+        _miniaudio_player = MiniaudioPlayer()
+    return _miniaudio_player
+
+# ============================================================
+# 브라우저 플레이어 (최후의 fallback)
+# ============================================================
+class BrowserPlayer:
+    """브라우저에서 스트림 열기"""
+
+    def __init__(self):
+        self.current_url = None
+
+    def play(self, url):
+        """브라우저에서 URL 열기"""
+        self.current_url = url
+        webbrowser.open(url)
+        return True
+
+    def stop(self):
+        """브라우저는 수동으로 닫아야 함"""
+        self.current_url = None
+        return {"note": "브라우저 탭을 수동으로 닫아주세요"}
+
+    def is_playing(self):
+        return self.current_url is not None
+
+_browser_player = None
+
+def get_browser_player():
+    global _browser_player
+    if _browser_player is None:
+        _browser_player = BrowserPlayer()
+    return _browser_player
 
 # MCP 서버 생성
 mcp = FastMCP("radio")
@@ -1839,42 +1982,56 @@ def play(url: str, name: str = "") -> dict:
             play_url = fresh_url
             url_refreshed = (fresh_url != url)
 
-    # mpv로 재생
+    # 백엔드별 재생
     try:
-        # 기존 mpv 종료 (CLI와 공유)
-        kill_existing_mpv()
+        if PLAYER_BACKEND == "mpv":
+            # === mpv 백엔드 ===
+            kill_existing_mpv()
 
-        # mpv 로그 파일 (디버깅용)
-        mpv_log = open(os.path.join(DATA_DIR, "mpv.log"), "w")
+            mpv_log = open(os.path.join(DATA_DIR, "mpv.log"), "w")
+            player_proc = subprocess.Popen(
+                ["mpv", "--no-video", "--no-terminal",
+                 "--cache=yes",
+                 "--cache-secs=30",
+                 "--demuxer-max-bytes=50M",
+                 "--demuxer-readahead-secs=20",
+                 "--stream-buffer-size=1M",
+                 "--network-timeout=30",
+                 "--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5",
+                 f"--input-ipc-server={MPV_SOCKET}", play_url],
+                stdout=subprocess.DEVNULL,
+                stderr=mpv_log,
+                preexec_fn=os.setpgrp
+            )
 
-        player_proc = subprocess.Popen(
-            ["mpv", "--no-video", "--no-terminal",
-             "--cache=yes",
-             "--cache-secs=30",
-             "--demuxer-max-bytes=50M",
-             "--demuxer-readahead-secs=20",
-             "--stream-buffer-size=1M",
-             "--network-timeout=30",
-             "--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5",
-             f"--input-ipc-server={MPV_SOCKET}", play_url],
-            stdout=subprocess.DEVNULL,
-            stderr=mpv_log,
-            preexec_fn=os.setpgrp  # 프로세스 그룹 분리 (시그널 격리)
-        )
+            with open(MPV_PID_FILE, 'w') as f:
+                f.write(str(player_proc.pid))
 
-        # PID 파일 저장 (CLI와 공유)
-        with open(MPV_PID_FILE, 'w') as f:
-            f.write(str(player_proc.pid))
+            start_mpv_watchdog()
 
-        # Watchdog 시작 (Claude Desktop 종료 시 mpv 정리)
-        start_mpv_watchdog()
+            time.sleep(1)
+            if player_proc.poll() is not None:
+                mark_station_dead(url)
+                return {"status": "error", "message": "Stream failed to start"}
 
-        # 잠시 대기 후 프로세스 확인
-        time.sleep(1)
-        if player_proc.poll() is not None:
-            # 재생 실패 - DB에 기록
-            mark_station_dead(url)
-            return {"status": "error", "message": "Stream failed to start"}
+        elif PLAYER_BACKEND == "miniaudio":
+            # === miniaudio 백엔드 ===
+            player = get_miniaudio_player()
+            if not player.play(play_url):
+                return {"status": "error", "message": "miniaudio failed to start"}
+            time.sleep(1)
+            if not player.is_playing():
+                mark_station_dead(url)
+                return {"status": "error", "message": "Stream failed to start"}
+
+        elif PLAYER_BACKEND == "browser":
+            # === 브라우저 백엔드 ===
+            player = get_browser_player()
+            player.play(play_url)
+            # 브라우저는 재생 확인 불가
+
+        else:
+            return {"status": "error", "message": f"Unknown player backend: {PLAYER_BACKEND}"}
 
         # DB에서 방송국 상세 정보 가져오기
         station_info = {"name": name, "url": play_url}
@@ -1929,11 +2086,76 @@ def stop() -> dict:
     """
     global player_proc, current_station
 
-    # 공유 함수로 mpv 종료 (CLI와 호환)
-    kill_existing_mpv()
-    player_proc = None
+    result = {"status": "stopped", "backend": PLAYER_BACKEND}
+
+    if PLAYER_BACKEND == "mpv":
+        kill_existing_mpv()
+        player_proc = None
+    elif PLAYER_BACKEND == "miniaudio":
+        player = get_miniaudio_player()
+        player.stop()
+    elif PLAYER_BACKEND == "browser":
+        player = get_browser_player()
+        player.stop()
+        result["note"] = "브라우저 탭을 수동으로 닫아주세요"
+
     current_station = None
-    return {"status": "stopped"}
+    return result
+
+
+@mcp.tool()
+def get_player_backend() -> dict:
+    """
+    Get current player backend info.
+
+    Returns:
+        Current backend and available options
+    """
+    available = []
+    if shutil.which("mpv"):
+        available.append("mpv")
+    try:
+        import miniaudio
+        available.append("miniaudio")
+    except ImportError:
+        pass
+    available.append("browser")  # 항상 가능
+
+    return {
+        "current": PLAYER_BACKEND,
+        "available": available,
+        "recommendation": available[0] if available else "browser"
+    }
+
+
+@mcp.tool()
+def set_player_backend(backend: str) -> dict:
+    """
+    Set player backend.
+
+    Args:
+        backend: 'mpv', 'miniaudio', or 'browser'
+
+    Returns:
+        New backend status
+    """
+    global PLAYER_BACKEND
+
+    valid_backends = ["mpv", "miniaudio", "browser"]
+    if backend not in valid_backends:
+        return {"status": "error", "message": f"Invalid backend. Choose from: {valid_backends}"}
+
+    # 백엔드 사용 가능 여부 확인
+    if backend == "mpv" and not shutil.which("mpv"):
+        return {"status": "error", "message": "mpv not installed. Install with: brew install mpv"}
+    if backend == "miniaudio":
+        try:
+            import miniaudio
+        except ImportError:
+            return {"status": "error", "message": "miniaudio not installed. Install with: pip install miniaudio"}
+
+    PLAYER_BACKEND = backend
+    return {"status": "ok", "backend": PLAYER_BACKEND}
 
 
 @mcp.tool()

@@ -1,7 +1,7 @@
 [project]
 name = "radiomcp"
 version = "1.0.0"
-description = "MCP server for internet radio - 24,000+ stations, song recognition, AI recommendations"
+description = "MCP server for internet radio - 24,000+ stations, multiple player backends (mpv/miniaudio/browser)"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
@@ -41,6 +41,9 @@ Repository = "https://github.com/dragonflydiy/radiomcp"
 Issues = "https://github.com/dragonflydiy/radiomcp/issues"
 
 [project.optional-dependencies]
+audio = [
+    "miniaudio>=1.60",  # mpv 없이 재생 가능
+]
 dev = [
     "pytest",
     "black",
