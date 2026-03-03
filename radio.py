@@ -281,6 +281,55 @@ PLAYER = None
 PLAYER_PROC = None
 CURRENT_SONG_FILE = os.path.join(DATA_DIR, "current_song.txt")
 MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
+MPV_PID_FILE = os.path.join(DATA_DIR, "mpv.pid")  # MCP/CLI 공유
+
+def kill_existing_mpv():
+    """기존 mpv 프로세스 종료 (MCP/CLI 공유)"""
+    # 1. IPC 소켓으로 종료 시도
+    if os.path.exists(MPV_SOCKET):
+        try:
+            import socket as sock_module
+            s = sock_module.socket(sock_module.AF_UNIX, sock_module.SOCK_STREAM)
+            s.settimeout(1)
+            s.connect(MPV_SOCKET)
+            s.send(b'{"command": ["quit"]}\n')
+            s.close()
+            time.sleep(0.5)
+        except:
+            pass
+
+    # 2. PID 파일로 종료
+    if os.path.exists(MPV_PID_FILE):
+        try:
+            with open(MPV_PID_FILE, 'r') as f:
+                pid = int(f.read().strip())
+            os.kill(pid, signal.SIGTERM)
+            time.sleep(0.5)
+            try:
+                os.kill(pid, 0)  # 아직 살아있나?
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        except:
+            pass
+        try:
+            os.remove(MPV_PID_FILE)
+        except:
+            pass
+
+    # 3. 최후의 수단: pkill로 radiocli mpv 죽이기
+    try:
+        subprocess.run(["pkill", "-f", "mpv.*radiocli"], timeout=2)
+        time.sleep(0.3)
+    except:
+        pass
+
+    # 4. 소켓 파일 정리
+    if os.path.exists(MPV_SOCKET):
+        try:
+            os.remove(MPV_SOCKET)
+        except:
+            pass
 
 # === SQLite DB 검색 (빠름) ===
 _db_cache = None
@@ -1415,9 +1464,8 @@ def play(url, name="", use_fresh_url=True):
     print(f"    (n: {t('view_current')})\n")
 
     try:
-        # 기존 소켓 파일 삭제
-        if os.path.exists(MPV_SOCKET):
-            os.remove(MPV_SOCKET)
+        # 기존 mpv 종료 (MCP/CLI 공유)
+        kill_existing_mpv()
 
         if PLAYER == "mpv":
             PLAYER_PROC = subprocess.Popen(
@@ -1430,8 +1478,12 @@ def play(url, name="", use_fresh_url=True):
                  "--network-timeout=30",
                  "--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5",
                  f"--input-ipc-server={MPV_SOCKET}", play_url],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                preexec_fn=os.setpgrp  # 프로세스 그룹 분리
             )
+            # PID 파일 저장 (MCP/CLI 공유)
+            with open(MPV_PID_FILE, 'w') as f:
+                f.write(str(PLAYER_PROC.pid))
         elif PLAYER == "ffplay":
             PLAYER_PROC = subprocess.Popen(
                 ["ffplay", "-nodisp", "-loglevel", "quiet", play_url],
@@ -2376,11 +2428,10 @@ def delete_playlist(name):
 def stop():
     global PLAYER_PROC
     stop_song_monitor()  # 곡 모니터링 중지
-    if PLAYER_PROC:
-        PLAYER_PROC.terminate()
-        PLAYER_PROC = None
-        return True
-    return False
+    # 공유 함수로 mpv 종료 (MCP와 호환)
+    kill_existing_mpv()
+    PLAYER_PROC = None
+    return True
 
 def get_llm_status():
     """LLM 상태 확인"""

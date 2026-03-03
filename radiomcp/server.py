@@ -31,6 +31,8 @@ HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 RECOGNIZED_FILE = os.path.join(DATA_DIR, "recognized_songs.json")
 RECORD_FILE = os.path.join(DATA_DIR, "record.mp3")
 MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
+MPV_PID_FILE = os.path.join(DATA_DIR, "mpv.pid")  # CLI와 공유
+LOCK_FILE = os.path.join(DATA_DIR, "server.lock")
 API_BASE = "https://de1.api.radio-browser.info/json"
 ACOUSTID_API_KEY = os.environ.get("ACOUSTID_API_KEY", "vQEDUkpM7e")
 
@@ -47,8 +49,110 @@ current_station = None
 player_proc = None
 db_conn = None
 sleep_timer = None  # 슬립 타이머
+lock_fd = None  # 싱글톤 락 파일 디스크립터
 
 LAST_STATION_FILE = os.path.join(DATA_DIR, "last_station.json")
+
+import fcntl  # 파일 잠금용
+
+def acquire_singleton_lock():
+    """싱글톤 락 획득 - 이미 실행 중이면 기존 프로세스 종료"""
+    global lock_fd
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+    lock_fd = open(LOCK_FILE, 'w')
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # 락 획득 성공 - PID 기록
+        lock_fd.write(str(os.getpid()))
+        lock_fd.flush()
+        return True
+    except BlockingIOError:
+        # 이미 다른 서버가 실행 중 - 기존 서버 강제 종료
+        try:
+            with open(LOCK_FILE, 'r') as f:
+                old_pid = int(f.read().strip())
+            # SIGTERM 시도
+            try:
+                os.kill(old_pid, signal.SIGTERM)
+                time.sleep(0.3)
+            except:
+                pass
+            # 아직 살아있으면 SIGKILL
+            try:
+                os.kill(old_pid, 0)  # 존재 확인
+                os.kill(old_pid, signal.SIGKILL)
+                time.sleep(0.3)
+            except ProcessLookupError:
+                pass
+            # 다시 시도
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            lock_fd.seek(0)
+            lock_fd.truncate()
+            lock_fd.write(str(os.getpid()))
+            lock_fd.flush()
+            return True
+        except:
+            return False
+
+def release_singleton_lock():
+    """싱글톤 락 해제"""
+    global lock_fd
+    if lock_fd:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            lock_fd.close()
+            os.remove(LOCK_FILE)
+        except:
+            pass
+        lock_fd = None
+
+def kill_existing_mpv():
+    """기존 mpv 프로세스 종료 (CLI와 공유)"""
+    # 1. IPC 소켓으로 종료 시도
+    if os.path.exists(MPV_SOCKET):
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            sock.connect(MPV_SOCKET)
+            sock.send(b'{"command": ["quit"]}\n')
+            sock.close()
+            time.sleep(0.5)
+        except:
+            pass
+
+    # 2. PID 파일로 종료
+    if os.path.exists(MPV_PID_FILE):
+        try:
+            with open(MPV_PID_FILE, 'r') as f:
+                pid = int(f.read().strip())
+            os.kill(pid, signal.SIGTERM)
+            time.sleep(0.5)
+            try:
+                os.kill(pid, 0)  # 아직 살아있나?
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        except:
+            pass
+        try:
+            os.remove(MPV_PID_FILE)
+        except:
+            pass
+
+    # 3. 최후의 수단: pkill로 radiocli mpv 죽이기
+    try:
+        subprocess.run(["pkill", "-f", "mpv.*radiocli"], timeout=2)
+        time.sleep(0.3)
+    except:
+        pass
+
+    # 4. 소켓 파일 정리
+    if os.path.exists(MPV_SOCKET):
+        try:
+            os.remove(MPV_SOCKET)
+        except:
+            pass
 
 def save_last_station():
     """마지막 재생 방송 저장"""
@@ -70,47 +174,94 @@ def load_last_station():
     return None
 
 def cleanup():
-    """종료 시 플레이어 정리"""
+    """종료 시 상태 저장 (mpv는 계속 재생)"""
     global player_proc
     # 마지막 방송 저장
     save_last_station()
-    if player_proc:
-        try:
-            player_proc.terminate()
-            player_proc.wait(timeout=2)
-        except:
-            try:
-                player_proc.kill()
-            except:
-                pass
-        player_proc = None
-    # mpv 소켓 정리
-    if os.path.exists(MPV_SOCKET):
-        try:
-            os.remove(MPV_SOCKET)
-        except:
-            pass
+    # mpv는 죽이지 않음 - 서버 재시작해도 계속 재생
+    # stop() 호출할 때만 mpv 종료
+    player_proc = None
+    # 싱글톤 락 해제
+    release_singleton_lock()
 
 # 종료 핸들러 등록
 atexit.register(cleanup)
 signal.signal(signal.SIGTERM, lambda s, f: (cleanup(), exit(0)))
 signal.signal(signal.SIGINT, lambda s, f: (cleanup(), exit(0)))
 
-# Watchdog: 부모 프로세스 종료 감지 (SIGKILL 대비)
-def start_watchdog():
-    """부모 프로세스 종료 시 mpv도 종료"""
-    parent_pid = os.getppid()
-    def watch():
-        while True:
-            time.sleep(3)
-            # 부모 PID가 변경되면 (보통 1로) 부모가 죽은 것
-            if os.getppid() != parent_pid:
-                cleanup()
-                os._exit(0)
-    t = threading.Thread(target=watch, daemon=True)
-    t.start()
+# Watchdog: 별도 프로세스로 Claude Desktop 감시
+def start_mpv_watchdog():
+    """mpv 재생 시작할 때 watchdog 프로세스 시작 (크로스 플랫폼)"""
+    import sys
+    platform = sys.platform
 
-start_watchdog()
+    watchdog_script = f'''
+import time, os, subprocess, signal, sys
+
+mpv_pid_file = "{os.path.join(DATA_DIR, "mpv.pid")}"
+mpv_sock = "{MPV_SOCKET}"
+platform = "{platform}"
+
+def is_claude_running():
+    """Claude Desktop 실행 중인지 확인 (크로스 플랫폼)"""
+    try:
+        if platform == "darwin":  # macOS
+            result = subprocess.run(
+                ["osascript", "-e", 'tell application "System Events" to (name of processes) contains "Claude"'],
+                capture_output=True, text=True
+            )
+            return "true" in result.stdout.lower()
+        elif platform == "win32":  # Windows
+            result = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq Claude.exe"],
+                capture_output=True, text=True
+            )
+            return "Claude.exe" in result.stdout
+        else:  # Linux
+            result = subprocess.run(
+                ["pgrep", "-f", "claude-desktop|Claude"],
+                capture_output=True
+            )
+            return result.returncode == 0
+    except:
+        return True  # 확인 실패 시 실행 중으로 간주
+
+def kill_mpv():
+    """mpv 종료"""
+    if os.path.exists(mpv_pid_file):
+        try:
+            with open(mpv_pid_file) as f:
+                pid = int(f.read().strip())
+            os.kill(pid, signal.SIGTERM)
+            time.sleep(0.5)
+            try: os.kill(pid, signal.SIGKILL)
+            except: pass
+        except: pass
+        try: os.remove(mpv_pid_file)
+        except: pass
+    if os.path.exists(mpv_sock):
+        try: os.remove(mpv_sock)
+        except: pass
+    if platform != "win32":
+        subprocess.run(["pkill", "-f", "mpv.*mpv.sock"], capture_output=True)
+    else:
+        subprocess.run(["taskkill", "/F", "/IM", "mpv.exe"], capture_output=True)
+
+while True:
+    time.sleep(5)
+    if not is_claude_running():
+        kill_mpv()
+        break
+'''
+    # 기존 watchdog 죽이기
+    subprocess.run(["pkill", "-f", "mpv_pid_file"], capture_output=True)
+    # 새 watchdog 시작 (독립 실행)
+    kwargs = {{"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}}
+    if platform != "win32":
+        kwargs["start_new_session"] = True
+    else:
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+    subprocess.Popen(["python3", "-c", watchdog_script], **kwargs)
 
 # 유사어 매핑 (태그 확장)
 TAG_SYNONYMS = {
@@ -1690,9 +1841,11 @@ def play(url: str, name: str = "") -> dict:
 
     # mpv로 재생
     try:
-        # 기존 소켓 삭제
-        if os.path.exists(MPV_SOCKET):
-            os.remove(MPV_SOCKET)
+        # 기존 mpv 종료 (CLI와 공유)
+        kill_existing_mpv()
+
+        # mpv 로그 파일 (디버깅용)
+        mpv_log = open(os.path.join(DATA_DIR, "mpv.log"), "w")
 
         player_proc = subprocess.Popen(
             ["mpv", "--no-video", "--no-terminal",
@@ -1705,8 +1858,16 @@ def play(url: str, name: str = "") -> dict:
              "--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5",
              f"--input-ipc-server={MPV_SOCKET}", play_url],
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=mpv_log,
+            preexec_fn=os.setpgrp  # 프로세스 그룹 분리 (시그널 격리)
         )
+
+        # PID 파일 저장 (CLI와 공유)
+        with open(MPV_PID_FILE, 'w') as f:
+            f.write(str(player_proc.pid))
+
+        # Watchdog 시작 (Claude Desktop 종료 시 mpv 정리)
+        start_mpv_watchdog()
 
         # 잠시 대기 후 프로세스 확인
         time.sleep(1)
@@ -1768,19 +1929,9 @@ def stop() -> dict:
     """
     global player_proc, current_station
 
-    if player_proc:
-        player_proc.terminate()
-        player_proc = None
-
-    # mpv IPC로 종료
-    try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(MPV_SOCKET)
-        sock.send(b'{"command": ["quit"]}\n')
-        sock.close()
-    except:
-        pass
-
+    # 공유 함수로 mpv 종료 (CLI와 호환)
+    kill_existing_mpv()
+    player_proc = None
     current_station = None
     return {"status": "stopped"}
 
@@ -3153,6 +3304,10 @@ def get_listening_stats(period: str = "week") -> dict:
 
 def main():
     """Entry point for radiomcp command"""
+    # 싱글톤 락 비활성화 - Claude Desktop이 여러 서버 띄울 수 있음
+    # 대신 PID 파일로 mpv 공유
+    # acquire_singleton_lock()  # 비활성화
+
     # 백그라운드에서 인기 방송 동기화
     sync_thread = threading.Thread(target=sync_popular_stations, daemon=True)
     sync_thread.start()
