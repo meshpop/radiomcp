@@ -524,6 +524,104 @@ LANG_MAP = {
     # 인도네시아어 (Indonesian)
     "india": "IN", "jepang": "JP", "tiongkok": "CN",
 
+    # === 유럽 언어 ===
+    # 폴란드어 (Polish)
+    "polska": "PL", "stany zjednoczone": "US", "japonia": "JP", "niemcy": "DE",
+    "francja": "FR", "hiszpania": "ES", "rosja": "RU",
+    # 네덜란드어 (Dutch)
+    "nederland": "NL", "duitsland": "DE", "frankrijk": "FR",
+    "spanje": "ES", "rusland": "RU",
+    # 스웨덴어 (Swedish)
+    "sverige": "SE", "storbritannien": "GB", "tyskland": "DE", "frankrike": "FR",
+    # 노르웨이어 (Norwegian)
+    "norge": "NO", "storbritannia": "GB",
+    # 덴마크어 (Danish)
+    "danmark": "DK", "frankrig": "FR",
+    # 핀란드어 (Finnish)
+    "suomi": "FI", "yhdysvallat": "US", "japani": "JP", "saksa": "DE",
+    "ranska": "FR", "espanja": "ES", "venäjä": "RU",
+    # 체코어 (Czech)
+    "česko": "CZ", "japonsko": "JP", "německo": "DE", "francie": "FR", "rusko": "RU",
+    # 헝가리어 (Hungarian)
+    "magyarország": "HU", "japán": "JP", "németország": "DE", "franciaország": "FR",
+    "oroszország": "RU", "kína": "CN",
+    # 루마니아어 (Romanian)
+    "românia": "RO", "japonia": "JP", "germania": "DE", "rusia": "RU",
+    # 불가리아어 (Bulgarian)
+    "българия": "BG", "сащ": "US", "япония": "JP", "испания": "ES",
+    # 우크라이나어 (Ukrainian)
+    "україна": "UA", "сша": "US", "японія": "JP", "німеччина": "DE", "росія": "RU",
+    # 그리스어 (Greek)
+    "ελλάδα": "GR", "ιαπωνία": "JP", "γερμανία": "DE", "γαλλία": "FR", "ρωσία": "RU",
+    # 크로아티아어/세르비아어 (Croatian/Serbian)
+    "hrvatska": "HR", "srbija": "RS", "njemačka": "DE", "francuska": "FR",
+    # 슬로베니아어/슬로바키아어 (Slovenian/Slovak)
+    "slovenija": "SI", "slovensko": "SK", "nemecko": "DE",
+
+    # === 발트 언어 ===
+    # 에스토니아어 (Estonian)
+    "eesti": "EE", "ameerika": "US", "jaapan": "JP", "saksamaa": "DE",
+    # 라트비아어 (Latvian)
+    "latvija": "LV", "japāna": "JP", "vācija": "DE",
+    # 리투아니아어 (Lithuanian)
+    "lietuva": "LT", "japonija": "JP", "vokietija": "DE",
+
+    # === 코카서스/중앙아시아 언어 ===
+    # 조지아어 (Georgian)
+    "საქართველო": "GE", "ამერიკა": "US", "იაპონია": "JP",
+    # 아제르바이잔어 (Azerbaijani)
+    "azərbaycan": "AZ", "yaponiya": "JP", "almaniya": "DE",
+    # 카자흐어 (Kazakh)
+    "қазақстан": "KZ", "жапония": "JP",
+    # 우즈베크어 (Uzbek)
+    "oʻzbekiston": "UZ",
+    # 몽골어 (Mongolian)
+    "монгол": "MN", "америк": "US", "япон": "JP",
+
+    # === 중동 언어 ===
+    # 히브리어 (Hebrew)
+    "ישראל": "IL", "יפן": "JP", "גרמניה": "DE", "צרפת": "FR", "רוסיה": "RU",
+    # 페르시아어 (Persian/Farsi)
+    "ایران": "IR", "آمریکا": "US", "ژاپن": "JP", "آلمان": "DE", "روسیه": "RU",
+    # 우르두어 (Urdu)
+    "پاکستان": "PK", "جاپان": "JP", "جرمنی": "DE",
+
+    # === 남아시아 언어 ===
+    # 벵골어 (Bengali)
+    "বাংলাদেশ": "BD", "ভারত": "IN", "আমেরিকা": "US", "জাপান": "JP",
+    # 타밀어 (Tamil)
+    "இந்தியா": "IN", "அமெரிக்கா": "US", "ஜப்பான்": "JP",
+    # 텔루구어 (Telugu)
+    "భారతదేశం": "IN", "అమెరికా": "US", "జపాన్": "JP",
+    # 구자라트어 (Gujarati)
+    "ભારત": "IN", "અમેરિકા": "US", "જાપાન": "JP",
+    # 펀자브어 (Punjabi)
+    "ਭਾਰਤ": "IN", "ਅਮਰੀਕਾ": "US", "ਜਾਪਾਨ": "JP",
+    # 네팔어 (Nepali)
+    "नेपाल": "NP",
+    # 싱할라어 (Sinhala)
+    "ශ්‍රී ලංකාව": "LK", "ඉන්දියාව": "IN",
+
+    # === 동남아시아 언어 ===
+    # 말레이어 (Malay)
+    "malaysia": "MY", "jepun": "JP", "jerman": "DE", "perancis": "FR",
+    # 타갈로그어 (Tagalog/Filipino)
+    "pilipinas": "PH", "hapon": "JP", "alemanya": "DE", "pransya": "FR",
+    # 크메르어 (Khmer)
+    "កម្ពុជា": "KH", "ជប៉ុន": "JP",
+    # 미얀마어 (Burmese)
+    "မြန်မာ": "MM", "ဂျပန်": "JP",
+    # 라오어 (Lao)
+    "ລາວ": "LA", "ຍີ່ປຸ່ນ": "JP",
+
+    # === 아프리카 언어 ===
+    # 스와힐리어 (Swahili)
+    "kenya": "KE", "tanzania": "TZ", "japani": "JP", "ujerumani": "DE",
+    # 암하라어 (Amharic)
+    "ኢትዮጵያ": "ET", "ጃፓን": "JP",
+    # 아프리칸스어 (Afrikaans)
+    "suid-afrika": "ZA",
+
     # === 장르 (한국어, 영어, 일본어, 중국어, 독일어, 프랑스어, 스페인어) ===
     # 재즈
     "재즈": "jazz", "jazz": "jazz", "ジャズ": "jazz", "爵士": "jazz", "爵士乐": "jazz",
