@@ -1696,6 +1696,10 @@ def play(url: str, name: str = "") -> dict:
 
         player_proc = subprocess.Popen(
             ["mpv", "--no-video", "--no-terminal",
+             "--cache=yes",
+             "--cache-secs=30",
+             "--demuxer-max-bytes=50M",
+             "--demuxer-readahead-secs=20",
              f"--input-ipc-server={MPV_SOCKET}", play_url],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL

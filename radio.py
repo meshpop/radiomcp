@@ -1422,6 +1422,10 @@ def play(url, name="", use_fresh_url=True):
         if PLAYER == "mpv":
             PLAYER_PROC = subprocess.Popen(
                 ["mpv", "--no-video", "--really-quiet",
+                 "--cache=yes",
+                 "--cache-secs=30",
+                 "--demuxer-max-bytes=50M",
+                 "--demuxer-readahead-secs=20",
                  f"--input-ipc-server={MPV_SOCKET}", play_url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
