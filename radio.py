@@ -1426,6 +1426,9 @@ def play(url, name="", use_fresh_url=True):
                  "--cache-secs=30",
                  "--demuxer-max-bytes=50M",
                  "--demuxer-readahead-secs=20",
+                 "--stream-buffer-size=1M",
+                 "--network-timeout=30",
+                 "--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5",
                  f"--input-ipc-server={MPV_SOCKET}", play_url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
