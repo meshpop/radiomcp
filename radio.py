@@ -495,6 +495,35 @@ LANG_MAP = {
     "스위스": "CH", "switzerland": "CH", "swiss": "CH", "schweiz": "CH",
     "スイス": "CH", "瑞士": "CH", "suisse": "CH", "suiza": "CH",
 
+    # === 추가 언어: 힌디, 아랍, 러시아, 포르투갈, 이탈리아, 터키, 태국, 베트남, 인도네시아 ===
+    # 힌디어 (Hindi)
+    "भारत": "IN", "इंडिया": "IN",  # India
+    "अमेरिका": "US", "अमेरीका": "US",  # America
+    "जापान": "JP", "कोरिया": "KR", "चीन": "CN", "रूस": "RU",
+    # 아랍어 (Arabic)
+    "الهند": "IN", "أمريكا": "US", "اليابان": "JP", "كوريا": "KR",
+    "الصين": "CN", "روسيا": "RU", "مصر": "EG", "السعودية": "SA",
+    # 러시아어 (Russian)
+    "индия": "IN", "америка": "US", "япония": "JP", "корея": "KR",
+    "китай": "CN", "россия": "RU", "германия": "DE", "франция": "FR",
+    # 포르투갈어 (Portuguese)
+    "índia": "IN", "américa": "US", "japão": "JP", "coreia": "KR",
+    "rússia": "RU", "alemanha": "DE", "frança": "FR", "itália": "IT",
+    # 이탈리아어 (Italian)
+    "giappone": "JP", "corea": "KR", "cina": "CN", "germania": "DE",
+    "spagna": "ES", "portogallo": "PT", "svizzera": "CH",
+    # 터키어 (Turkish)
+    "hindistan": "IN", "amerika": "US", "japonya": "JP", "kore": "KR",
+    "çin": "CN", "rusya": "RU", "almanya": "DE", "fransa": "FR",
+    # 태국어 (Thai)
+    "อินเดีย": "IN", "อเมริกา": "US", "ญี่ปุ่น": "JP", "เกาหลี": "KR",
+    "จีน": "CN", "รัสเซีย": "RU", "ไทย": "TH",
+    # 베트남어 (Vietnamese)
+    "ấn độ": "IN", "mỹ": "US", "nhật bản": "JP", "hàn quốc": "KR",
+    "trung quốc": "CN", "nga": "RU", "việt nam": "VN",
+    # 인도네시아어 (Indonesian)
+    "india": "IN", "jepang": "JP", "tiongkok": "CN",
+
     # === 장르 (한국어, 영어, 일본어, 중국어, 독일어, 프랑스어, 스페인어) ===
     # 재즈
     "재즈": "jazz", "jazz": "jazz", "ジャズ": "jazz", "爵士": "jazz", "爵士乐": "jazz",
@@ -559,6 +588,32 @@ LANG_MAP = {
     "올디스": "oldies", "oldies": "oldies", "オールディーズ": "oldies",
     "80년대": "80s", "80s": "80s", "90년대": "90s", "90s": "90s",
     "70년대": "70s", "70s": "70s", "60년대": "60s", "60s": "60s",
+
+    # === 추가 언어 장르 ===
+    # 힌디어 (Hindi)
+    "संगीत": "music", "जैज़": "jazz", "पॉप": "pop", "रॉक": "rock",
+    "समाचार": "news", "शास्त्रीय": "classical",
+    # 아랍어 (Arabic)
+    "موسيقى": "music", "جاز": "jazz", "بوب": "pop", "روك": "rock",
+    "أخبار": "news", "كلاسيكي": "classical",
+    # 러시아어 (Russian)
+    "музыка": "music", "джаз": "jazz", "поп": "pop", "рок": "rock",
+    "новости": "news", "классика": "classical", "классическая": "classical",
+    # 포르투갈어 (Portuguese)
+    "música": "music", "notícias": "news", "clássica": "classical",
+    "notícia": "news", "eletrônica": "electronic",
+    # 이탈리아어 (Italian)
+    "musica": "music", "notizie": "news", "classica": "classical",
+    "elettronica": "electronic",
+    # 터키어 (Turkish)
+    "müzik": "music", "caz": "jazz", "haber": "news", "klasik": "classical",
+    # 태국어 (Thai)
+    "เพลง": "music", "แจ๊ส": "jazz", "ป๊อป": "pop", "ร็อค": "rock",
+    "ข่าว": "news", "คลาสสิก": "classical",
+    # 베트남어 (Vietnamese)
+    "nhạc": "music", "tin tức": "news", "cổ điển": "classical",
+    # 인도네시아어 (Indonesian)
+    "musik": "music", "berita": "news", "klasik": "classical",
 }
 
 # 태그 확장 (관련 태그 함께 검색)
