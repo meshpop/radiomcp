@@ -2796,7 +2796,9 @@ def show_menu():
   w {t('mood_now'):<6} i {t('song_recognize'):<5} n {t('current_song'):<5} sl {t('songs')}({songs_count})
   r {t('resume'):<6} s {t('stop'):<5} < {t('prev'):<5} > {t('next')}
   v {t('volume'):<6} v+/v-   check   share
-  hl {t('history')}({history_count})  q {t('quit')}  ! {t('mode')}  d DJ
+  hl {t('history')}({history_count})  d DJ   ! {t('mode')}  q {t('quit')}
+
+  ⚙️  lang ({UI_LANG})
 
 {search_hint}
 """)
