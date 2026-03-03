@@ -2630,6 +2630,40 @@ def remove_favorite(index: int) -> dict:
 
 
 @mcp.tool()
+def play_favorite(index: int = 0) -> dict:
+    """
+    Play a station from favorites.
+
+    Args:
+        index: Index of the favorite station (0-based, default: 0 = first)
+
+    Returns:
+        Playback status
+    """
+    favorites = load_json(FAVORITES_FILE)
+
+    if not favorites:
+        return {"status": "error", "message": "No favorites yet"}
+
+    if not 0 <= index < len(favorites):
+        return {"status": "error", "message": f"Invalid index. You have {len(favorites)} favorites (0-{len(favorites)-1})"}
+
+    station = favorites[index]
+    url = station.get("url_resolved") or station.get("url")
+    name = station.get("name", "Unknown")
+
+    result = play(url)
+    if result.get("status") == "playing":
+        return {
+            "status": "playing",
+            "index": index,
+            "name": name,
+            "url": url
+        }
+    return result
+
+
+@mcp.tool()
 def get_history(limit: int = 20) -> list[dict]:
     """Get listening history."""
     history = load_json(HISTORY_FILE)

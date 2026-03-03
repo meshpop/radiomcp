@@ -269,8 +269,8 @@ RECORD_FILE = os.path.join(DATA_DIR, "record_sample.mp3")
 RECORD_WAV_FILE = os.path.join(DATA_DIR, "record_sample.wav")
 
 # === LLM 설정 ===
-# RADIOCLI_LLM: auto(기본), ollama, claude, openai, none
-LLM_PROVIDER = os.environ.get("RADIOCLI_LLM", "auto")
+# RADIOCLI_LLM: none(기본), auto, ollama, claude, openai
+LLM_PROVIDER = os.environ.get("RADIOCLI_LLM", "none")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -852,6 +852,23 @@ def add_history(station, duration_sec):
         "duration": duration_sec
     })
     save_history(history)
+
+def show_listening_history(limit=20):
+    """청취 기록 표시"""
+    history = load_history()
+    if not history:
+        print(f"  {t('no_history')}\n")
+        return
+
+    print(f"\n  {t('history')} ({len(history)}):\n")
+    for i, h in enumerate(reversed(history[-limit:]), 1):
+        name = h.get("name", "?")[:30]
+        country = h.get("country", "")[:3]
+        duration = h.get("duration", 0)
+        mins = duration // 60
+        timestamp = h.get("timestamp", "")[:10]
+        print(f"  {i:2}. {name:<30} {country:>3} {mins:>3}분 ({timestamp})")
+    print()
 
 # === 취향 분석 ===
 def analyze_preferences():
@@ -2609,6 +2626,7 @@ def show_menu():
     songs_count = len(load_songs())
     mode = "DB" if not USE_API else "API"
 
+    history_count = len(load_history())
     print(f"""
   RadioCli ({mode})
 
@@ -2617,7 +2635,7 @@ def show_menu():
   w 분위기   i 인식   n 현재곡  sl 곡({songs_count})
   r 이어듣기 s 정지   < 이전   > 다음
   v 볼륨     v+/v-   check   share
-  q 종료     ! 모드   d DJ
+  hl 기록({history_count})  q 종료  ! 모드  d DJ
 """)
 
 def show_genres():
@@ -2783,6 +2801,11 @@ def main():
         # 곡 기록 보기
         if cmd == "sl":
             show_song_history()
+            continue
+
+        # 청취 기록 보기 (방송국)
+        if cmd == "hl":
+            show_listening_history()
             continue
 
         # 곡 기록 토글 (온/오프)
