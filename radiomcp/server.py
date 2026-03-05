@@ -3093,50 +3093,66 @@ def recommend_by_weather(city: str = "") -> dict:
     Returns:
         Weather-based recommendations
     """
-    # Auto-detect city from IP if not provided
-    if not city:
-        try:
-            req = urllib.request.Request("http://ip-api.com/json/?fields=city", 
-                                         headers={"User-Agent": "RadioMCP/1.0"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                data = json.loads(resp.read().decode())
-                city = data.get("city", "Seoul")
-        except:
+    lat, lon = 37.5665, 126.978  # Seoul default
+    
+    # Get location from IP (ip-api.com: 45 req/min free)
+    try:
+        req = urllib.request.Request("http://ip-api.com/json/?fields=city,lat,lon", 
+                                     headers={"User-Agent": "RadioMCP/1.0"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            loc_data = json.loads(resp.read().decode())
+            if not city:
+                city = loc_data.get("city", "Seoul")
+            lat = loc_data.get("lat", lat)
+            lon = loc_data.get("lon", lon)
+    except:
+        if not city:
             city = "Seoul"
     
-    # wttr.in free API
+    # Open-Meteo API (free, no API key, 10k req/day)
     try:
-        url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
         req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode())
 
-        current = data.get("current_condition", [{}])[0]
-        weather_code = int(current.get("weatherCode", 113))
-        temp = int(current.get("temp_C", 20))
+        current = data.get("current_weather", {})
+        weather_code = int(current.get("weathercode", 0))
+        temp = current.get("temperature", 20)
+        is_day = current.get("is_day", 1)
 
-        # 날씨 코드 → 분위기
-        if weather_code in [176, 263, 266, 293, 296, 299, 302, 305, 308, 311, 314, 317, 320, 353, 356, 359]:
-            # 비
+        # WMO Weather codes -> mood
+        # 0: Clear, 1-3: Cloudy, 45-48: Fog
+        # 51-67: Drizzle/Rain, 71-77: Snow, 80-82: Showers, 85-86: Snow showers
+        # 95-99: Thunderstorm
+        if weather_code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82]:
             mood = "rainy"
-        elif weather_code in [179, 182, 185, 227, 230, 323, 326, 329, 332, 335, 338, 350, 362, 365, 368, 371, 374, 377, 392, 395]:
-            # 눈
+        elif weather_code in [71, 73, 75, 77, 85, 86]:
             mood = "snowy"
-        elif weather_code in [113]:
-            # 맑음
-            mood = "sunny" if temp > 20 else "cold"
+        elif weather_code in [95, 96, 99]:
+            mood = "stormy"
+        elif weather_code == 0:
+            mood = "sunny" if temp > 20 else ("cold" if temp < 10 else "clear")
+        elif weather_code in [1, 2, 3]:
+            mood = "cloudy"
+        elif weather_code in [45, 48]:
+            mood = "foggy"
         else:
             mood = "cloudy"
 
-        # 온도 기반 조정
+        # Temperature adjustment
         if temp > 28:
             mood = "hot"
-        elif temp < 5:
+        elif temp < 0:
             mood = "cold"
+
+        # Night time adjustment
+        if not is_day and mood in ["sunny", "clear"]:
+            mood = "night"
 
         tags = WEATHER_TAGS.get(mood, ["pop", "jazz"])
 
-        # 검색
+        # Search
         all_results = []
         seen = set()
         for tag in tags[:2]:
@@ -3149,11 +3165,11 @@ def recommend_by_weather(city: str = "") -> dict:
         return {
             "city": city,
             "weather": mood,
-            "temp_c": temp,
+            "temp_c": round(temp, 1),
             "stations": all_results[:10]
         }
     except Exception as e:
-        # Fallback: time-based recommendation if weather API fails
+        # Fallback: time-based recommendation
         try:
             time_result = recommend_by_time()
             fallback_stations = time_result.get("stations", [])
