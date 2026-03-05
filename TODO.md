@@ -54,6 +54,8 @@
 - [x] Station check (`check`)
 - [x] Share station (`share`)
 - [x] Search hint based on LLM availability
+- [x] Sleep timer (`sleep N`)
+- [x] Alarm (`alarm HH:MM genre`)
 
 ### Localization
 - [x] UI: 100 languages
@@ -81,6 +83,13 @@
 - [x] radiomcp/README.md (English)
 - [x] radiomcp/HELP.md (English)
 - [x] DISCLAIMER.md (Bilingual)
+
+### Code Internationalization
+- [x] Default language: English
+- [x] All comments in English
+- [x] All docstrings in English
+- [ ] Korean UI only through language packs (languages.json)
+- [x] Documentation in English (README.md, HELP.md)
 
 ---
 

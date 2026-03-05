@@ -144,7 +144,18 @@
     "mode": "모드",
     "ai_search": "AI 검색",
     "type_anything": "아무거나 입력",
-    "search_hint_menu": "검색: g 장르 | c 국가 | 키워드 (jazz, pop, news)"
+    "search_hint_menu": "검색: g 장르 | c 국가 | 키워드 (jazz, pop, news)",
+    "sleep_timer_set": "슬립 타이머 설정",
+    "sleep_timer_off": "슬립 타이머 해제",
+    "sleep_timer_active": "슬립 타이머 작동 중",
+    "sleep_timer_not_set": "슬립 타이머 미설정",
+    "sleep_timer_stopped": "슬립 타이머로 정지됨",
+    "alarm_set": "알람 설정",
+    "alarm_triggered": "알람! 라디오 시작",
+    "alarm_cancelled": "알람 해제",
+    "alarm_not_set": "알람 미설정",
+    "alarm_active": "알람 작동 중",
+    "minutes": "분"
   },
   "en": {
     "name": "English",
@@ -291,7 +302,18 @@
     "mode": "Mode",
     "ai_search": "AI Search",
     "type_anything": "type anything",
-    "search_hint_menu": "Search: g Genre | c Country | keyword (jazz, pop, news)"
+    "search_hint_menu": "Search: g Genre | c Country | keyword (jazz, pop, news)",
+    "sleep_timer_set": "Sleep timer set",
+    "sleep_timer_off": "Sleep timer off",
+    "sleep_timer_active": "Sleep timer active",
+    "sleep_timer_not_set": "No sleep timer",
+    "sleep_timer_stopped": "Stopped by sleep timer",
+    "alarm_set": "Alarm set",
+    "alarm_triggered": "Alarm! Starting radio",
+    "alarm_cancelled": "Alarm cancelled",
+    "alarm_not_set": "No alarm set",
+    "alarm_active": "Alarm active",
+    "minutes": " min"
   },
   "ja": {
     "name": "日本語",
@@ -427,7 +449,18 @@
     "mode": "モード",
     "ai_search": "AI検索",
     "type_anything": "何でも入力",
-    "search_hint_menu": "検索: g ジャンル | c 国 | キーワード (jazz, pop, news)"
+    "search_hint_menu": "検索: g ジャンル | c 国 | キーワード (jazz, pop, news)",
+    "sleep_timer_set": "スリープタイマー設定",
+    "sleep_timer_off": "スリープタイマー解除",
+    "sleep_timer_active": "スリープタイマー動作中",
+    "sleep_timer_not_set": "スリープタイマー未設定",
+    "sleep_timer_stopped": "スリープタイマーで停止",
+    "alarm_set": "アラーム設定",
+    "alarm_triggered": "アラーム！ラジオ開始",
+    "alarm_cancelled": "アラーム解除",
+    "alarm_not_set": "アラーム未設定",
+    "alarm_active": "アラーム動作中",
+    "minutes": "分"
   },
   "zh": {
     "name": "中文",
@@ -563,7 +596,18 @@
     "mode": "模式",
     "ai_search": "AI搜索",
     "type_anything": "随便输入",
-    "search_hint_menu": "搜索: g 类型 | c 国家 | 关键词 (jazz, pop, news)"
+    "search_hint_menu": "搜索: g 类型 | c 国家 | 关键词 (jazz, pop, news)",
+    "sleep_timer_set": "睡眠定时器已设置",
+    "sleep_timer_off": "睡眠定时器已关闭",
+    "sleep_timer_active": "睡眠定时器运行中",
+    "sleep_timer_not_set": "未设置睡眠定时器",
+    "sleep_timer_stopped": "睡眠定时器停止播放",
+    "alarm_set": "闹钟已设置",
+    "alarm_triggered": "闹钟！开始播放",
+    "alarm_cancelled": "闹钟已取消",
+    "alarm_not_set": "未设置闹钟",
+    "alarm_active": "闹钟运行中",
+    "minutes": "分钟"
   },
   "zh-tw": {
     "name": "繁體中文",
@@ -691,7 +735,18 @@
     "country_fr": "France",
     "country_cn": "China",
     "dj_on_speak": "DJ mode is now on",
-    "menu": "menu"
+    "menu": "menu",
+    "sleep_timer_set": "睡眠定時器已設置",
+    "sleep_timer_off": "睡眠定時器已關閉",
+    "sleep_timer_active": "睡眠定時器運行中",
+    "sleep_timer_not_set": "未設置睡眠定時器",
+    "sleep_timer_stopped": "睡眠定時器停止播放",
+    "alarm_set": "鬧鐘已設置",
+    "alarm_triggered": "鬧鐘！開始播放",
+    "alarm_cancelled": "鬧鐘已取消",
+    "alarm_not_set": "未設置鬧鐘",
+    "alarm_active": "鬧鐘運行中",
+    "minutes": "分鐘"
   },
   "es": {
     "name": "Español",

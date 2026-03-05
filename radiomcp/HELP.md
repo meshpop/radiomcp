@@ -10,28 +10,50 @@ Internet radio search and playback MCP server for Claude Desktop.
 |------|-------------|---------|
 | `search` | Search by genre, name, keyword | "jazz", "BBC", "lounge" |
 | `search_by_country` | Search by country code | "KR", "US", "JP", "DE" |
+| `search_by_language` | Search by language | "korean", "japanese", "german" |
 | `advanced_search` | Combined filters (country + tag + bitrate) | country="KR", tag="jazz", min_bitrate=128 |
 | `get_popular` | Get top stations by clicks | - |
-| `recommend` | Mood-based recommendations | "relaxing", "energetic", "focus" |
+| `get_categories` | Get available genres and countries | - |
+| `expand_search` | Get related search terms | "jazz" → smooth jazz, bebop |
 
 ### Playback
 
 | Tool | Description |
 |------|-------------|
-| `play` | Play station (auto-fetches fresh URL for token handling) |
+| `play` | Play station (auto-fetches fresh URL) |
 | `stop` | Stop playback |
-| `resume` | Resume last playing station |
-| `now_playing` | Get current song info (artist, title) |
-| `set_volume` | Volume control (0-100) |
+| `resume` | Resume last station |
+| `now_playing` | Get current song info |
+| `set_volume` | Set volume (0-100) |
+| `get_volume` | Get current volume |
+| `get_player_backend` | Get current player (mpv/vlc/ffplay/browser) |
+| `set_player_backend` | Change player backend |
+| `get_radio_status` | Get full playback status |
+| `check_stream` | Check if stream URL is alive |
 
-Note: When Claude Code exits, the radio automatically stops. Use `resume` to continue where you left off.
+### Recommendations
+
+| Tool | Description |
+|------|-------------|
+| `recommend` | Mood-based (relaxing, energetic, focus) |
+| `recommend_by_weather` | Weather-based (city name) |
+| `recommend_by_time` | Time of day based |
+| `personalized_recommend` | Based on listening history |
+| `similar_stations` | Find similar to current |
+
+### Timer & Alarm
+
+| Tool | Description |
+|------|-------------|
+| `set_sleep_timer` | Auto-stop after N minutes |
+| `set_alarm` | Wake-up alarm with radio |
 
 ### Song Recognition
 
 | Tool | Description |
 |------|-------------|
-| `recognize_song` | Shazam-like recognition (AcoustID + Whisper) |
-| `get_recognized_songs` | List of recognized songs history |
+| `recognize_song` | Shazam-like recognition |
+| `get_recognized_songs` | Recognition history |
 
 ### Favorites
 
@@ -40,130 +62,146 @@ Note: When Claude Code exits, the radio automatically stops. Use `resume` to con
 | `get_favorites` | List all favorites |
 | `add_favorite` | Add station to favorites |
 | `remove_favorite` | Remove by index (0-based) |
+| `play_favorite` | Play from favorites by index |
 
-### History & Personalization
-
-| Tool | Description |
-|------|-------------|
-| `get_history` | Recent listening history |
-| `get_user_profile` | Analyze listening patterns (tags, time, day preferences) |
-| `personalized_recommend` | AI recommendations based on your listening history |
-
-### Context-Aware Features
+### History & Profile
 
 | Tool | Description |
 |------|-------------|
-| `recommend_by_weather` | Weather-based recommendations (Seoul, etc.) |
-| `sleep_timer` | Auto-stop after N minutes |
-| `set_alarm` | Wake-up alarm with radio |
-| `get_similar` | Find similar stations |
+| `get_history` | Listening history |
+| `get_user_profile` | Analyze listening patterns |
+| `get_listening_stats` | Statistics (week/month/all) |
 
-### Database Management
+### Station Info
 
 | Tool | Description |
 |------|-------------|
-| `get_db_stats` | Show DB statistics (total, alive, dead, countries) |
-| `purge_dead` | Delete all dead stations from DB |
-| `health_check` | Verify station URLs (HEAD request), update is_alive status |
-| `sync_with_api` | Sync with Radio Browser API (fetch new/updated stations) |
+| `check_station` | Check station health |
+| `share_station` | Get share info for current station |
+| `get_radio_guide` | Get usage guide |
+
+### Database
+
+| Tool | Description |
+|------|-------------|
+| `get_db_stats` | DB statistics |
+| `purge_dead` | Delete dead stations |
+| `health_check` | Verify station URLs |
+| `sync_with_api` | Sync with Radio Browser API |
+
+### Blocklist
+
+| Tool | Description |
+|------|-------------|
+| `get_blocklist` | View blocked stations |
+| `refresh_blocklist` | Update blocklist from GitHub |
 
 ## Usage Examples
 
-### Natural Language Prompts
+### Basic Playback
 
 ```
-"Play some jazz radio"
+"Play some jazz"
 → search("jazz") → play(url, name)
-
-"Find Korean news stations"
-→ advanced_search(country="KR", tag="news")
-
-"What song is playing now?"
-→ now_playing()
-
-"I want relaxing music"
-→ recommend("relaxing") → play(url, name)
-
-"Recognize this song"
-→ recognize_song()
-
-"What songs did I hear today?"
-→ get_recognized_songs()
 
 "Stop the radio"
 → stop()
+
+"What's playing now?"
+→ now_playing()
+
+"Resume where I left off"
+→ resume()
 ```
 
-### Advanced Search
+### Search
 
 ```
-"Korean jazz stations"
-→ advanced_search(country="KR", tag="jazz")
+"Find Korean news stations"
+→ advanced_search(country="KR", tag="news")
 
 "High quality classical"
 → advanced_search(tag="classical", min_bitrate=192)
 
-"US pop stations over 128k"
-→ advanced_search(country="US", tag="pop", min_bitrate=128)
+"Japanese stations"
+→ search_by_country("JP")
 ```
 
-### Database Management
+### Favorites
 
 ```
-"Show database stats"
-→ get_db_stats()
+"Add to favorites"
+→ add_favorite(station)
 
-"Clean up dead stations"
-→ purge_dead()
+"Play my first favorite"
+→ play_favorite(0)
 
-"Sync Korean stations from Radio Browser"
-→ sync_with_api(country_code="KR")
-
-"Check health of 50 stations"
-→ health_check(limit=50)
+"Show my favorites"
+→ get_favorites()
 ```
 
-### AI Personalization
+### Recommendations
 
 ```
-"What are my listening patterns?"
-→ get_user_profile()
+"I want relaxing music"
+→ recommend("relaxing")
+
+"What's good for this weather?"
+→ recommend_by_weather("Seoul")
 
 "Recommend based on my taste"
 → personalized_recommend()
 
-"Recommend music for this weather"
-→ recommend_by_weather("Seoul")
+"Find similar stations"
+→ similar_stations()
+```
 
+### Timer & Alarm
+
+```
 "Set sleep timer for 30 minutes"
-→ sleep_timer(30)
+→ set_sleep_timer(30)
+
+"Cancel sleep timer"
+→ set_sleep_timer(0)
 
 "Wake me up at 7am with jazz"
-→ set_alarm("07:00", "jazz")
+→ set_alarm(7, 0, "jazz")
+
+"Set alarm for 6:30 with classical"
+→ set_alarm(6, 30, "classical")
+```
+
+### Volume
+
+```
+"Set volume to 50"
+→ set_volume(50)
+
+"What's the current volume?"
+→ get_volume()
 ```
 
 ## Multilingual Search
 
-Supports Korean, Japanese, Chinese, German, French, Spanish keywords:
+Supports 50+ languages:
 
 | Language | Example | Translated |
 |----------|---------|------------|
 | Korean | "재즈", "클래식", "뉴스" | jazz, classical, news |
 | Japanese | "ジャズ", "クラシック" | jazz, classical |
 | Chinese | "爵士乐", "古典音乐" | jazz, classical |
-| Korean | "한국", "미국", "일본" | KR, US, JP |
-
-Related terms also work:
-- "시사", "교양", "보도" → news
-- "토크쇼", "라디오쇼" → talk
+| Russian | "джаз", "классика" | jazz, classical |
+| Arabic | "موسيقى", "أخبار" | music, news |
+| Hindi | "संगीत", "समाचार" | music, news |
 
 ## Quality Filters
 
 | Keyword | Filter |
 |---------|--------|
-| "고음질", "HQ", "high quality" | min_bitrate=192 |
-| "최고음질", "HD" | min_bitrate=256 |
-| "저음질", "LQ" | max_bitrate=96 |
+| "HQ", "high quality" | 192kbps+ |
+| "HD" | 256kbps+ |
+| "LQ", "low quality" | 96kbps or less |
 
 ## Mood Keywords
 
@@ -192,70 +230,60 @@ Related terms also work:
 | AU | Australia |
 | CA | Canada |
 
-## Search Logic
+## Player Backends
 
-1. **DB Search** - Local SQLite database (24k+ verified stations)
-2. **API Search** - Radio Browser API (fresh results)
-3. **Merge & Dedupe** - Combine both, remove duplicates
-4. **Block Filter** - Remove blocked stations (e.g., propaganda)
+| Backend | Description |
+|---------|-------------|
+| mpv | Best quality, volume control, metadata |
+| vlc | Widely installed, stable |
+| ffplay | Lightweight, included with ffmpeg |
+| browser | No installation needed, fallback |
 
-## Playback Features
-
-### Auto Fresh URL
-When playing a station, the server automatically fetches the latest URL from API.
-This handles token-based streams that expire (KBS, MBC, etc.).
-
-### Song Tracking
-Songs are automatically tracked and saved to `recognized_songs.json`:
-- Artist, title parsed from stream metadata
-- Station name and timestamp
-- Accessible via `get_recognized_songs()`
-
-## Block List
-
-The following stations are permanently blocked:
-- 평양FM, Pyongyang, North Korea, DPRK, 조선중앙
+Auto-detection priority: mpv > vlc > ffplay > browser
 
 ## Data Storage
 
-All data is stored in `~/.radiocli/`:
+All data in `~/.radiocli/`:
 
 | File | Description |
 |------|-------------|
-| `favorites.json` | Saved favorite stations |
-| `history.json` | Listening history (stations) |
+| `favorites.json` | Favorite stations |
+| `history.json` | Listening history |
 | `recognized_songs.json` | Song recognition history |
-| `songs.json` | Auto-tracked songs (CLI) |
+| `last_station.json` | Last played (for resume) |
 | `mpv.sock` | mpv IPC socket |
 
-Database: `~/RadioCli/radio_stations.db` (SQLite)
+Database: `~/RadioCli/radio_stations.db` (24k+ stations)
 
 ## Requirements
 
-- **mpv**: Required for audio playback
+- **mpv** (recommended): Best audio quality
   ```bash
-  brew install mpv
+  brew install mpv        # macOS
+  apt install mpv         # Linux
+  winget install mpv      # Windows
   ```
 
-- **chromaprint** (optional): For AcoustID song recognition
+- **chromaprint** (optional): For song recognition
   ```bash
-  brew install chromaprint
+  brew install chromaprint ffmpeg
   ```
 
 ## Troubleshooting
 
 ### Radio won't play
-- Check if mpv is installed: `which mpv`
-- Check if another mpv instance is running: `pkill mpv`
+- Check mpv: `which mpv`
+- Kill existing: `pkill mpv`
+- Try different backend: `set_player_backend("vlc")`
 
 ### No song info
 - Not all stations provide metadata
-- Try premium/high-quality stations for better metadata
+- Try premium/high-quality stations
 
 ### Connection errors
 - Check internet connection
-- Radio Browser API may be temporarily unavailable
+- Radio Browser API may be temporarily down
 
-### Dead stations appearing
-- Run `purge_dead()` to remove dead stations
-- Run `health_check()` to verify and update status
+### Dead stations
+- Run `health_check()` to verify
+- Run `purge_dead()` to clean up

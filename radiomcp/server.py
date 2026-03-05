@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Radio MCP Server - 인터넷 라디오 검색 및 재생
-SQLite DB 우선, Radio Browser API fallback
+Radio MCP Server - Internet radio search and playback
+SQLite DB first, Radio Browser API fallback
 """
 
 import json
@@ -2031,14 +2031,14 @@ def search_by_language(language: str, limit: int = 20) -> list[dict]:
             """, (f"%{lang}%", limit))
             for row in cursor.fetchall():
                 r = format_station(row)
-                if r["url"] not in seen_urls:
+                if r and r["url"] not in seen_urls:
                     seen_urls.add(r["url"])
                     r["source"] = "db"
                     all_results.append(r)
         except Exception as e:
             pass  # DB error
 
-    # API 검색 (결과 부족시)
+    # API search (if results insufficient)
     if len(all_results) < limit:
         encoded = urllib.parse.quote(lang)
         api_results = api_get(f"stations/bylanguage/{encoded}", {
@@ -2053,8 +2053,9 @@ def search_by_language(language: str, limit: int = 20) -> list[dict]:
             if url and url not in seen_urls:
                 seen_urls.add(url)
                 station = format_station(s)
-                station["source"] = "api"
-                all_results.append(station)
+                if station:
+                    station["source"] = "api"
+                    all_results.append(station)
                 if is_valid_station(s):
                     add_station_to_db(s)
 
@@ -3092,7 +3093,7 @@ def recommend_by_weather(city: str = "Seoul") -> list[dict]:
     Returns:
         Weather-based recommendations
     """
-    # wttr.in 무료 API
+    # wttr.in free API
     try:
         url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1"
         req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
@@ -3141,7 +3142,19 @@ def recommend_by_weather(city: str = "Seoul") -> list[dict]:
             "stations": all_results[:10]
         }
     except Exception as e:
-        return {"error": str(e), "stations": []}
+        # Fallback: time-based recommendation if weather API fails
+        try:
+            time_result = recommend_by_time()
+            fallback_stations = time_result.get("stations", [])
+        except:
+            fallback_stations = []
+        return {
+            "city": city,
+            "weather": "unknown",
+            "temp_c": None,
+            "error": str(e),
+            "stations": fallback_stations
+        }
 
 
 @mcp.tool()
@@ -3243,7 +3256,7 @@ def get_user_profile() -> dict:
 
 
 @mcp.tool()
-def personalized_recommend(limit: int = 10) -> list[dict]:
+def personalized_recommend(limit: int = 10) -> dict:
     """
     Recommend stations based on user's listening patterns.
     Considers time of day, day of week, and overall preferences.
@@ -3713,67 +3726,6 @@ def get_listening_stats(period: str = "week") -> dict:
         "daily_minutes": [{"date": d, "minutes": round(m/60, 1)} for d, m in recent_days],
         "average_per_day": round(total_duration / 60 / max(len(daily), 1), 1)
     }
-
-
-# ============================================================
-# 볼륨 조절 (mpv IPC)
-# ============================================================
-@mcp.tool()
-def set_volume(level: int) -> dict:
-    """
-    Set playback volume.
-
-    Args:
-        level: Volume level (0-100)
-
-    Returns:
-        Volume status
-    """
-    if not 0 <= level <= 100:
-        return {"status": "error", "message": "Volume must be 0-100"}
-
-    if PLAYER_BACKEND != "mpv":
-        return {"status": "error", "message": f"Volume control only works with mpv (current: {PLAYER_BACKEND})"}
-
-    if not os.path.exists(MPV_SOCKET):
-        return {"status": "error", "message": "No active playback"}
-
-    try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        sock.connect(MPV_SOCKET)
-        sock.send(f'{{"command": ["set_property", "volume", {level}]}}\n'.encode())
-        sock.close()
-        return {"status": "ok", "volume": level}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
-@mcp.tool()
-def get_volume() -> dict:
-    """
-    Get current playback volume.
-
-    Returns:
-        Current volume level
-    """
-    if PLAYER_BACKEND != "mpv":
-        return {"status": "error", "message": f"Volume control only works with mpv (current: {PLAYER_BACKEND})"}
-
-    if not os.path.exists(MPV_SOCKET):
-        return {"status": "error", "message": "No active playback"}
-
-    try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        sock.connect(MPV_SOCKET)
-        sock.send(b'{"command": ["get_property", "volume"]}\n')
-        response = sock.recv(1024).decode()
-        sock.close()
-        data = json.loads(response)
-        return {"status": "ok", "volume": int(data.get("data", 100))}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 
 # ============================================================

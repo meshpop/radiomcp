@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RadioCli - 인터넷 라디오 검색 및 재생
+RadioCli - Internet radio search and playback CLI
 """
 
 import subprocess
@@ -17,30 +17,30 @@ import threading
 from datetime import datetime
 from collections import Counter
 
-# 데이터 파일 경로
+# Data file paths
 DATA_DIR = os.path.expanduser("~/.radiocli")
 FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
-SONGS_FILE = os.path.join(DATA_DIR, "songs.json")  # 곡 기록
-LAST_STATION_FILE = os.path.join(DATA_DIR, "last_station.json")  # 마지막 방송
+SONGS_FILE = os.path.join(DATA_DIR, "songs.json")  # Song history
+LAST_STATION_FILE = os.path.join(DATA_DIR, "last_station.json")  # Last station
 PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 
 # SQLite DB
 DB_PATH = os.path.expanduser("~/RadioCli/radio_stations.db")
 
-# API 모드: True=DB+API, False=DB만 (빠름)
-USE_API = False  # 기본값: DB만 (0.1초)
+# API mode: True=DB+API, False=DB only (fast)
+USE_API = True  # Default: DB only (0.1s)
 
-# 데이터 디렉토리 생성
+# Create data directory
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# === UI 언어 설정 ===
-UI_LANG = os.environ.get("RADIOCLI_LANG", "ko")
+# === UI Language Setting ===
+UI_LANG = os.environ.get("RADIOCLI_LANG", "en")
 
-# languages.json에서 다국어 로드 (70+ 언어 지원)
+# Load multilingual strings from languages.json (70+ languages)
 def load_languages():
-    """languages.json에서 UI 문자열 로드"""
-    script_dir = os.path.dirname(os.path.realpath(__file__))  # symlink 해결
+    """Load UI strings from languages.json"""
+    script_dir = os.path.dirname(os.path.realpath(__file__))  # Resolve symlinks
     lang_file = os.path.join(script_dir, "languages.json")
 
     if os.path.exists(lang_file):
@@ -50,148 +50,147 @@ def load_languages():
         except:
             pass
 
-    # 파일 없으면 기본 한국어/영어만
+    # Fallback: English only
     return {
-        "ko": {"name": "한국어", "title": "RadioCli 라디오", "search_hint": "검색", "search_examples": "재즈", "ai_recommend": "AI 추천", "my_taste": "내 취향", "mood_now": "분위기", "song_recognize": "곡 인식", "popular": "인기", "hq": "고음질", "genre": "장르", "country": "국가", "favorites": "즐겨찾기", "playlist": "플레이리스트", "premium": "프리미엄", "dj_mode": "DJ모드", "stop": "정지", "quit": "종료", "playing": "재생", "added_fav": "추가됨", "removed_fav": "제거됨", "already_fav": "이미 있음", "no_fav": "없음", "searching": "검색 중", "loading": "로딩 중", "no_results": "결과 없음", "invalid_num": "잘못된 번호", "help_after_play": "+ 즐겨찾기 | s 정지 | m 메뉴", "ad_playing": "광고", "history": "기록", "llm": "LLM"},
         "en": {"name": "English", "title": "RadioCli Radio", "search_hint": "Search", "search_examples": "jazz", "ai_recommend": "AI Recommend", "my_taste": "My Taste", "mood_now": "Mood", "song_recognize": "Recognize", "popular": "Popular", "hq": "Hi-Quality", "genre": "Genre", "country": "Country", "favorites": "Favorites", "playlist": "Playlist", "premium": "Premium", "dj_mode": "DJ Mode", "stop": "Stop", "quit": "Quit", "playing": "Playing", "added_fav": "Added", "removed_fav": "Removed", "already_fav": "Already exists", "no_fav": "None", "searching": "Searching", "loading": "Loading", "no_results": "No results", "invalid_num": "Invalid", "help_after_play": "+ fav | s stop | m menu", "ad_playing": "Ad", "history": "History", "llm": "LLM"}
     }
 
 UI_STRINGS = load_languages()
 
-# LANG_NAMES 자동 생성
+# Auto-generate LANG_NAMES
 LANG_NAMES = {code: data.get("name", code) for code, data in UI_STRINGS.items()}
 
-# 전체 국가 → UI 언어 매핑 (100+ 국가)
+# Country code → UI language mapping (100+ countries)
 COUNTRY_TO_UI_LANG = {
-    # 한국어
+    # Korean
     "KR": "ko", "KP": "ko",
-    # 영어
+    # English
     "US": "en", "GB": "en", "AU": "en", "CA": "en", "NZ": "en", "IE": "en", "ZA": "en", "PH": "en", "SG": "en", "IN": "en", "PK": "en", "NG": "en", "KE": "en", "GH": "en",
-    # 일본어
+    # Japanese
     "JP": "ja",
-    # 중국어
+    # Chinese
     "CN": "zh", "HK": "zh-tw", "TW": "zh-tw", "MO": "zh-tw",
-    # 스페인어
+    # Spanish
     "ES": "es", "MX": "es", "AR": "es", "CO": "es", "PE": "es", "VE": "es", "CL": "es", "EC": "es", "GT": "es", "CU": "es", "BO": "es", "DO": "es", "HN": "es", "PY": "es", "SV": "es", "NI": "es", "CR": "es", "PA": "es", "UY": "es", "PR": "es",
-    # 프랑스어
+    # French
     "FR": "fr", "BE": "fr", "CH": "fr", "LU": "fr", "MC": "fr", "SN": "fr", "CI": "fr", "CM": "fr", "MG": "fr", "ML": "fr",
-    # 독일어
+    # German
     "DE": "de", "AT": "de", "LI": "de",
-    # 이탈리아어
+    # Italian
     "IT": "it", "SM": "it", "VA": "it",
-    # 포르투갈어
+    # Portuguese
     "PT": "pt", "BR": "pt", "AO": "pt", "MZ": "pt",
-    # 러시아어
+    # Russian
     "RU": "ru", "BY": "ru", "KZ": "ru", "KG": "ru",
-    # 아랍어
+    # Arabic
     "SA": "ar", "AE": "ar", "EG": "ar", "IQ": "ar", "MA": "ar", "DZ": "ar", "SD": "ar", "SY": "ar", "TN": "ar", "YE": "ar", "JO": "ar", "LB": "ar", "LY": "ar", "KW": "ar", "OM": "ar", "QA": "ar", "BH": "ar",
-    # 힌디어
+    # Hindi
     "IN": "hi",
-    # 벵골어
+    # Bengali
     "BD": "bn",
-    # 인도네시아어
+    # Indonesian
     "ID": "id",
-    # 말레이어
+    # Malay
     "MY": "ms", "BN": "ms",
-    # 태국어
+    # Thai
     "TH": "th",
-    # 베트남어
+    # Vietnamese
     "VN": "vi",
-    # 필리핀어
+    # Filipino
     "PH": "tl",
-    # 터키어
+    # Turkish
     "TR": "tr", "CY": "tr",
-    # 폴란드어
+    # Polish
     "PL": "pl",
-    # 네덜란드어
+    # Dutch
     "NL": "nl",
-    # 스웨덴어
+    # Swedish
     "SE": "sv",
-    # 노르웨이어
+    # Norwegian
     "NO": "no",
-    # 덴마크어
+    # Danish
     "DK": "da",
-    # 핀란드어
+    # Finnish
     "FI": "fi",
-    # 체코어
+    # Czech
     "CZ": "cs",
-    # 슬로바키아어
+    # Slovak
     "SK": "sk",
-    # 헝가리어
+    # Hungarian
     "HU": "hu",
-    # 루마니아어
+    # Romanian
     "RO": "ro", "MD": "ro",
-    # 불가리아어
+    # Bulgarian
     "BG": "bg",
-    # 우크라이나어
+    # Ukrainian
     "UA": "uk",
-    # 크로아티아어
+    # Croatian
     "HR": "hr",
-    # 세르비아어
+    # Serbian
     "RS": "sr", "ME": "sr",
-    # 슬로베니아어
+    # Slovenian
     "SI": "sl",
-    # 에스토니아어
+    # Estonian
     "EE": "et",
-    # 라트비아어
+    # Latvian
     "LV": "lv",
-    # 리투아니아어
+    # Lithuanian
     "LT": "lt",
-    # 그리스어
+    # Greek
     "GR": "el",
-    # 히브리어
+    # Hebrew
     "IL": "he",
-    # 페르시아어
+    # Persian
     "IR": "fa", "AF": "fa",
-    # 우르두어
+    # Urdu
     "PK": "ur",
-    # 스와힐리어
+    # Swahili
     "TZ": "sw", "KE": "sw",
-    # 아프리칸스어
+    # Afrikaans
     "ZA": "af",
-    # 암하라어
+    # Amharic
     "ET": "am",
-    # 카탈루냐어
+    # Catalan
     "AD": "ca",
-    # 아이슬란드어
+    # Icelandic
     "IS": "is",
-    # 알바니아어
+    # Albanian
     "AL": "sq", "XK": "sq",
-    # 마케도니아어
+    # Macedonian
     "MK": "mk",
-    # 벨라루스어
+    # Belarusian
     "BY": "be",
-    # 카자흐어
+    # Kazakh
     "KZ": "kk",
-    # 우즈베크어
+    # Uzbek
     "UZ": "uz",
-    # 몽골어
+    # Mongolian
     "MN": "mn",
-    # 네팔어
+    # Nepali
     "NP": "ne",
-    # 싱할라어
+    # Sinhala
     "LK": "si",
-    # 미얀마어
+    # Burmese
     "MM": "my",
-    # 크메르어
+    # Khmer
     "KH": "km",
-    # 라오어
+    # Lao
     "LA": "lo",
-    # 조지아어
+    # Georgian
     "GE": "ka",
-    # 아르메니아어
+    # Armenian
     "AM": "hy",
-    # 아제르바이잔어
+    # Azerbaijani
     "AZ": "az",
 }
 
 def t(key):
-    """UI 문자열 번역"""
+    """Translate UI string"""
     strings = UI_STRINGS.get(UI_LANG, UI_STRINGS.get("en", {}))
     return strings.get(key, UI_STRINGS.get("en", {}).get(key, key))
 
 def show_languages(page=1):
-    """언어 선택 표시 (페이지당 20개)"""
+    """Show language selection (20 per page)"""
     per_page = 20
     langs = list(LANG_NAMES.items())
     total = len(langs)
@@ -210,7 +209,7 @@ def show_languages(page=1):
     print()
 
 def change_language(code):
-    """언어 변경"""
+    """Change language"""
     global UI_LANG
     code = code.lower().strip()
     if code in UI_STRINGS:
@@ -218,7 +217,7 @@ def change_language(code):
         print(f"  ✓ {LANG_NAMES.get(code, code)}\n")
         return True
     else:
-        # 페이지 번호인 경우
+        # If page number
         if code.isdigit():
             show_languages(int(code))
             return False
@@ -226,7 +225,7 @@ def change_language(code):
         return False
 
 def detect_language_by_ip():
-    """IP 기반 언어 자동 감지"""
+    """Auto-detect language by IP"""
     global UI_LANG
     try:
         req = urllib.request.Request(
@@ -244,48 +243,48 @@ def detect_language_by_ip():
     return None
 
 def init_language():
-    """언어 초기화 (환경변수 > IP 감지 > 기본값)"""
+    """Initialize language (env > IP > default)"""
     global UI_LANG
-    # 환경변수 설정 있으면 그거 사용
+    # Use environment variable if set
     env_lang = os.environ.get("RADIOCLI_LANG", "")
     if env_lang and env_lang in UI_STRINGS:
         UI_LANG = env_lang
         return
 
-    # IP로 자동 감지
+    # Auto-detect by IP
     detected = detect_language_by_ip()
     if detected:
         return
 
-    # 기본값
-    UI_LANG = "ko"
+    # Default
+    UI_LANG = "en"
 
-# 곡 인식 설정
-AUDD_API_KEY = os.environ.get("AUDD_API_KEY", "")  # 백업용
-SHAZAM_API_KEY = os.environ.get("SHAZAM_API_KEY", "")  # 백업용
-ACOUSTID_API_KEY = os.environ.get("ACOUSTID_API_KEY", "vQEDUkpM7e")  # AcoustID 무료 (하루 3000회)
+# Song recognition settings
+AUDD_API_KEY = os.environ.get("AUDD_API_KEY", "")  # Backup
+SHAZAM_API_KEY = os.environ.get("SHAZAM_API_KEY", "")  # Backup
+ACOUSTID_API_KEY = os.environ.get("ACOUSTID_API_KEY", "vQEDUkpM7e")  # AcoustID free (3000/day)
 RECOGNIZED_SONGS_FILE = os.path.join(DATA_DIR, "recognized_songs.json")
 RECORD_FILE = os.path.join(DATA_DIR, "record_sample.mp3")
 RECORD_WAV_FILE = os.path.join(DATA_DIR, "record_sample.wav")
 
-# === LLM 설정 ===
-# RADIOCLI_LLM: none(기본), auto, ollama, claude, openai
+# === LLM Settings ===
+# RADIOCLI_LLM: none(default), auto, ollama, claude, openai
 LLM_PROVIDER = os.environ.get("RADIOCLI_LLM", "none")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
-API_BASE = "https://de1.api.radio-browser.info/json"
+API_BASE = "http://158.247.247.115:8092"
 PLAYER = None
 PLAYER_PROC = None
 CURRENT_SONG_FILE = os.path.join(DATA_DIR, "current_song.txt")
 MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
-MPV_PID_FILE = os.path.join(DATA_DIR, "mpv.pid")  # MCP/CLI 공유
+MPV_PID_FILE = os.path.join(DATA_DIR, "mpv.pid")  # Shared MCP/CLI
 
 def kill_existing_mpv():
-    """기존 mpv 프로세스 종료 (MCP/CLI 공유)"""
-    # 1. IPC 소켓으로 종료 시도
+    """Kill existing mpv process (shared MCP/CLI)"""
+    # 1. Try to quit via IPC socket
     if os.path.exists(MPV_SOCKET):
         try:
             import socket as sock_module
@@ -298,7 +297,7 @@ def kill_existing_mpv():
         except:
             pass
 
-    # 2. PID 파일로 종료
+    # 2. Kill via PID file
     if os.path.exists(MPV_PID_FILE):
         try:
             with open(MPV_PID_FILE, 'r') as f:
@@ -306,7 +305,7 @@ def kill_existing_mpv():
             os.kill(pid, signal.SIGTERM)
             time.sleep(0.5)
             try:
-                os.kill(pid, 0)  # 아직 살아있나?
+                os.kill(pid, 0)  # still alive?
                 os.kill(pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
@@ -317,31 +316,31 @@ def kill_existing_mpv():
         except:
             pass
 
-    # 3. 최후의 수단: pkill로 radiocli mpv 죽이기
+    # 3. Last resort: pkill radiocli mpv
     try:
         subprocess.run(["pkill", "-f", "mpv.*radiocli"], timeout=2)
         time.sleep(0.3)
     except:
         pass
 
-    # 4. 소켓 파일 정리
+    # 4. Clean up socket file
     if os.path.exists(MPV_SOCKET):
         try:
             os.remove(MPV_SOCKET)
         except:
             pass
 
-# === SQLite DB 검색 (빠름) ===
+# === SQLite DB Search (fast) ===
 _db_cache = None
 
 def db_search(query=None, country=None, tag=None, limit=30):
-    """DB에서 검색 (메모리 캐시 사용)"""
+    """Search from DB (uses memory cache)"""
     global _db_cache
 
     if not os.path.exists(DB_PATH):
         return []
 
-    # 캐시 로드 (최초 1회)
+    # Load cache (first time only)
     if _db_cache is None:
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -359,13 +358,13 @@ def db_search(query=None, country=None, tag=None, limit=30):
 
     results = []
     for s in _db_cache:
-        # 국가 필터
+        # Country filter
         if country and s.get("countrycode", "").upper() != country.upper():
             continue
-        # 태그 필터
+        # Tag filter
         if tag and tag.lower() not in s.get("tags", "").lower():
             continue
-        # 이름 검색
+        # Name search
         if query and query.lower() not in s.get("name", "").lower():
             continue
 
@@ -376,7 +375,7 @@ def db_search(query=None, country=None, tag=None, limit=30):
     return results
 
 def mark_station_failed(url):
-    """재생 실패한 방송 기록 (3회 실패 시 dead 처리)"""
+    """Record failed station (mark dead after 3 fails)"""
     if not os.path.exists(DB_PATH):
         return
     try:
@@ -392,12 +391,12 @@ def mark_station_failed(url):
         conn.commit()
         conn.close()
         global _db_cache
-        _db_cache = None  # 캐시 무효화
+        _db_cache = None  # Invalidate cache
     except:
         pass
 
 def cleanup_dead_stations():
-    """죽은 방송 정리 (is_alive=0인 것들 삭제)"""
+    """Clean up dead stations (delete is_alive=0)"""
     if not os.path.exists(DB_PATH):
         return 0
     try:
@@ -415,7 +414,7 @@ def cleanup_dead_stations():
     except:
         return 0
 
-# 인기 장르 (tag, translation_key)
+# Popular genres (tag, translation_key)
 GENRES = {
     "1": ("pop", "genre_pop"),
     "2": ("rock", "genre_rock"),
@@ -429,7 +428,7 @@ GENRES = {
     "0": ("talk", "genre_talk"),
 }
 
-# 주요 국가 (code, translation_key)
+# Major countries (code, translation_key)
 COUNTRIES = {
     "kr": ("KR", "country_kr"),
     "us": ("US", "country_us"),
@@ -440,281 +439,281 @@ COUNTRIES = {
     "cn": ("CN", "country_cn"),
 }
 
-# 다국어 → 영어 매핑
+# Multilingual -> English mapping
 LANG_MAP = {
     # === 국가 (한국어, 영어, 일본어, 중국어, 독일어, 프랑스어, 스페인어) ===
-    # 한국
+    # Korea
     "한국": "KR", "korea": "KR", "korean": "KR", "south korea": "KR",
     "韓国": "KR", "かんこく": "KR", "韩国": "KR", "corea": "KR", "corée": "KR",
-    # 미국
+    # USA
     "미국": "US", "america": "US", "american": "US", "usa": "US", "united states": "US",
     "アメリカ": "US", "美国": "US", "amerika": "US", "états-unis": "US", "estados unidos": "US",
-    # 일본
+    # Japan
     "일본": "JP", "japan": "JP", "japanese": "JP",
     "日本": "JP", "にほん": "JP", "japón": "JP", "japon": "JP",
-    # 영국
+    # UK
     "영국": "GB", "uk": "GB", "britain": "GB", "british": "GB", "england": "GB",
     "イギリス": "GB", "英国": "GB", "reino unido": "GB", "royaume-uni": "GB",
-    # 독일
+    # Germany
     "독일": "DE", "germany": "DE", "german": "DE", "deutschland": "DE",
     "ドイツ": "DE", "德国": "DE", "alemania": "DE", "allemagne": "DE",
-    # 프랑스
+    # France
     "프랑스": "FR", "france": "FR", "french": "FR", "frankreich": "FR",
     "フランス": "FR", "法国": "FR", "francia": "FR",
-    # 중국
+    # China
     "중국": "CN", "china": "CN", "chinese": "CN",
     "中国": "CN", "ちゅうごく": "CN", "chine": "CN",
-    # 브라질
+    # Brazil
     "브라질": "BR", "brazil": "BR", "brasil": "BR", "brasilien": "BR",
     "ブラジル": "BR", "巴西": "BR", "brésil": "BR",
-    # 호주
+    # Australia
     "호주": "AU", "australia": "AU", "australian": "AU", "australien": "AU",
     "オーストラリア": "AU", "澳大利亚": "AU", "australie": "AU",
-    # 캐나다
+    # Canada
     "캐나다": "CA", "canada": "CA", "canadian": "CA", "kanada": "CA",
     "カナダ": "CA", "加拿大": "CA",
-    # 이탈리아
+    # Italy
     "이탈리아": "IT", "italy": "IT", "italian": "IT", "italien": "IT", "italia": "IT",
     "イタリア": "IT", "意大利": "IT", "italie": "IT",
-    # 스페인
+    # Spain
     "스페인": "ES", "spain": "ES", "spanish": "ES", "spanien": "ES", "españa": "ES",
     "スペイン": "ES", "西班牙": "ES", "espagne": "ES",
-    # 러시아
+    # Russia
     "러시아": "RU", "russia": "RU", "russian": "RU", "russland": "RU",
     "ロシア": "RU", "俄罗斯": "RU", "russie": "RU", "rusia": "RU",
-    # 인도
+    # India
     "인도": "IN", "india": "IN", "indian": "IN", "indien": "IN",
     "インド": "IN", "印度": "IN", "inde": "IN",
-    # 멕시코
+    # Mexico
     "멕시코": "MX", "mexico": "MX", "mexican": "MX", "mexiko": "MX",
     "メキシコ": "MX", "墨西哥": "MX", "mexique": "MX", "méxico": "MX",
-    # 네덜란드
+    # Netherlands
     "네덜란드": "NL", "netherlands": "NL", "dutch": "NL", "holland": "NL",
     "オランダ": "NL", "荷兰": "NL", "pays-bas": "NL", "países bajos": "NL",
-    # 스위스
+    # Switzerland
     "스위스": "CH", "switzerland": "CH", "swiss": "CH", "schweiz": "CH",
     "スイス": "CH", "瑞士": "CH", "suisse": "CH", "suiza": "CH",
 
-    # === 추가 언어: 힌디, 아랍, 러시아, 포르투갈, 이탈리아, 터키, 태국, 베트남, 인도네시아 ===
-    # 힌디어 (Hindi)
+    # === Additional languages: Hindi, Arabic, Russian, Portuguese, Italian, Turkish, Thai, Vietnamese, Indonesian ===
+    # Hindi (Hindi)
     "भारत": "IN", "इंडिया": "IN",  # India
     "अमेरिका": "US", "अमेरीका": "US",  # America
     "जापान": "JP", "कोरिया": "KR", "चीन": "CN", "रूस": "RU",
-    # 아랍어 (Arabic)
+    # Arabic (Arabic)
     "الهند": "IN", "أمريكا": "US", "اليابان": "JP", "كوريا": "KR",
     "الصين": "CN", "روسيا": "RU", "مصر": "EG", "السعودية": "SA",
-    # 러시아어 (Russian)
+    # Russian (Russian)
     "индия": "IN", "америка": "US", "япония": "JP", "корея": "KR",
     "китай": "CN", "россия": "RU", "германия": "DE", "франция": "FR",
-    # 포르투갈어 (Portuguese)
+    # Portuguese (Portuguese)
     "índia": "IN", "américa": "US", "japão": "JP", "coreia": "KR",
     "rússia": "RU", "alemanha": "DE", "frança": "FR", "itália": "IT",
-    # 이탈리아어 (Italian)
+    # Italian (Italian)
     "giappone": "JP", "corea": "KR", "cina": "CN", "germania": "DE",
     "spagna": "ES", "portogallo": "PT", "svizzera": "CH",
-    # 터키어 (Turkish)
+    # Turkish (Turkish)
     "hindistan": "IN", "amerika": "US", "japonya": "JP", "kore": "KR",
     "çin": "CN", "rusya": "RU", "almanya": "DE", "fransa": "FR",
-    # 태국어 (Thai)
+    # Thai (Thai)
     "อินเดีย": "IN", "อเมริกา": "US", "ญี่ปุ่น": "JP", "เกาหลี": "KR",
     "จีน": "CN", "รัสเซีย": "RU", "ไทย": "TH",
-    # 베트남어 (Vietnamese)
+    # Vietnamese (Vietnamese)
     "ấn độ": "IN", "mỹ": "US", "nhật bản": "JP", "hàn quốc": "KR",
     "trung quốc": "CN", "nga": "RU", "việt nam": "VN",
-    # 인도네시아어 (Indonesian)
+    # Indonesian (Indonesian)
     "india": "IN", "jepang": "JP", "tiongkok": "CN",
 
-    # === 유럽 언어 ===
-    # 폴란드어 (Polish)
+    # === European languages ===
+    # Polish (Polish)
     "polska": "PL", "stany zjednoczone": "US", "japonia": "JP", "niemcy": "DE",
     "francja": "FR", "hiszpania": "ES", "rosja": "RU",
-    # 네덜란드어 (Dutch)
+    # Dutch (Dutch)
     "nederland": "NL", "duitsland": "DE", "frankrijk": "FR",
     "spanje": "ES", "rusland": "RU",
-    # 스웨덴어 (Swedish)
+    # Swedish (Swedish)
     "sverige": "SE", "storbritannien": "GB", "tyskland": "DE", "frankrike": "FR",
-    # 노르웨이어 (Norwegian)
+    # Norwegian (Norwegian)
     "norge": "NO", "storbritannia": "GB",
-    # 덴마크어 (Danish)
+    # Danish (Danish)
     "danmark": "DK", "frankrig": "FR",
-    # 핀란드어 (Finnish)
+    # Finnish (Finnish)
     "suomi": "FI", "yhdysvallat": "US", "japani": "JP", "saksa": "DE",
     "ranska": "FR", "espanja": "ES", "venäjä": "RU",
-    # 체코어 (Czech)
+    # Czech (Czech)
     "česko": "CZ", "japonsko": "JP", "německo": "DE", "francie": "FR", "rusko": "RU",
-    # 헝가리어 (Hungarian)
+    # Hungarian (Hungarian)
     "magyarország": "HU", "japán": "JP", "németország": "DE", "franciaország": "FR",
     "oroszország": "RU", "kína": "CN",
-    # 루마니아어 (Romanian)
+    # Romanian (Romanian)
     "românia": "RO", "japonia": "JP", "germania": "DE", "rusia": "RU",
-    # 불가리아어 (Bulgarian)
+    # Bulgarian (Bulgarian)
     "българия": "BG", "сащ": "US", "япония": "JP", "испания": "ES",
-    # 우크라이나어 (Ukrainian)
+    # Ukrainian (Ukrainian)
     "україна": "UA", "сша": "US", "японія": "JP", "німеччина": "DE", "росія": "RU",
-    # 그리스어 (Greek)
+    # Greek (Greek)
     "ελλάδα": "GR", "ιαπωνία": "JP", "γερμανία": "DE", "γαλλία": "FR", "ρωσία": "RU",
-    # 크로아티아어/세르비아어 (Croatian/Serbian)
+    # Croatian/Serbian
     "hrvatska": "HR", "srbija": "RS", "njemačka": "DE", "francuska": "FR",
-    # 슬로베니아어/슬로바키아어 (Slovenian/Slovak)
+    # Slovenian/Slovak
     "slovenija": "SI", "slovensko": "SK", "nemecko": "DE",
 
-    # === 발트 언어 ===
-    # 에스토니아어 (Estonian)
+    # === Baltic languages ===
+    # Estonian (Estonian)
     "eesti": "EE", "ameerika": "US", "jaapan": "JP", "saksamaa": "DE",
-    # 라트비아어 (Latvian)
+    # Latvian (Latvian)
     "latvija": "LV", "japāna": "JP", "vācija": "DE",
-    # 리투아니아어 (Lithuanian)
+    # Lithuanian (Lithuanian)
     "lietuva": "LT", "japonija": "JP", "vokietija": "DE",
 
-    # === 코카서스/중앙아시아 언어 ===
-    # 조지아어 (Georgian)
+    # === Caucasus/Central Asian languages ===
+    # Georgian (Georgian)
     "საქართველო": "GE", "ამერიკა": "US", "იაპონია": "JP",
-    # 아제르바이잔어 (Azerbaijani)
+    # Azerbaijani (Azerbaijani)
     "azərbaycan": "AZ", "yaponiya": "JP", "almaniya": "DE",
-    # 카자흐어 (Kazakh)
+    # Kazakh (Kazakh)
     "қазақстан": "KZ", "жапония": "JP",
-    # 우즈베크어 (Uzbek)
+    # Uzbek (Uzbek)
     "oʻzbekiston": "UZ",
-    # 몽골어 (Mongolian)
+    # Mongolian (Mongolian)
     "монгол": "MN", "америк": "US", "япон": "JP",
 
-    # === 중동 언어 ===
-    # 히브리어 (Hebrew)
+    # === Middle Eastern languages ===
+    # Hebrew (Hebrew)
     "ישראל": "IL", "יפן": "JP", "גרמניה": "DE", "צרפת": "FR", "רוסיה": "RU",
-    # 페르시아어 (Persian/Farsi)
+    # Persian (Persian/Farsi)
     "ایران": "IR", "آمریکا": "US", "ژاپن": "JP", "آلمان": "DE", "روسیه": "RU",
-    # 우르두어 (Urdu)
+    # Urdu (Urdu)
     "پاکستان": "PK", "جاپان": "JP", "جرمنی": "DE",
 
-    # === 남아시아 언어 ===
-    # 벵골어 (Bengali)
+    # === South Asian languages ===
+    # Bengali (Bengali)
     "বাংলাদেশ": "BD", "ভারত": "IN", "আমেরিকা": "US", "জাপান": "JP",
-    # 타밀어 (Tamil)
+    # Tamil
     "இந்தியா": "IN", "அமெரிக்கா": "US", "ஜப்பான்": "JP",
-    # 텔루구어 (Telugu)
+    # Telugu
     "భారతదేశం": "IN", "అమెరికా": "US", "జపాన్": "JP",
-    # 구자라트어 (Gujarati)
+    # Gujarati
     "ભારત": "IN", "અમેરિકા": "US", "જાપાન": "JP",
-    # 펀자브어 (Punjabi)
+    # Punjabi
     "ਭਾਰਤ": "IN", "ਅਮਰੀਕਾ": "US", "ਜਾਪਾਨ": "JP",
-    # 네팔어 (Nepali)
+    # Nepali (Nepali)
     "नेपाल": "NP",
-    # 싱할라어 (Sinhala)
+    # Sinhala (Sinhala)
     "ශ්‍රී ලංකාව": "LK", "ඉන්දියාව": "IN",
 
-    # === 동남아시아 언어 ===
-    # 말레이어 (Malay)
+    # === Southeast Asian languages ===
+    # Malay (Malay)
     "malaysia": "MY", "jepun": "JP", "jerman": "DE", "perancis": "FR",
-    # 타갈로그어 (Tagalog/Filipino)
+    # Tagalog/Filipino
     "pilipinas": "PH", "hapon": "JP", "alemanya": "DE", "pransya": "FR",
-    # 크메르어 (Khmer)
+    # Khmer (Khmer)
     "កម្ពុជា": "KH", "ជប៉ុន": "JP",
-    # 미얀마어 (Burmese)
+    # Burmese (Burmese)
     "မြန်မာ": "MM", "ဂျပန်": "JP",
-    # 라오어 (Lao)
+    # Lao (Lao)
     "ລາວ": "LA", "ຍີ່ປຸ່ນ": "JP",
 
-    # === 아프리카 언어 ===
-    # 스와힐리어 (Swahili)
+    # === African languages ===
+    # Swahili (Swahili)
     "kenya": "KE", "tanzania": "TZ", "japani": "JP", "ujerumani": "DE",
-    # 암하라어 (Amharic)
+    # Amharic (Amharic)
     "ኢትዮጵያ": "ET", "ጃፓን": "JP",
-    # 아프리칸스어 (Afrikaans)
+    # Afrikaans (Afrikaans)
     "suid-afrika": "ZA",
 
     # === 장르 (한국어, 영어, 일본어, 중국어, 독일어, 프랑스어, 스페인어) ===
-    # 재즈
+    # Jazz
     "재즈": "jazz", "jazz": "jazz", "ジャズ": "jazz", "爵士": "jazz", "爵士乐": "jazz",
-    # 클래식
+    # Classical
     "클래식": "classical", "classical": "classical", "classic": "classical",
     "クラシック": "classical", "古典": "classical", "古典音乐": "classical",
     "klassik": "classical", "classique": "classical", "clásica": "classical",
-    # 팝
+    # Pop
     "팝": "pop", "pop": "pop", "pops": "pop", "ポップ": "pop", "流行": "pop",
-    # 록
+    # Rock
     "록": "rock", "rock": "rock", "ロック": "rock", "摇滚": "rock",
-    # 힙합
+    # Hip-hop
     "힙합": "hiphop", "hiphop": "hiphop", "hip-hop": "hiphop", "hip hop": "hiphop",
     "ヒップホップ": "hiphop", "嘻哈": "hiphop", "rap": "hiphop", "랩": "hiphop",
     # K-pop
     "케이팝": "kpop", "kpop": "kpop", "k-pop": "kpop", "케이-팝": "kpop",
     "韓国ポップ": "kpop", "韩流": "kpop",
-    # 뉴스 (확장)
+    # News (expanded)
     "뉴스": "news", "news": "news", "ニュース": "news", "新闻": "news",
     "nachrichten": "news", "nouvelles": "news", "noticias": "news",
     "시사": "news", "교양": "news", "정보": "news", "보도": "news",
     "information": "news", "current affairs": "news",
-    # 토크 (확장)
+    # Talk (expanded)
     "토크": "talk", "talk": "talk", "トーク": "talk", "谈话": "talk",
     "라디오쇼": "talk", "radio show": "talk", "talkshow": "talk", "토크쇼": "talk",
-    # 라운지
+    # Lounge
     "라운지": "lounge", "lounge": "lounge", "ラウンジ": "lounge",
     "chillout": "lounge", "chill": "lounge", "칠아웃": "lounge",
-    # 블루스
+    # Blues
     "블루스": "blues", "blues": "blues", "ブルース": "blues", "蓝调": "blues",
-    # 컨트리
+    # Country
     "컨트리": "country", "country": "country", "カントリー": "country", "乡村": "country",
-    # 일렉트로닉
+    # Electronic
     "일렉": "electronic", "electronic": "electronic", "electro": "electronic",
     "エレクトロ": "electronic", "电子": "electronic", "électronique": "electronic",
     "electronica": "electronic", "테크노": "electronic", "techno": "electronic",
-    # 댄스
+    # Dance
     "댄스": "dance", "dance": "dance", "ダンス": "dance", "舞曲": "dance",
-    # 발라드
+    # Ballad
     "발라드": "ballad", "ballad": "ballad", "バラード": "ballad",
     # R&B
     "알앤비": "rnb", "rnb": "rnb", "r&b": "rnb", "r and b": "rnb",
-    # 레게
+    # Reggae
     "레게": "reggae", "reggae": "reggae", "レゲエ": "reggae",
-    # 소울
+    # Soul
     "소울": "soul", "soul": "soul", "ソウル": "soul",
-    # 펑크
+    # Funk
     "펑크": "funk", "funk": "funk", "ファンク": "funk",
-    # 메탈
+    # Metal
     "메탈": "metal", "metal": "metal", "メタル": "metal", "heavy metal": "metal",
-    # 앰비언트
+    # Ambient
     "앰비언트": "ambient", "ambient": "ambient", "アンビエント": "ambient",
-    # 트로트
+    # Trot
     "트로트": "trot", "trot": "trot", "トロット": "trot", "연가": "trot",
-    # 종교
+    # Religious
     "종교": "religious", "religious": "religious", "christian": "religious",
     "gospel": "religious", "기독교": "religious", "찬송": "religious",
-    # 어린이
+    # Kids
     "어린이": "children", "children": "children", "kids": "children",
     "子供": "children", "儿童": "children", "키즈": "children",
-    # 올디스
+    # Oldies
     "올디스": "oldies", "oldies": "oldies", "オールディーズ": "oldies",
     "80년대": "80s", "80s": "80s", "90년대": "90s", "90s": "90s",
     "70년대": "70s", "70s": "70s", "60년대": "60s", "60s": "60s",
 
     # === 추가 언어 장르 ===
-    # 힌디어 (Hindi)
+    # Hindi (Hindi)
     "संगीत": "music", "जैज़": "jazz", "पॉप": "pop", "रॉक": "rock",
     "समाचार": "news", "शास्त्रीय": "classical",
-    # 아랍어 (Arabic)
+    # Arabic (Arabic)
     "موسيقى": "music", "جاز": "jazz", "بوب": "pop", "روك": "rock",
     "أخبار": "news", "كلاسيكي": "classical",
-    # 러시아어 (Russian)
+    # Russian (Russian)
     "музыка": "music", "джаз": "jazz", "поп": "pop", "рок": "rock",
     "новости": "news", "классика": "classical", "классическая": "classical",
-    # 포르투갈어 (Portuguese)
+    # Portuguese (Portuguese)
     "música": "music", "notícias": "news", "clássica": "classical",
     "notícia": "news", "eletrônica": "electronic",
-    # 이탈리아어 (Italian)
+    # Italian (Italian)
     "musica": "music", "notizie": "news", "classica": "classical",
     "elettronica": "electronic",
-    # 터키어 (Turkish)
+    # Turkish (Turkish)
     "müzik": "music", "caz": "jazz", "haber": "news", "klasik": "classical",
-    # 태국어 (Thai)
+    # Thai (Thai)
     "เพลง": "music", "แจ๊ส": "jazz", "ป๊อป": "pop", "ร็อค": "rock",
     "ข่าว": "news", "คลาสสิก": "classical",
-    # 베트남어 (Vietnamese)
+    # Vietnamese (Vietnamese)
     "nhạc": "music", "tin tức": "news", "cổ điển": "classical",
-    # 인도네시아어 (Indonesian)
+    # Indonesian (Indonesian)
     "musik": "music", "berita": "news", "klasik": "classical",
 }
 
-# 태그 확장 (관련 태그 함께 검색)
+# Tag expansion (search related tags together)
 TAG_EXPAND = {
     "news": ["news", "talk", "information"],
     "talk": ["talk", "news", "spoken word"],
@@ -728,26 +727,26 @@ TAG_EXPAND = {
     "kpop": ["kpop", "k-pop", "korean pop"],
 }
 
-# 품질 필터
+# Quality filters
 QUALITY_MAP = {
-    # 한국어
+    # Korean
     "고음질": {"min_bitrate": 192},
     "저음질": {"max_bitrate": 96},
     "최고음질": {"min_bitrate": 256},
     "hd": {"min_bitrate": 256},
-    # 영어
+    # English
     "high quality": {"min_bitrate": 192},
     "hq": {"min_bitrate": 192},
     "low quality": {"max_bitrate": 96},
     "lq": {"max_bitrate": 96},
-    # 구체적
+    # Specific
     "128k": {"min_bitrate": 128, "max_bitrate": 160},
     "192k": {"min_bitrate": 192, "max_bitrate": 224},
     "256k": {"min_bitrate": 256, "max_bitrate": 320},
     "320k": {"min_bitrate": 320},
 }
 
-# 블록 리스트 (blocklist.json에서 로드)
+# Block list (load from blocklist.json)
 BLOCK_LIST = []
 
 def load_blocklist():
@@ -767,7 +766,7 @@ def load_blocklist():
             except Exception:
                 pass
 
-# 시작 시 블록리스트 로드
+# Load blocklist on startup
 load_blocklist()
 
 def is_blocked(name):
@@ -921,7 +920,7 @@ def extract_json(text):
     return None
 
 def llm_search(query, limit=30):
-    """LLM 기반 자연어 검색"""
+    """LLM-based natural language search"""
     parsed = llm_parse_query(query)
     if not parsed:
         return None
@@ -945,7 +944,7 @@ def llm_search(query, limit=30):
 
     return None
 
-# === 즐겨찾기 ===
+# === Favorites ===
 def load_favorites():
     try:
         with open(FAVORITES_FILE, "r", encoding="utf-8") as f:
@@ -957,9 +956,9 @@ def save_favorites(favs):
     with open(FAVORITES_FILE, "w", encoding="utf-8") as f:
         json.dump(favs, f, ensure_ascii=False, indent=2)
 
-# === 마지막 방송 ===
+# === Last Station ===
 def save_last_station(station):
-    """마지막 재생 방송 저장"""
+    """Save last played station"""
     if station:
         try:
             with open(LAST_STATION_FILE, "w", encoding="utf-8") as f:
@@ -968,7 +967,7 @@ def save_last_station(station):
             pass
 
 def load_last_station():
-    """마지막 재생 방송 로드"""
+    """Load last played station"""
     if os.path.exists(LAST_STATION_FILE):
         try:
             with open(LAST_STATION_FILE, "r", encoding="utf-8") as f:
@@ -987,7 +986,7 @@ def load_history():
 
 def save_history(history):
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history[-500:], f, ensure_ascii=False, indent=2)  # 최근 500개만
+        json.dump(history[-500:], f, ensure_ascii=False, indent=2)  # Keep last 500
 
 def add_history(station, duration_sec):
     """청취 기록 추가"""
@@ -1030,13 +1029,13 @@ def analyze_preferences():
     if not history:
         return None
 
-    # 태그 빈도 (청취 시간 가중치)
+    # Tag frequency (weighted by listen time)
     tag_scores = Counter()
     country_scores = Counter()
-    hour_tags = {}  # 시간대별 선호 태그
+    hour_tags = {}  # Preferred tags by time
 
     for h in history:
-        weight = min(h.get("duration", 60) / 60, 10)  # 최대 10분 가중치
+        weight = min(h.get("duration", 60) / 60, 10)  # Max 10min weight
         tags = h.get("tags", "").split(",")
         hour = h.get("hour", 12)
 
@@ -1065,37 +1064,37 @@ def get_mood_recommendations(limit=20):
     hour = datetime.now().hour
     weekday = datetime.now().weekday()  # 0=월, 6=일
 
-    # 시간대별 분위기
-    if 5 <= hour < 9:  # 이른 아침
+    # Mood by time of day
+    if 5 <= hour < 9:  # Early morning
         tags = ["classical", "ambient", "lofi"]
         mood = "아침 기상"
-    elif 9 <= hour < 12:  # 오전
+    elif 9 <= hour < 12:  # Morning
         tags = ["pop", "jazz", "acoustic"]
         mood = "활기찬 오전"
-    elif 12 <= hour < 14:  # 점심
+    elif 12 <= hour < 14:  # Lunch
         tags = ["lounge", "pop", "jazz"]
         mood = "점심 휴식"
-    elif 14 <= hour < 18:  # 오후
+    elif 14 <= hour < 18:  # Afternoon
         tags = ["pop", "rock", "electronic"]
         mood = "집중 오후"
-    elif 18 <= hour < 21:  # 저녁
+    elif 18 <= hour < 21:  # Evening
         tags = ["jazz", "soul", "lounge"]
         mood = "퇴근 저녁"
-    elif 21 <= hour < 24:  # 밤
+    elif 21 <= hour < 24:  # Night
         tags = ["ambient", "lounge", "classical"]
         mood = "편안한 밤"
-    else:  # 새벽
+    else:  # Late night
         tags = ["ambient", "sleep", "classical"]
         mood = "고요한 새벽"
 
-    # 주말이면 조금 더 활기차게
-    if weekday >= 5:  # 토/일
+    # More energetic on weekends
+    if weekday >= 5:  # Sat/Sun
         tags = ["pop", "dance", "rock"] + tags
         mood += " (주말)"
 
     print(f"  {t('mood')}: {mood}")
 
-    # 여러 태그로 검색해서 합침
+    # Search multiple tags and merge
     all_results = []
     seen_urls = set()
     for tag in tags[:3]:
@@ -1118,26 +1117,26 @@ def get_personalized_recommendations(limit=20):
     if not prefs or not prefs["top_tags"]:
         return get_popular(limit)
 
-    # 현재 시간대 선호 태그
+    # Current time slot preferred tags
     current_hour = datetime.now().hour
     hour_prefs = prefs.get("hour_preferences", {})
 
-    # 시간대 매칭 (±2시간)
+    # Time slot matching (±2 hours)
     best_tags = []
     for h in range(current_hour - 2, current_hour + 3):
         h = h % 24
         if h in hour_prefs:
             best_tags.extend(hour_prefs[h].keys())
 
-    # 시간대 태그 없으면 전체 인기 태그 사용
+    # Use overall popular tags if no time slot tags
     if not best_tags:
         best_tags = [t[0] for t in prefs["top_tags"][:3]]
 
-    # 가장 많이 들은 태그로 검색
+    # Search by most listened tags
     if best_tags:
         tag = best_tags[0]
         results = search_by_tag(tag, limit * 2)
-        # 이미 들은 방송은 뒤로
+        # Put already listened stations at end
         history_urls = {h.get("url") for h in load_history()}
         new_stations = [s for s in results if s.get("url") not in history_urls]
         old_stations = [s for s in results if s.get("url") in history_urls]
@@ -1168,7 +1167,7 @@ def show_my_taste():
 
 def add_favorite(station):
     favs = load_favorites()
-    # 중복 체크
+    # Duplicate check
     for f in favs:
         if f.get("url") == station.get("url"):
             return False
@@ -1220,16 +1219,16 @@ def api_request(endpoint, params=None):
         return []
 
 def save_station_to_db(station):
-    """재생 성공한 방송 DB에 저장"""
+    """Save successfully played station to DB"""
     if not station or not os.path.exists(DB_PATH):
         return False
 
-    # 차단 목록 확인
+    # Check blocklist
     if is_blocked(station.get("name", "")):
         return False
 
     url = station.get("url_resolved") or station.get("url", "")
-    if not url or "?" in url:  # 토큰 URL 제외
+    if not url or "?" in url:  # Exclude token URLs
         return False
 
     try:
@@ -1288,17 +1287,23 @@ def merge_results(db_results, api_results, limit=30):
     return merged[:limit]
 
 def search(query, limit=20):
-    """DB + API 검색 (USE_API=False면 DB만)"""
+    """DB + API search (USE_API=False면 DB만)"""
     db_results = db_search(query=query, limit=limit)
     if not USE_API:
         return db_results[:limit]
-    api_results = api_request("stations/byname/" + urllib.parse.quote(query), {
-        "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
-    })
+    # Use unified search for Korean(/search) 사용
+    if any(ord(c) >= 0xAC00 and ord(c) <= 0xD7A3 for c in query):
+        api_results = api_request("search", {"q": query, "limit": limit})
+        if isinstance(api_results, dict) and "data" in api_results:
+            api_results = api_results.get("data", [])
+    else:
+        api_results = api_request("stations/byname/" + urllib.parse.quote(query), {
+            "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
+        })
     return merge_results(db_results, api_results, limit)
 
 def search_by_tag(tag, limit=20):
-    """DB + API 태그 검색"""
+    """DB + API tag search"""
     db_results = db_search(tag=tag, limit=limit)
     if not USE_API:
         return db_results[:limit]
@@ -1308,29 +1313,29 @@ def search_by_tag(tag, limit=20):
     return merge_results(db_results, api_results, limit)
 
 def search_by_country(code, limit=20):
-    """DB + API 국가 검색"""
+    """DB + API country search"""
     db_results = db_search(country=code, limit=limit)
     if not USE_API:
         return db_results[:limit]
-    api_results = api_request("stations/bycountrycodeexact/" + urllib.parse.quote(code.upper()), {
+    api_results = api_request("stations/bycountrycode/" + urllib.parse.quote(code.upper()), {
         "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
     return merge_results(db_results, api_results, limit)
 
 def get_popular(limit=20):
-    """인기 방송 (DB 우선)"""
+    """Popular stations (DB 우선)"""
     if not USE_API:
         # DB에서 clickcount 순
         db_results = db_search(limit=limit)
         return sorted(db_results, key=lambda x: x.get("clickcount", 0), reverse=True)[:limit]
-    return api_request("stations/topclick/" + str(limit))
+    return api_request("stations/toplisteners?limit=" + str(limit))
 
 def get_top_voted(limit=20):
     """인기 투표 상위"""
     return api_request("stations/topvote/" + str(limit))
 
 def get_high_quality(limit=30):
-    """고음질 방송 (256kbps 이상)"""
+    """High quality stations (256kbps 이상)"""
     params = {
         "bitrateMin": 256,
         "limit": limit,
@@ -1341,7 +1346,7 @@ def get_high_quality(limit=30):
     return api_request("stations/search", params)
 
 def get_premium(limit=30):
-    """프리미엄 방송 (고음질 + 인기) - 메타데이터 풍부할 가능성 높음"""
+    """Premium stations (고음질 + 인기) - 메타데이터 풍부할 가능성 높음"""
     params = {
         "bitrateMin": 192,
         "order": "votes",
@@ -1353,78 +1358,78 @@ def get_premium(limit=30):
     # votes가 높은 것만 필터링
     return [s for s in results if s.get("votes", 0) >= 100][:limit]
 
-# 자연어 → 태그 매핑 (분위기, 상황)
+# Natural language -> tag mapping (mood, situation)
 MOOD_MAP = {
-    # 활기찬/신나는
+    # Energetic/upbeat
     "신나는": ["dance", "electronic", "pop"], "신나": ["dance", "electronic"],
     "활기": ["dance", "pop", "rock"], "에너지": ["electronic", "dance"],
     "upbeat": ["dance", "pop"], "energetic": ["electronic", "rock"],
     "exciting": ["dance", "electronic"], "lively": ["pop", "dance"],
-    # 편안한/잔잔한
+    # Relaxing/calm
     "편안": ["lounge", "ambient", "classical"], "잔잔": ["ambient", "classical", "piano"],
     "relaxing": ["lounge", "ambient"], "calm": ["classical", "ambient"],
     "peaceful": ["classical", "ambient"], "soothing": ["lounge", "piano"],
     "차분": ["classical", "ambient"], "힐링": ["ambient", "nature", "classical"],
-    # 슬픈/감성
+    # Sad/emotional
     "슬픈": ["ballad", "blues"], "감성": ["ballad", "soul", "jazz"],
     "우울": ["blues", "ambient"], "멜랑꼴리": ["blues", "classical"],
     "sad": ["blues", "ballad"], "emotional": ["soul", "ballad"],
-    # 집중/공부
+    # Focus/study
     "집중": ["classical", "ambient", "lofi"], "공부": ["classical", "lofi", "ambient"],
     "focus": ["classical", "ambient"], "study": ["lofi", "classical"],
     "work": ["lofi", "ambient"], "concentration": ["classical", "ambient"],
-    # 수면
+    # Sleep
     "수면": ["ambient", "classical", "nature"], "잠": ["ambient", "sleep"],
     "sleep": ["ambient", "sleep", "nature"], "잠들": ["ambient", "sleep"],
-    # 운동
+    # Workout
     "운동": ["electronic", "dance", "rock"], "workout": ["electronic", "dance"],
     "gym": ["electronic", "rock"], "exercise": ["dance", "electronic"],
     "달리기": ["electronic", "dance"], "running": ["electronic", "dance"],
-    # 아침/출근
+    # Morning/commute
     "아침": ["pop", "classical", "jazz"], "출근": ["pop", "news", "jazz"],
     "morning": ["pop", "classical"], "commute": ["news", "pop"],
-    # 저녁/밤
+    # Evening/밤
     "저녁": ["jazz", "lounge", "classical"], "밤": ["lounge", "ambient", "jazz"],
     "evening": ["jazz", "lounge"], "night": ["lounge", "ambient"],
-    # 파티
+    # Party
     "파티": ["dance", "electronic", "pop"], "party": ["dance", "electronic"],
     "클럽": ["electronic", "dance"], "club": ["electronic", "dance"],
-    # 로맨틱
+    # Romantic
     "로맨틱": ["jazz", "ballad", "classical"], "romantic": ["jazz", "ballad"],
     "사랑": ["ballad", "pop"], "love": ["ballad", "pop"],
-    # 빠른/느린
+    # Fast/slow
     "빠른": ["electronic", "dance", "rock"], "fast": ["electronic", "dance"],
     "느린": ["ambient", "classical", "lounge"], "slow": ["ambient", "lounge"],
 }
 
 def natural_language_search(query, limit=30):
-    """자연어 쿼리를 분석해서 적절한 방송 검색"""
+    """Analyze natural language query and search appropriate stations"""
     query_lower = query.lower()
     found_tags = []
     found_country = None
 
-    # 분위기/상황 키워드 찾기
+    # Find mood/situation keywords
     for keyword, tags in MOOD_MAP.items():
         if keyword in query_lower:
             found_tags.extend(tags)
 
-    # 국가 키워드 찾기
+    # Find country keywords
     for keyword, code in LANG_MAP.items():
         if keyword.lower() in query_lower:
             if len(code) == 2 and code.isupper():
                 found_country = code
                 break
 
-    # 장르 키워드 찾기
+    # Find genre keywords
     for keyword, val in LANG_MAP.items():
         if keyword.lower() in query_lower and not (len(val) == 2 and val.isupper()):
             found_tags.append(val)
 
-    # 국가만 찾으면 국가별 검색
+    # If only country found, search by country
     if found_country and not found_tags:
         return search_by_country(found_country, limit)
 
-    # 태그 찾으면 태그 검색
+    # If tag found, search by tag
     if found_tags:
         from collections import Counter
         tag_counts = Counter(found_tags)
@@ -1442,11 +1447,11 @@ def natural_language_search(query, limit=30):
         else:
             return search_by_tag(best_tag, limit)
 
-    # 키워드 못 찾으면 일반 검색
+    # If no keyword found, general search
     return None
 
 def search_advanced(query, limit=50):
-    """스마트 검색: 국가 + 장르 + 품질 복합 지원"""
+    """Smart search: 국가 + 장르 + 품질 복합 지원"""
     query_lower = query.lower().strip()
 
     country = None
@@ -1465,10 +1470,10 @@ def search_advanced(query, limit=50):
     for phrase, val in sorted(LANG_MAP.items(), key=lambda x: -len(x[0])):
         phrase_lower = phrase.lower()
         if phrase_lower in remaining:
-            if len(val) == 2 and val.isupper():  # 국가코드
+            if len(val) == 2 and val.isupper():  # Country code
                 if not country:
                     country = val
-            else:  # 장르
+            else:  # Genre
                 if val not in tags:
                     tags.append(val)
             remaining = remaining.replace(phrase_lower, " ")
@@ -1493,14 +1498,14 @@ def search_advanced(query, limit=50):
             expanded_tags.extend(TAG_EXPAND[tag])
         else:
             expanded_tags.append(tag)
-    # 중복 제거, 순서 유지
+    # Remove duplicates, keep order
     seen = set()
     expanded_tags = [t for t in expanded_tags if not (t in seen or seen.add(t))]
 
-    # 5. 검색 실행
+    # 5. Execute search
     all_results = []
 
-    # 국가 + 태그 조합
+    # Country + tag combination
     if country and tags:
         if USE_API:
             params = {
@@ -1547,11 +1552,11 @@ def search_advanced(query, limit=50):
                 if "max_bitrate" in quality and bitrate > quality["max_bitrate"]:
                     continue
             filtered.append(s)
-        # 필터 결과 있으면 사용, 없으면 원본 유지 (필터 완화)
+        # Use filter results if available, else keep original
         if filtered:
             unique_results = filtered
         else:
-            # 품질 필터로 결과 없으면 정렬만 (높은 비트레이트 우선)
+            # Quality filters로 결과 없으면 정렬만 (높은 비트레이트 우선)
             pass
 
     # 8. 정렬: bitrate 높은 순 → votes 높은 순
@@ -1576,7 +1581,7 @@ def print_stations(stations):
     print(f"  {t('press_num')} | m={t('menu')} | g={t('genre')} | c={t('country')} | /{t('searching')}")
 
 def get_fresh_url(name):
-    """API에서 방송 이름으로 새 URL 가져오기"""
+    """Get fresh URL from API by station name"""
     if not name:
         return None
     results = api_request("stations/byname/" + urllib.parse.quote(name), {
@@ -1585,13 +1590,13 @@ def get_fresh_url(name):
     for s in results:
         if s.get("name", "").lower() == name.lower():
             return s.get("url_resolved") or s.get("url")
-    # 정확한 매칭 없으면 첫번째 결과
+    # If no exact match, return first result
     if results:
         return results[0].get("url_resolved") or results[0].get("url")
     return None
 
 def update_station_url(old_url, new_url):
-    """DB에서 방송 URL 업데이트"""
+    """Update station URL in DB"""
     if not os.path.exists(DB_PATH) or not new_url:
         return
     try:
@@ -1610,7 +1615,7 @@ def update_station_url(old_url, new_url):
 
 def play(url, name="", use_fresh_url=True):
     """
-    라디오 재생
+    Play radio
     use_fresh_url=True: API에서 최신 URL 먼저 가져옴 (토큰 만료 대응)
     """
     global PLAYER_PROC
@@ -1619,7 +1624,7 @@ def play(url, name="", use_fresh_url=True):
         print(f"  {t('no_player')}. brew install mpv")
         return False
 
-    # API에서 최신 URL 가져오기 (토큰 방식 방송 대응)
+    # Get fresh URL from API (handles token-based streams)
     play_url = url
     if use_fresh_url and name:
         fresh_url = get_fresh_url(name)
@@ -1634,7 +1639,7 @@ def play(url, name="", use_fresh_url=True):
     print(f"    (n: {t('view_current')})\n")
 
     try:
-        # 기존 mpv 종료 (MCP/CLI 공유)
+        # Kill existing mpv (shared MCP/CLI)
         kill_existing_mpv()
 
         if PLAYER == "mpv":
@@ -1649,7 +1654,7 @@ def play(url, name="", use_fresh_url=True):
                  "--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5",
                  f"--input-ipc-server={MPV_SOCKET}", play_url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                preexec_fn=os.setpgrp  # 프로세스 그룹 분리
+                preexec_fn=os.setpgrp  # Separate process group
             )
             # PID 파일 저장 (MCP/CLI 공유)
             with open(MPV_PID_FILE, 'w') as f:
@@ -1668,12 +1673,12 @@ def play(url, name="", use_fresh_url=True):
         # 2초 대기 후 프로세스 살아있는지 확인
         time.sleep(2)
         if PLAYER_PROC and PLAYER_PROC.poll() is not None:
-            # 프로세스 종료됨 = 재생 실패
+            # Process terminated = playback failed
             mark_station_failed(url)
-            print(f"  ✗ 재생 실패. 방송이 종료되었거나 접속 불가합니다.")
+            print(f"  ✗ Playback failed. Stream ended or unavailable.")
             return False
 
-        # 곡 모니터링 시작
+        # Start song monitoring
         start_song_monitor(name)
         return True
 
@@ -1681,7 +1686,7 @@ def play(url, name="", use_fresh_url=True):
         print(f"  {t('play_error')}: {e}")
         return False
 
-# 광고/필터 키워드
+# Ad/filter keywords
 AD_KEYWORDS = [
     "advertisement", "advertising", "commercial", "werbung", "publicité",
     "광고", "公告", "広告", "reklam", "anuncio", "pubblicità",
@@ -1700,7 +1705,7 @@ def is_advertisement(title):
     return False
 
 def get_current_song():
-    """현재 재생 중인 곡 정보 가져오기 (mpv IPC)"""
+    """Get current playing song info 가져오기 (mpv IPC)"""
     if PLAYER != "mpv" or not os.path.exists(MPV_SOCKET):
         return None
 
@@ -1719,7 +1724,7 @@ def get_current_song():
         data = json.loads(response)
         title = data.get("data", "")
         if title:
-            # 광고 필터링
+            # Ad filtering
             if is_advertisement(title):
                 return {"title": title, "is_ad": True}
             return {"title": title, "is_ad": False}
@@ -1759,7 +1764,7 @@ def load_songs():
 def save_songs(songs):
     """곡 기록 저장"""
     with open(SONGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(songs[-1000:], f, ensure_ascii=False, indent=2)  # 최대 1000곡
+        json.dump(songs[-1000:], f, ensure_ascii=False, indent=2)  # Max 1000 songs
 
 def parse_song_info(raw_title):
     """'Artist - Title' 형식 파싱"""
@@ -1801,7 +1806,7 @@ def show_song_history(limit=20):
         print(f"\n  곡 기록 없음\n")
         return
     print(f"\n  최근 들은 곡 ({len(songs)}개 중 {min(limit, len(songs))}개)")
-    print(f"  {'시간':<6} {'방송':<20} {'아티스트':<20} {'곡':<25}")
+    print(f"  {'Time':<6} {'Station':<20} {'Artist':<20} {'Song':<25}")
     print("  " + "-" * 75)
     for s in reversed(songs[-limit:]):
         ts = s.get("timestamp", "")
@@ -1812,10 +1817,10 @@ def show_song_history(limit=20):
         print(f"  {time_str:<6} {station:<20} {artist:<20} {title:<25}")
     print()
 
-# 곡 모니터링 설정
+# Song monitoring settings
 _song_monitor_thread = None
 _song_monitor_running = False
-SONG_MONITOR_ENABLED = True  # 곡 기록 온/오프
+SONG_MONITOR_ENABLED = True  # Song record on/off
 
 def start_song_monitor(station_name):
     """곡 변경 모니터링 시작 (백그라운드)"""
@@ -1849,7 +1854,7 @@ def clear_song_history():
 DJ_ENABLED = os.environ.get("RADIOCLI_DJ", "0") == "1"
 TTS_AUDIO_FILE = os.path.join(DATA_DIR, "tts_output.mp3")
 
-# 언어별 음성 및 DJ 멘트
+# Voice and DJ comments by language
 DJ_LANGUAGES = {
     "ko": {
         "voice": "ko-KR-SunHiNeural",
@@ -2033,7 +2038,7 @@ DJ_LANGUAGES = {
     },
 }
 
-# 국가 코드 → 언어 매핑
+# Country code -> language mapping
 COUNTRY_TO_LANG = {
     "KR": "ko", "KP": "ko",
     "US": "en", "GB": "en", "AU": "en", "CA": "en", "NZ": "en", "IE": "en",
@@ -2048,9 +2053,9 @@ COUNTRY_TO_LANG = {
 }
 
 def get_dj_language(station):
-    """방송국의 국가로 DJ 언어 결정"""
+    """Determine DJ language by station country"""
     country = station.get("countrycode") or station.get("country", "")
-    return COUNTRY_TO_LANG.get(country.upper(), "en")  # 기본값: 영어
+    return COUNTRY_TO_LANG.get(country.upper(), "en")  # Default: 영어
 
 # === 곡 인식 (Shazam-like) ===
 def load_recognized_songs():
@@ -2062,7 +2067,7 @@ def load_recognized_songs():
 
 def save_recognized_songs(songs):
     with open(RECOGNIZED_SONGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(songs[-100:], f, ensure_ascii=False, indent=2)  # 최근 100곡
+        json.dump(songs[-100:], f, ensure_ascii=False, indent=2)  # Last 100 songs
 
 def record_stream(url, duration=10):
     """스트림에서 오디오 녹음 (ffmpeg 사용)"""
@@ -2071,7 +2076,7 @@ def record_stream(url, duration=10):
         return False
 
     try:
-        # 기존 파일 삭제
+        # Delete existing file
         if os.path.exists(RECORD_FILE):
             os.remove(RECORD_FILE)
 
@@ -2150,7 +2155,7 @@ def recognize_with_whisper(audio_file):
             capture_output=True, text=True, timeout=60
         )
         if result.returncode == 0:
-            # 결과 파싱
+            # Parse results
             text = result.stdout.strip()
             if text:
                 return {"transcription": text, "method": "mlx-whisper"}
@@ -2188,13 +2193,13 @@ JSON 형식으로만 답하세요:
 {{"title": "곡제목", "artist": "아티스트"}}
 정보가 없으면: {{"title": null, "artist": null}}"""
 
-    parsed = llm_parse_query(prompt)  # 기존 LLM 함수 재사용
+    parsed = llm_parse_query(prompt)  # Reuse existing LLM function
     if parsed and parsed.get("title"):
         return parsed
     return None
 
 def recognize_song(station=None):
-    """현재 재생 중인 곡 인식 (무료 방식들)"""
+    """Recognize current playing song (무료 방식들)"""
     if not PLAYER_PROC:
         print(f"  {t('no_playing')}\n")
         return None
@@ -2214,7 +2219,7 @@ def recognize_song(station=None):
             print(f"\n  📢 {t('ad_playing')}\n")
             return None
         print(f"\n  🎵 {t('metadata')}: {song['title']}\n")
-        # 이미 저장된 정보 사용
+        # Use already saved info
         result = {"title": song["title"], "method": "metadata"}
         if " - " in song["title"]:
             parts = song["title"].split(" - ", 1)
@@ -2266,7 +2271,7 @@ def recognize_song(station=None):
 
 def save_song_result(result, station):
     """인식 결과 저장 (광고 제외)"""
-    # 광고면 저장 안함
+    # Do not save if ad
     title = result.get("title", "")
     if is_advertisement(title):
         return
@@ -2401,10 +2406,10 @@ def mpv_get_property(prop):
         return None
 
 # ============================================================
-# 볼륨 조절
+# Volume control
 # ============================================================
 def set_volume(level):
-    """볼륨 설정 (0-100)"""
+    """Set volume (0-100)"""
     if PLAYER != "mpv":
         print(f"  {t('volume_mpv_only')}\n")
         return False
@@ -2417,27 +2422,27 @@ def set_volume(level):
     return False
 
 def get_volume():
-    """현재 볼륨 가져오기"""
+    """Get current volume 가져오기"""
     if PLAYER != "mpv":
         return None
     return mpv_get_property("volume")
 
 def volume_up(step=10):
-    """볼륨 올리기"""
+    """Volume up"""
     vol = get_volume()
     if vol is not None:
         new_vol = min(100, int(vol) + step)
         set_volume(new_vol)
 
 def volume_down(step=10):
-    """볼륨 내리기"""
+    """Volume down"""
     vol = get_volume()
     if vol is not None:
         new_vol = max(0, int(vol) - step)
         set_volume(new_vol)
 
 def show_volume():
-    """현재 볼륨 표시"""
+    """Get current volume 표시"""
     vol = get_volume()
     if vol is not None:
         print(f"  🔊 {t('volume_label')}: {int(vol)}%\n")
@@ -2445,7 +2450,7 @@ def show_volume():
         print(f"  {t('volume_error')}\n")
 
 # ============================================================
-# 스테이션 상태 체크
+# Station status check
 # ============================================================
 def check_station_url(url):
     """스테이션 URL 상태 체크"""
@@ -2465,7 +2470,7 @@ def check_station_url(url):
         return {"status": "error", "error": str(e)}
 
 def check_current_station(station):
-    """현재 방송 상태 체크"""
+    """Check current station status"""
     if not station:
         print(f"  {t('no_playing')}\n")
         return
@@ -2481,10 +2486,10 @@ def check_current_station(station):
         print(f"  ✗ {t('station_dead')}: {result.get('error', '')}\n")
 
 # ============================================================
-# 스테이션 공유
+# Station sharing
 # ============================================================
 def share_station(station):
-    """방송 공유 정보"""
+    """Get station share info"""
     if not station:
         print(f"  {t('no_playing')}\n")
         return
@@ -2505,6 +2510,87 @@ def share_station(station):
     print(f"  └─ {t('share_label')}: 🎵 {name} - {tags}")
     print()
 
+# ============================================================
+# Sleep timer / 알람
+# ============================================================
+_sleep_timer = None
+
+def set_sleep_timer(minutes):
+    """Set sleep timer"""
+    global _sleep_timer
+
+    if minutes <= 0:
+        if _sleep_timer:
+            _sleep_timer.cancel()
+            _sleep_timer = None
+            print(f"  ⏰ {t('sleep_timer_off')}\n")
+        else:
+            print(f"  {t('sleep_timer_not_set')}\n")
+        return
+
+    # Cancel existing timer
+    if _sleep_timer:
+        _sleep_timer.cancel()
+
+    def auto_stop():
+        global _sleep_timer
+        stop()
+        print(f"\n  💤 {t('sleep_timer_stopped')}\n")
+        _sleep_timer = None
+
+    _sleep_timer = threading.Timer(minutes * 60, auto_stop)
+    _sleep_timer.start()
+    print(f"  ⏰ {t('sleep_timer_set')}: {minutes}{t('minutes')}\n")
+
+def show_sleep_timer():
+    """Sleep timer status"""
+    if _sleep_timer and _sleep_timer.is_alive():
+        print(f"  ⏰ {t('sleep_timer_active')}\n")
+    else:
+        print(f"  {t('sleep_timer_not_set')}\n")
+
+_alarm_timer = None
+
+def set_alarm(hour, minute=0, station_query="pop"):
+    """Set alarm"""
+    global _alarm_timer
+
+    if _alarm_timer:
+        _alarm_timer.cancel()
+
+    now = datetime.now()
+    alarm_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    if alarm_time <= now:
+        alarm_time = alarm_time.replace(day=alarm_time.day + 1)
+
+    delay = (alarm_time - now).total_seconds()
+
+    def alarm_play():
+        global _alarm_timer
+        print(f"\n  ⏰ {t('alarm_triggered')}\n")
+        # Search popular stations and play
+        stations = search_by_tag(station_query, 5)
+        if stations:
+            s = stations[0]
+            url = s.get("url_resolved") or s.get("url")
+            play(url, s.get("name", ""))
+        _alarm_timer = None
+
+    _alarm_timer = threading.Timer(delay, alarm_play)
+    _alarm_timer.start()
+    print(f"  ⏰ {t('alarm_set')}: {alarm_time.strftime('%H:%M')} ({station_query})\n")
+
+def cancel_alarm():
+    """Cancel alarm"""
+    global _alarm_timer
+    if _alarm_timer:
+        _alarm_timer.cancel()
+        _alarm_timer = None
+        print(f"  ⏰ {t('alarm_cancelled')}\n")
+    else:
+        print(f"  {t('alarm_not_set')}\n")
+
 def pause_radio():
     """라디오 일시정지"""
     mpv_command(["set_property", "pause", True])
@@ -2517,7 +2603,7 @@ def speak(text, voice=None, pause_radio_playback=True):
     """TTS로 말하기 (Edge TTS)"""
     voice = voice or TTS_VOICE
     try:
-        # 1. 라디오 재생 중이면 일시정지
+        # 1. Play radio 중이면 일시정지
         radio_was_playing = PLAYER_PROC is not None and pause_radio_playback
         if radio_was_playing:
             pause_radio()
@@ -2562,11 +2648,11 @@ def dj_announce_station(station):
     name = station.get("name", "")
     tags = station.get("tags", "").split(",")[0] if station.get("tags") else "music"
 
-    # 언어 결정
+    # Determine language
     lang = get_dj_language(station)
     lang_data = DJ_LANGUAGES.get(lang, DJ_LANGUAGES["en"])
 
-    # 템플릿 선택 및 포맷
+    # Select and format template
     template = random.choice(lang_data["station_intros"])
     text = template.format(name=name, tags=tags)
 
@@ -2579,13 +2665,13 @@ def dj_announce_song(title, station=None):
 
     import random
 
-    # 언어 결정
-    lang = "en"  # 기본값
+    # Determine language
+    lang = "en"  # Default
     if station:
         lang = get_dj_language(station)
     lang_data = DJ_LANGUAGES.get(lang, DJ_LANGUAGES["en"])
 
-    # 아티스트 - 제목 형식 파싱
+    # Parse artist - title format
     if " - " in title:
         parts = title.split(" - ", 1)
         artist, song = parts[0].strip(), parts[1].strip()
@@ -2627,10 +2713,10 @@ def create_smart_playlist(name, criteria):
     stations = []
 
     if criteria == "favorites":
-        # 즐겨찾기 기반
+        # Based on favorites
         stations = load_favorites()
     elif criteria == "history":
-        # 최근 청취 기반 (중복 제거)
+        # Based on recent listens (deduped)
         history = load_history()
         seen = set()
         for h in reversed(history):
@@ -2641,17 +2727,17 @@ def create_smart_playlist(name, criteria):
             if len(stations) >= 20:
                 break
     elif criteria == "mood":
-        # 현재 분위기 기반
+        # Based on current mood
         stations = get_mood_recommendations(20)
     elif criteria == "ai":
         # AI 추천 기반
         stations = get_personalized_recommendations(20)
     elif criteria.startswith("tag:"):
-        # 특정 태그
+        # Specific tag
         tag = criteria[4:]
         stations = search_by_tag(tag, 20)
     elif criteria.startswith("country:"):
-        # 특정 국가
+        # Specific country
         code = criteria[8:]
         stations = search_by_country(code, 20)
 
@@ -2689,7 +2775,7 @@ def get_playlist_stations(name):
     playlists = load_playlists()
     if name in playlists:
         return playlists[name].get("stations", [])
-    # 번호로 접근
+    # Access by number
     try:
         idx = int(name) - 1
         keys = list(playlists.keys())
@@ -2702,7 +2788,7 @@ def get_playlist_stations(name):
 def delete_playlist(name):
     """플레이리스트 삭제"""
     playlists = load_playlists()
-    # 번호로 삭제
+    # Delete by number
     try:
         idx = int(name) - 1
         keys = list(playlists.keys())
@@ -2719,8 +2805,8 @@ def delete_playlist(name):
 
 def stop():
     global PLAYER_PROC
-    stop_song_monitor()  # 곡 모니터링 중지
-    # 공유 함수로 mpv 종료 (MCP와 호환)
+    stop_song_monitor()  # Stop song monitoring
+    # Kill mpv via shared function (MCP compatible)
     kill_existing_mpv()
     PLAYER_PROC = None
     return True
@@ -2750,7 +2836,7 @@ def display_width(s):
         ea = unicodedata.east_asian_width(c)
         if ea in ('F', 'W'):
             width += 2
-        elif ord(c) > 0x1F000:  # 이모지
+        elif ord(c) > 0x1F000:  # Emoji
             width += 2
         else:
             width += 1
@@ -2798,7 +2884,7 @@ def show_menu():
   v {t('volume'):<6} v+/v-   check   share
   hl {t('history')}({history_count})  d DJ   ! {t('mode')}  q {t('quit')}
 
-  ⚙️  lang ({UI_LANG})
+  ⏰ sleep N  alarm HH:MM  ⚙️ lang ({UI_LANG})
 
 {search_hint}
 """)
@@ -2819,19 +2905,19 @@ def show_countries():
 def main():
     global PLAYER
 
-    # 언어 자동 감지
+    # Auto-detect language
     init_language()
 
     PLAYER = get_player()
     if not PLAYER:
-        print(t('no_results'))  # 플레이어 없음 메시지
+        print(t('no_results'))  # No player message
         print("  brew install mpv")
         sys.exit(1)
 
     stations = []
-    current_station = None  # 현재 재생 중인 방송
-    play_start_time = None  # 재생 시작 시간
-    fav_index = -1  # 현재 즐겨찾기 인덱스 (이전/다음용)
+    current_station = None  # Currently playing station
+    play_start_time = None  # Play start time
+    fav_index = -1  # Current favorite index (for prev/next)
     mode = "menu"  # menu, genre, country, search, list, fav
 
     def signal_handler(sig, frame):
@@ -2868,7 +2954,7 @@ def main():
                 show_menu()
             continue
 
-        # 종료
+        # Quit
         if cmd == "q":
             stop()
             break
@@ -2877,19 +2963,20 @@ def main():
         if cmd == "!":
             global USE_API
             USE_API = not USE_API
-            mode_str = "DB+API" if USE_API else "DB만 (빠름)"
+            mode_str = "DB+API" if USE_API else "DB만 (fast)"
             print(f"  검색 모드: {mode_str}\n")
             continue
 
-        # 이어듣기 (마지막 방송)
+        # Resume (last station)
         if cmd == "r":
             last = load_last_station()
             if last:
-                # 기존 재생 기록 저장
+                # Save existing play record
                 if PLAYER_PROC and current_station and play_start_time:
                     duration = int(time.time() - play_start_time)
                     add_history(current_station, duration)
                 current_station = last
+                record_click(last)  # Track click
                 url = last.get("url_resolved") or last.get("url")
                 dj_announce_station(last)
                 play(url, last.get("name", ""))
@@ -2899,7 +2986,7 @@ def main():
                 print("  마지막 재생 방송이 없습니다.\n")
             continue
 
-        # 정지
+        # Stop
         if cmd == "s":
             if PLAYER_PROC and current_station and play_start_time:
                 duration = int(time.time() - play_start_time)
@@ -2910,7 +2997,7 @@ def main():
                 play_start_time = None
             continue
 
-        # 현재 곡 보기
+        # View current song
         if cmd == "n":
             show_current_song()
             # DJ 모드면 곡 소개
@@ -2919,7 +3006,7 @@ def main():
                 dj_announce_song(song["title"], current_station)
             continue
 
-        # 볼륨 조절
+        # Volume control
         if cmd == "v" or cmd == "v?":
             show_volume()
             continue
@@ -2933,47 +3020,47 @@ def main():
             set_volume(int(cmd[1:]))
             continue
 
-        # 스테이션 상태 체크
+        # Station status check
         if cmd == "check":
             check_current_station(current_station)
             continue
 
-        # 스테이션 공유
+        # Station sharing
         if cmd == "share":
             share_station(current_station)
             continue
 
-        # 곡 인식 (Shazam-like)
+        # Song recognition (Shazam-like)
         if cmd == "i":
             recognize_song(current_station)
             continue
 
-        # 강제 AcoustID 테스트
+        # Force AcoustID test
         if cmd == "i2":
             recognize_song_acoustid(current_station)
             continue
 
-        # 강제 Whisper 테스트
+        # Force Whisper test
         if cmd == "i3":
             recognize_song_whisper(current_station)
             continue
 
-        # 인식된 곡 목록
+        # Recognized songs list
         if cmd == "il":
             show_recognized_songs()
             continue
 
-        # 곡 기록 보기
+        # View song history
         if cmd == "sl":
             show_song_history()
             continue
 
-        # 청취 기록 보기 (방송국)
+        # View listening history (stations)
         if cmd == "hl":
             show_listening_history()
             continue
 
-        # 곡 기록 토글 (온/오프)
+        # Toggle song recording (on/off)
         if cmd == "st":
             global SONG_MONITOR_ENABLED
             SONG_MONITOR_ENABLED = not SONG_MONITOR_ENABLED
@@ -2981,7 +3068,7 @@ def main():
             print(f"  곡 기록: {status}\n")
             continue
 
-        # 곡 기록 삭제
+        # Delete song records
         if cmd == "sc":
             clear_song_history()
             continue
@@ -2991,20 +3078,55 @@ def main():
             toggle_dj()
             continue
 
-        # 언어 변경
+        # Sleep timer: sleep 30
+        if cmd.startswith("sleep"):
+            parts = cmd.split()
+            if len(parts) >= 2:
+                try:
+                    minutes = int(parts[1])
+                    set_sleep_timer(minutes)
+                except ValueError:
+                    print(f"  {t('usage')}: sleep 30\n")
+            else:
+                show_sleep_timer()
+            continue
+
+        # Alarm: alarm 7:00 jazz
+        if cmd.startswith("alarm"):
+            parts = cmd.split()
+            if len(parts) >= 2:
+                if parts[1] == "off":
+                    cancel_alarm()
+                else:
+                    try:
+                        time_parts = parts[1].split(":")
+                        hour = int(time_parts[0])
+                        minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+                        query = parts[2] if len(parts) > 2 else "pop"
+                        set_alarm(hour, minute, query)
+                    except (ValueError, IndexError):
+                        print(f"  {t('usage')}: alarm 7:00 jazz | alarm off\n")
+            else:
+                if _alarm_timer and _alarm_timer.is_alive():
+                    print(f"  ⏰ {t('alarm_active')}\n")
+                else:
+                    print(f"  {t('alarm_not_set')}\n")
+            continue
+
+        # Change language
         if cmd == "lang":
             show_languages()
             mode = "lang"
             continue
 
-        # 언어 선택
+        # Select language
         if mode == "lang":
             if change_language(cmd):
                 mode = "menu"
                 show_menu()
             continue
 
-        # 플레이리스트
+        # Playlist
         if cmd == "l":
             pl_names = show_playlists()
             if pl_names:
@@ -3012,7 +3134,7 @@ def main():
                 print(f"  ({t('enter_num_play')}, -{t('enter_num_del')})")
             continue
 
-        # 플레이리스트 생성: pl 이름 타입
+        # Create playlist: pl name type
         if cmd.startswith("pl "):
             parts = cmd[3:].split()
             if len(parts) >= 2:
@@ -3028,15 +3150,15 @@ def main():
                 print(f"  {t('pl_types')}: favorites, history, mood, ai, tag:jazz, country:KR\n")
             continue
 
-        # 플레이리스트 모드에서 선택
+        # Selection in playlist mode
         if mode == "playlist":
             if cmd.startswith("-"):
-                # 삭제
+                # Delete
                 if delete_playlist(cmd[1:]):
                     print(f"  ✗ {t('deleted')}\n")
                     show_playlists()
                 continue
-            # 재생 목록 표시
+            # Show playlist
             pl_stations = get_playlist_stations(cmd)
             if pl_stations:
                 stations = pl_stations
@@ -3046,25 +3168,25 @@ def main():
                 print(f"  {t('invalid_num')}\n")
             continue
 
-        # 메뉴
+        # Menu
         if cmd == "m":
             mode = "menu"
             show_menu()
             continue
 
-        # 장르 모드
+        # Genre 모드
         if cmd == "g":
             mode = "genre"
             show_genres()
             continue
 
-        # 국가 모드
+        # Country mode
         if cmd == "c":
             mode = "country"
             show_countries()
             continue
 
-        # 인기
+        # Popular
         if cmd == "p":
             print(f"  {t('popular_loading')}...")
             stations = get_popular()
@@ -3073,7 +3195,7 @@ def main():
                 mode = "list"
             continue
 
-        # 고음질
+        # High quality
         if cmd == "h":
             print(f"  {t('hq_loading')} (256k+)...")
             stations = get_high_quality()
@@ -3082,7 +3204,7 @@ def main():
                 mode = "list"
             continue
 
-        # 추천 (프리미엄)
+        # Recommend (premium)
         if cmd == "r":
             print(f"  {t('recommend_loading')}...")
             stations = get_premium()
@@ -3100,7 +3222,7 @@ def main():
                 mode = "list"
             continue
 
-        # 분위기 추천 (시간대 기반)
+        # Mood recommend (time-based)
         if cmd == "w":
             print(f"  {t('mood_recommend')} ({t('time_based')})...")
             stations = get_mood_recommendations()
@@ -3109,12 +3231,12 @@ def main():
                 mode = "list"
             continue
 
-        # 내 취향 분석
+        # My taste analysis
         if cmd == "t":
             show_my_taste()
             continue
 
-        # 즐겨찾기 보기
+        # View favorites
         if cmd == "f":
             favs = print_favorites()
             if favs:
@@ -3123,7 +3245,7 @@ def main():
                 print(f"  ({t('enter_num_play')}, -{t('enter_num_del')})")
             continue
 
-        # 즐겨찾기 추가
+        # Add to favorites
         if cmd == "+" and current_station:
             if add_favorite(current_station):
                 print(f"  ★ {t('added_fav')}: {current_station.get('name', '')}\n")
@@ -3131,7 +3253,7 @@ def main():
                 print(f"  {t('already_fav')}\n")
             continue
 
-        # 즐겨찾기 제거 (현재 재생 중인 방송)
+        # Remove from favorites (current station)
         if cmd == "-" and current_station:
             url = current_station.get("url_resolved") or current_station.get("url", "")
             favs = load_favorites()
@@ -3143,7 +3265,7 @@ def main():
                 print(f"  {t('no_fav')}\n")
             continue
 
-        # 이전 즐겨찾기 방송
+        # Previous favorite station
         if cmd == "<" or cmd == ",":
             favs = load_favorites()
             if not favs:
@@ -3163,7 +3285,7 @@ def main():
             print(f"  [{fav_index + 1}/{len(favs)}] {s.get('name', '')}\n")
             continue
 
-        # 다음 즐겨찾기 방송
+        # Next favorite station
         if cmd == ">" or cmd == ".":
             favs = load_favorites()
             if not favs:
@@ -3183,13 +3305,13 @@ def main():
             print(f"  [{fav_index + 1}/{len(favs)}] {s.get('name', '')}\n")
             continue
 
-        # 검색 모드
+        # Search mode
         if cmd == "/":
             mode = "search"
             print(f"  {t('enter_search')} ({t('enter_cancel')})")
             continue
 
-        # 장르 선택
+        # Genre 선택
         if mode == "genre":
             if cmd in GENRES:
                 tag, name_key = GENRES[cmd]
@@ -3199,7 +3321,7 @@ def main():
                 if stations:
                     mode = "list"
             else:
-                # 직접 입력한 장르
+                # Directly entered genre
                 print(f"  '{cmd}' {t('searching_for')}...")
                 stations = search_by_tag(cmd)
                 print_stations(stations)
@@ -3207,7 +3329,7 @@ def main():
                     mode = "list"
             continue
 
-        # 국가 선택
+        # Select country
         if mode == "country":
             if cmd in COUNTRIES:
                 code, name_key = COUNTRIES[cmd]
@@ -3222,7 +3344,7 @@ def main():
                 mode = "list"
             continue
 
-        # 검색
+        # Search
         if mode == "search":
             print(f"  '{cmd}' {t('searching_for')}...")
             stations = search_advanced(cmd)
@@ -3231,7 +3353,7 @@ def main():
                 mode = "list"
             continue
 
-        # 즐겨찾기 삭제 (-번호)
+        # Delete favorite (-number)
         if cmd.startswith("-") and cmd[1:].isdigit():
             idx = int(cmd[1:]) - 1
             removed = remove_favorite(idx)
@@ -3243,11 +3365,11 @@ def main():
                 print(f"  {t('invalid_num')}")
             continue
 
-        # 번호로 재생
+        # Play by number
         if cmd.isdigit():
             idx = int(cmd) - 1
             if 0 <= idx < len(stations):
-                # 이전 청취 기록 저장
+                # Save previous listen record
                 if PLAYER_PROC and current_station and play_start_time:
                     duration = int(time.time() - play_start_time)
                     add_history(current_station, duration)
@@ -3260,19 +3382,19 @@ def main():
                 dj_announce_station(s)
                 play(url, s.get("name", ""))
                 play_start_time = time.time()
-                save_last_station(s)  # 마지막 방송 저장
+                save_last_station(s)  # Save last station
 
-                # 재생 성공 시 DB에 저장 (API에서 가져온 것만)
+                # Save to DB on success (API results only)
                 if s.get("source") == "api":
                     save_station_to_db(s)
 
                 print(f"  {t('help_after_play')}")
-                mode = "menu"  # 검색 가능하게 메뉴 모드로
+                mode = "menu"  # Back to menu mode for search
             else:
                 print(f"  {t('invalid_num')}")
             continue
 
-        # 메뉴에서 바로 스마트 검색
+        # Smart search directly from menu
         if mode == "menu" and len(cmd) > 0:
             print(f"  '{cmd}' {t('searching_for')}...")
             stations = search_advanced(cmd)
@@ -3308,3 +3430,19 @@ if __name__ == "__main__":
         sys.exit(0)
 
     main()
+
+# === 클릭 추적 (우리 API) ===
+def record_click(station):
+    """재생 시 클릭 기록"""
+    if not station:
+        return
+    station_id = station.get("stationuuid") or station.get("id")
+    if not station_id:
+        return
+    try:
+        url = f"{API_BASE}/stations/{station_id}/click"
+        req = urllib.request.Request(url, method="POST")
+        req.add_header("User-Agent", "RadioCli/1.0")
+        urllib.request.urlopen(req, timeout=3)
+    except:
+        pass  # Continue playing even on failure
