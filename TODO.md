@@ -102,6 +102,6 @@
 - [ ] Web UI
 
 ### Weather API Issue
-- [ ] `recommend_by_weather` - wttr.in API unreliable (timeout, connection reset)
-- [ ] Consider alternatives: OpenWeatherMap, ip-api weather, or cache weather data
+- [x] `recommend_by_weather` - switched to Open-Meteo (stable) (timeout, connection reset)
+- [x] Using: ip-api.com (location) + Open-Meteo (weather)
 - [ ] Current fallback: time-based recommendation when weather API fails
