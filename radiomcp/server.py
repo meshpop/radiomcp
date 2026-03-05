@@ -3083,16 +3083,27 @@ def similar_stations(limit: int = 10) -> list[dict]:
 
 
 @mcp.tool()
-def recommend_by_weather(city: str = "Seoul") -> list[dict]:
+def recommend_by_weather(city: str = "") -> dict:
     """
     Recommend stations based on current weather.
 
     Args:
-        city: City name for weather (default Seoul)
+        city: City name (auto-detect from IP if empty)
 
     Returns:
         Weather-based recommendations
     """
+    # Auto-detect city from IP if not provided
+    if not city:
+        try:
+            req = urllib.request.Request("http://ip-api.com/json/?fields=city", 
+                                         headers={"User-Agent": "RadioMCP/1.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode())
+                city = data.get("city", "Seoul")
+        except:
+            city = "Seoul"
+    
     # wttr.in free API
     try:
         url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1"
