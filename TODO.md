@@ -100,3 +100,8 @@
 - [ ] Podcast support
 - [ ] CarPlay / Android Auto integration
 - [ ] Web UI
+
+### Weather API Issue
+- [ ] `recommend_by_weather` - wttr.in API unreliable (timeout, connection reset)
+- [ ] Consider alternatives: OpenWeatherMap, ip-api weather, or cache weather data
+- [ ] Current fallback: time-based recommendation when weather API fails
