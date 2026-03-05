@@ -527,7 +527,7 @@ while True:
     # 기존 watchdog 죽이기
     subprocess.run(["pkill", "-f", "mpv_pid_file"], capture_output=True)
     # 새 watchdog 시작 (독립 실행)
-    kwargs = {{"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}}
+    kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
     if platform != "win32":
         kwargs["start_new_session"] = True
     else:
