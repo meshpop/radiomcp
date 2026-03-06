@@ -112,8 +112,9 @@
 - [ ] Periodic sync: g3 → VPS (validated stations only)
 
 ### g3 Cron Jobs (Completed)
-- [x] 04:00 daily: `radio_revalidate.py` - existing station revalidation
+- [x] 04:00 daily: `radio_revalidate_v2.py` - HLS + regular stream validation
 - [x] 05:00 daily: `sync_radiobrowser.py` - Radio Browser new/updated stations
+- [x] 05:30 daily: `auto_broadcaster.py` - Major broadcaster sync
 - [x] 06:00 Sunday: `shoutcast_crawler.py` - Shoutcast crawling
 
 ### Data Sources (radio_unified.db)
@@ -122,6 +123,17 @@
 - [x] TuneIn: 10,042 stations
 - [x] Shoutcast: crawled weekly
 
+### Auto Broadcaster System (Completed)
+- [x] broadcaster_registry.json - broadcaster definitions
+- [x] auto_broadcaster.py - auto sync system
+- [x] KBS resolver (6 channels)
+- [x] MBC resolver (3 channels)
+- [x] YTN resolver (2 channels)
+- [x] BBC direct URLs (10 channels)
+- [x] NPR direct URLs (1 channel)
+- [ ] SBS resolver (API research needed)
+- [ ] NHK (geo-restricted to Japan)
+
 ### Independent URL Discovery (Future)
 - [ ] IPTV M3U parser (iptv-org/iptv)
 - [ ] Radio Garden sync (30K+ stations)
@@ -129,4 +141,43 @@
 - [ ] User submission endpoint
 - [ ] Web scraper for major broadcasters
 
-See: docs/ARCHITECTURE_IDEAS.md, docs/URL_DISCOVERY.md
+---
+
+## Future Improvements
+
+### Search & API
+- [ ] Hybrid search: Local SQLite + API supplementary
+- [ ] Periodic DB download for clients
+- [ ] `radiocli --update-db` command
+- [ ] API rate limiting
+
+### Broadcaster Expansion
+- [ ] Add more countries' major broadcasters
+- [ ] Auto-detect when broadcaster needs resolver
+- [ ] Resolver health monitoring & alerts
+- [ ] Fallback URL system
+
+### Stream Validation
+- [ ] HLS segment quality check (bitrate verification)
+- [ ] Geo-restriction detection
+- [ ] Stream metadata extraction improvement
+- [ ] Parallel validation for speed
+
+### User Features
+- [ ] User submission portal
+- [ ] Station rating/voting
+- [ ] Listening statistics dashboard
+- [ ] Personalized recommendations improvement
+
+### Release Automation
+- [ ] GitHub Actions: weekly PyPI release
+- [ ] Auto DB update before release
+- [ ] Version bump automation (date-based)
+- [ ] Release notes generation
+
+### Monetization Ideas (Low Priority)
+- [ ] GitHub Sponsors
+- [ ] B2B: Station monitoring service
+- [ ] Premium features (recording, analytics)
+
+See: docs/ARCHITECTURE_IDEAS.md, docs/URL_DISCOVERY.md, docs/API_ARCHITECTURE.md, docs/RADIO_API_RESEARCH.md
