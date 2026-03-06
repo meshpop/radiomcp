@@ -29,6 +29,7 @@ def validate_hls(url: str) -> dict:
         resp = requests.get(url, timeout=TIMEOUT, headers={
             'User-Agent': 'RadioCli/1.0'
         })
+        base_url = url  # Base for relative URLs
 
         if resp.status_code != 200:
             result['error'] = f'HTTP {resp.status_code}'
@@ -59,9 +60,10 @@ def validate_hls(url: str) -> dict:
                         if not variant_url.startswith('http'):
                             variant_url = urljoin(url, variant_url)
 
-                        # Get variant playlist
+                        # Get variant playlist - THIS becomes the new base URL
                         resp2 = requests.get(variant_url, timeout=TIMEOUT)
                         content = resp2.text
+                        base_url = variant_url  # Update base URL to chunklist URL
                         break
 
         # 3. Extract segment URLs
@@ -71,8 +73,9 @@ def validate_hls(url: str) -> dict:
         for line in lines:
             line = line.strip()
             if line and not line.startswith('#'):
+                # Use base_url (chunklist) for segment URL construction
                 if not line.startswith('http'):
-                    line = urljoin(url, line)
+                    line = urljoin(base_url, line)
                 segments.append(line)
 
         result['segments'] = len(segments)
