@@ -106,8 +106,27 @@
 - [x] Using: ip-api.com (location) + Open-Meteo (weather)
 - [ ] Current fallback: time-based recommendation when weather API fails
 
-### Infrastructure Architecture (Future)
-- [ ] g3 (home server): URL validation, health checks, DB maintenance
+### Infrastructure Architecture
+- [x] g3 (home server): URL validation, health checks, DB maintenance
 - [ ] VPS: Public API service with clean DB
 - [ ] Periodic sync: g3 → VPS (validated stations only)
-- [ ] Batch jobs on g3: dead station cleanup, new station discovery
+
+### g3 Cron Jobs (Completed)
+- [x] 04:00 daily: `radio_revalidate.py` - existing station revalidation
+- [x] 05:00 daily: `sync_radiobrowser.py` - Radio Browser new/updated stations
+- [x] 06:00 Sunday: `shoutcast_crawler.py` - Shoutcast crawling
+
+### Data Sources (radio_unified.db)
+- [x] Radio Browser API: 27,196 stations
+- [x] Icecast directory: 14,253 stations
+- [x] TuneIn: 10,042 stations
+- [x] Shoutcast: crawled weekly
+
+### Independent URL Discovery (Future)
+- [ ] IPTV M3U parser (iptv-org/iptv)
+- [ ] Radio Garden sync (30K+ stations)
+- [ ] GitHub playlist search
+- [ ] User submission endpoint
+- [ ] Web scraper for major broadcasters
+
+See: docs/ARCHITECTURE_IDEAS.md, docs/URL_DISCOVERY.md
