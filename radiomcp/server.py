@@ -24,44 +24,44 @@ from datetime import datetime
 from mcp.server.fastmcp import FastMCP
 
 # ============================================================
-# 플레이어 백엔드 추상화
+# Player Backend Abstraction
 # ============================================================
-# 우선순위: mpv > vlc > ffplay > browser
+# Priority: mpv > vlc > ffplay > browser
 # ============================================================
 
 PLAYER_BACKEND = None  # 'mpv', 'vlc', 'ffplay', 'browser'
 
 def detect_player_backend():
-    """사용 가능한 플레이어 백엔드 감지"""
+    """Detect available player backend"""
     global PLAYER_BACKEND
 
-    # 1. mpv (최고)
+    # 1. mpv (best)
     if shutil.which("mpv"):
         PLAYER_BACKEND = "mpv"
         return "mpv"
 
-    # 2. VLC (널리 설치됨)
+    # 2. VLC (widely installed)
     if shutil.which("vlc") or shutil.which("cvlc"):
         PLAYER_BACKEND = "vlc"
         return "vlc"
 
-    # 3. ffplay (ffmpeg 포함)
+    # 3. ffplay (included with ffmpeg)
     if shutil.which("ffplay"):
         PLAYER_BACKEND = "ffplay"
         return "ffplay"
 
-    # 4. 브라우저 fallback (항상 가능)
+    # 4. Browser fallback (always available)
     PLAYER_BACKEND = "browser"
     return "browser"
 
-# 초기화 시 백엔드 감지
+# Detect backend on init
 detect_player_backend()
 
 # ============================================================
-# Miniaudio 플레이어 (mpv 없을 때 사용)
+# Miniaudio player (used when mpv unavailable)
 # ============================================================
 class MiniaudioPlayer:
-    """miniaudio 기반 스트리밍 플레이어"""
+    """Miniaudio-based streaming player"""
 
     def __init__(self):
         self.stream_thread = None
@@ -69,7 +69,7 @@ class MiniaudioPlayer:
         self.device = None
 
     def play(self, url):
-        """URL 스트리밍 재생"""
+        """Play URL stream"""
         self.stop()
         self.playing = True
 
@@ -78,20 +78,20 @@ class MiniaudioPlayer:
                 import miniaudio
                 import urllib.request
 
-                # HTTP 스트림 열기
+                # Open HTTP stream
                 req = urllib.request.Request(url, headers={
                     'User-Agent': 'RadioMCP/1.0',
                     'Icy-MetaData': '1'
                 })
                 response = urllib.request.urlopen(req, timeout=30)
 
-                # miniaudio 디코더 설정
+                # Setup miniaudio decoder
                 def read_data(num_bytes):
                     if not self.playing:
                         return b''
                     return response.read(num_bytes)
 
-                # 스트림 재생
+                # Play stream
                 self.device = miniaudio.PlaybackDevice()
                 stream = miniaudio.stream_any(
                     source=response,
@@ -114,7 +114,7 @@ class MiniaudioPlayer:
         return True
 
     def stop(self):
-        """재생 중지"""
+        """Stop playback"""
         self.playing = False
         if self.device:
             try:
@@ -126,7 +126,7 @@ class MiniaudioPlayer:
     def is_playing(self):
         return self.playing
 
-# 전역 miniaudio 플레이어 인스턴스
+# Global miniaudio player instance
 _miniaudio_player = None
 
 def get_miniaudio_player():
@@ -136,20 +136,20 @@ def get_miniaudio_player():
     return _miniaudio_player
 
 # ============================================================
-# VLC 플레이어
+# VLC Player
 # ============================================================
 class VLCPlayer:
-    """VLC 기반 플레이어 (cvlc 사용)"""
+    """VLC-based player (using cvlc)"""
 
     def __init__(self):
         self.process = None
         self.pid_file = os.path.join(os.path.expanduser("~/.radiocli"), "vlc.pid")
 
     def play(self, url):
-        """VLC로 재생"""
+        """Play with VLC"""
         self.stop()
         try:
-            # cvlc (콘솔 VLC) 사용
+            # Use cvlc (console VLC)
             vlc_cmd = shutil.which("cvlc") or shutil.which("vlc")
             self.process = subprocess.Popen(
                 [vlc_cmd, "--intf", "dummy", "--no-video", url],
@@ -164,7 +164,7 @@ class VLCPlayer:
             return False
 
     def stop(self):
-        """VLC 종료"""
+        """Stop VLC"""
         if self.process:
             try:
                 self.process.terminate()
@@ -175,7 +175,7 @@ class VLCPlayer:
                 except:
                     pass
             self.process = None
-        # PID 파일로 종료
+        # Stop via PID file
         if os.path.exists(self.pid_file):
             try:
                 with open(self.pid_file) as f:
@@ -200,17 +200,17 @@ def get_vlc_player():
     return _vlc_player
 
 # ============================================================
-# FFplay 플레이어
+# FFplay Player
 # ============================================================
 class FFplayPlayer:
-    """ffplay 기반 플레이어 (ffmpeg 포함)"""
+    """ffplay-based player (included with ffmpeg)"""
 
     def __init__(self):
         self.process = None
         self.pid_file = os.path.join(os.path.expanduser("~/.radiocli"), "ffplay.pid")
 
     def play(self, url):
-        """ffplay로 재생"""
+        """Play with ffplay"""
         self.stop()
         try:
             self.process = subprocess.Popen(
@@ -226,7 +226,7 @@ class FFplayPlayer:
             return False
 
     def stop(self):
-        """ffplay 종료"""
+        """Stop ffplay"""
         if self.process:
             try:
                 self.process.terminate()
@@ -237,7 +237,7 @@ class FFplayPlayer:
                 except:
                     pass
             self.process = None
-        # PID 파일로 종료
+        # Stop via PID file
         if os.path.exists(self.pid_file):
             try:
                 with open(self.pid_file) as f:
@@ -262,24 +262,24 @@ def get_ffplay_player():
     return _ffplay_player
 
 # ============================================================
-# 브라우저 플레이어 (최후의 fallback)
+# Browser Player (last resort fallback)
 # ============================================================
 class BrowserPlayer:
-    """브라우저에서 스트림 열기"""
+    """Open stream in browser"""
 
     def __init__(self):
         self.current_url = None
 
     def play(self, url):
-        """브라우저에서 URL 열기"""
+        """Open URL in browser"""
         self.current_url = url
         webbrowser.open(url)
         return True
 
     def stop(self):
-        """브라우저는 수동으로 닫아야 함"""
+        """Browser must be closed manually"""
         self.current_url = None
-        return {"note": "브라우저 탭을 수동으로 닫아주세요"}
+        return {"note": "Please close the browser tab manually"}
 
     def is_playing(self):
         return self.current_url is not None
@@ -292,17 +292,17 @@ def get_browser_player():
         _browser_player = BrowserPlayer()
     return _browser_player
 
-# MCP 서버 생성
+# Create MCP server
 mcp = FastMCP("radio")
 
-# 설정
+# Configuration
 DATA_DIR = os.path.expanduser("~/.radiocli")
 FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 RECOGNIZED_FILE = os.path.join(DATA_DIR, "recognized_songs.json")
 RECORD_FILE = os.path.join(DATA_DIR, "record.mp3")
 MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
-MPV_PID_FILE = os.path.join(DATA_DIR, "mpv.pid")  # CLI와 공유
+MPV_PID_FILE = os.path.join(DATA_DIR, "mpv.pid")  # Shared with CLI
 LOCK_FILE = os.path.join(DATA_DIR, "server.lock")
 API_BASE = "https://de1.api.radio-browser.info/json"
 
@@ -347,56 +347,56 @@ def g3_batch_validate(urls: list, timeout: int = 10) -> list:
         return [{"url": u, "valid": False, "error": str(e)} for u in urls]
 ACOUSTID_API_KEY = os.environ.get("ACOUSTID_API_KEY", "vQEDUkpM7e")
 
-# DB 경로 (우선순위: 로컬 > 패키지 > 프로젝트)
+# DB path (priority: local > package > project)
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATHS = [
     os.path.join(DATA_DIR, "radio_stations.db"),
-    os.path.join(PACKAGE_DIR, "radio_stations.db"),  # 패키지 내 DB
+    os.path.join(PACKAGE_DIR, "radio_stations.db"),  # DB in package
     os.path.expanduser("~/RadioCli/radio_stations.db"),
 ]
 
-# 전역 상태
+# Global state
 current_station = None
 player_proc = None
 db_conn = None
-sleep_timer = None  # 슬립 타이머
-lock_fd = None  # 싱글톤 락 파일 디스크립터
+sleep_timer = None  # Sleep timer
+lock_fd = None  # Singleton lock file descriptor
 
 LAST_STATION_FILE = os.path.join(DATA_DIR, "last_station.json")
 
-import fcntl  # 파일 잠금용
+import fcntl  # For file locking
 
 def acquire_singleton_lock():
-    """싱글톤 락 획득 - 이미 실행 중이면 기존 프로세스 종료"""
+    """Acquire singleton lock - terminate existing process if running"""
     global lock_fd
     os.makedirs(DATA_DIR, exist_ok=True)
 
     lock_fd = open(LOCK_FILE, 'w')
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        # 락 획득 성공 - PID 기록
+        # Lock acquired - record PID
         lock_fd.write(str(os.getpid()))
         lock_fd.flush()
         return True
     except BlockingIOError:
-        # 이미 다른 서버가 실행 중 - 기존 서버 강제 종료
+        # Another server running - force terminate
         try:
             with open(LOCK_FILE, 'r') as f:
                 old_pid = int(f.read().strip())
-            # SIGTERM 시도
+            # Try SIGTERM
             try:
                 os.kill(old_pid, signal.SIGTERM)
                 time.sleep(0.3)
             except:
                 pass
-            # 아직 살아있으면 SIGKILL
+            # SIGKILL if still alive
             try:
-                os.kill(old_pid, 0)  # 존재 확인
+                os.kill(old_pid, 0)  # Check if exists
                 os.kill(old_pid, signal.SIGKILL)
                 time.sleep(0.3)
             except ProcessLookupError:
                 pass
-            # 다시 시도
+            # Retry
             fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             lock_fd.seek(0)
             lock_fd.truncate()
@@ -407,7 +407,7 @@ def acquire_singleton_lock():
             return False
 
 def release_singleton_lock():
-    """싱글톤 락 해제"""
+    """Release singleton lock"""
     global lock_fd
     if lock_fd:
         try:
@@ -419,8 +419,8 @@ def release_singleton_lock():
         lock_fd = None
 
 def kill_existing_mpv():
-    """기존 mpv 프로세스 종료 (CLI와 공유)"""
-    # 1. IPC 소켓으로 종료 시도
+    """Stop existing mpv process (shared with CLI)"""
+    # 1. Try IPC socket quit
     if os.path.exists(MPV_SOCKET):
         try:
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -432,7 +432,7 @@ def kill_existing_mpv():
         except:
             pass
 
-    # 2. PID 파일로 종료
+    # 2. Terminate via PID file
     if os.path.exists(MPV_PID_FILE):
         try:
             with open(MPV_PID_FILE, 'r') as f:
@@ -440,7 +440,7 @@ def kill_existing_mpv():
             os.kill(pid, signal.SIGTERM)
             time.sleep(0.5)
             try:
-                os.kill(pid, 0)  # 아직 살아있나?
+                os.kill(pid, 0)  # Still alive?
                 os.kill(pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
@@ -451,14 +451,14 @@ def kill_existing_mpv():
         except:
             pass
 
-    # 3. 최후의 수단: pkill로 radiocli mpv 죽이기
+    # 3. Last resort: pkill radiocli mpv
     try:
         subprocess.run(["pkill", "-f", "mpv.*radiocli"], timeout=2)
         time.sleep(0.3)
     except:
         pass
 
-    # 4. 소켓 파일 정리
+    # 4. Clean up socket file
     if os.path.exists(MPV_SOCKET):
         try:
             os.remove(MPV_SOCKET)
@@ -466,7 +466,7 @@ def kill_existing_mpv():
             pass
 
 def save_last_station():
-    """마지막 재생 방송 저장"""
+    """Save last played station"""
     if current_station:
         try:
             with open(LAST_STATION_FILE, "w", encoding="utf-8") as f:
@@ -475,7 +475,7 @@ def save_last_station():
             pass
 
 def load_last_station():
-    """마지막 재생 방송 로드"""
+    """Load last played station"""
     if os.path.exists(LAST_STATION_FILE):
         try:
             with open(LAST_STATION_FILE, "r", encoding="utf-8") as f:
@@ -485,24 +485,24 @@ def load_last_station():
     return None
 
 def cleanup():
-    """종료 시 상태 저장 (mpv는 계속 재생)"""
+    """Save state on exit (mpv keeps playing)"""
     global player_proc
-    # 마지막 방송 저장
+    # Save last station
     save_last_station()
-    # mpv는 죽이지 않음 - 서버 재시작해도 계속 재생
-    # stop() 호출할 때만 mpv 종료
+    # Don't kill mpv - keep playing after server restart
+    # Only stop mpv when stop() is called
     player_proc = None
-    # 싱글톤 락 해제
+    # Release singleton lock
     release_singleton_lock()
 
-# 종료 핸들러 등록
+# Register exit handler
 atexit.register(cleanup)
 signal.signal(signal.SIGTERM, lambda s, f: (cleanup(), exit(0)))
 signal.signal(signal.SIGINT, lambda s, f: (cleanup(), exit(0)))
 
-# Watchdog: 별도 프로세스로 Claude Desktop 감시
+# Watchdog: Monitor Claude Desktop in separate process
 def start_mpv_watchdog():
-    """mpv 재생 시작할 때 watchdog 프로세스 시작 (크로스 플랫폼)"""
+    """Start watchdog process when mpv starts (cross-platform)"""
     import sys
     platform = sys.platform
 
@@ -514,7 +514,7 @@ mpv_sock = "{MPV_SOCKET}"
 platform = "{platform}"
 
 def is_claude_running():
-    """Claude Desktop 실행 중인지 확인 (크로스 플랫폼)"""
+    """Check if Claude Desktop is running (cross-platform)"""
     try:
         if platform == "darwin":  # macOS
             result = subprocess.run(
@@ -535,10 +535,10 @@ def is_claude_running():
             )
             return result.returncode == 0
     except:
-        return True  # 확인 실패 시 실행 중으로 간주
+        return True  # Assume running if check fails
 
 def kill_mpv():
-    """mpv 종료"""
+    """Stop mpv"""
     if os.path.exists(mpv_pid_file):
         try:
             with open(mpv_pid_file) as f:
@@ -564,9 +564,9 @@ while True:
         kill_mpv()
         break
 '''
-    # 기존 watchdog 죽이기
+    # Kill existing watchdog
     subprocess.run(["pkill", "-f", "mpv_pid_file"], capture_output=True)
-    # 새 watchdog 시작 (독립 실행)
+    # Start new watchdog (independent process)
     kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
     if platform != "win32":
         kwargs["start_new_session"] = True
@@ -574,7 +574,7 @@ while True:
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     subprocess.Popen(["python3", "-c", watchdog_script], **kwargs)
 
-# 유사어 매핑 (태그 확장)
+# Synonym mapping (tag expansion)
 TAG_SYNONYMS = {
     "lounge": ["lounge", "chillout", "cafe", "ambient", "easy listening"],
     "jazz": ["jazz", "smooth jazz", "jazz lounge", "bossa nova", "bebop", "swing", "fusion"],
@@ -610,12 +610,12 @@ TAG_SYNONYMS = {
 }
 
 # ============================================================
-# 다국어 검색 매핑 (v2.0)
+# Multilingual search mapping (v2.0)
 # ============================================================
 
-# 다국어 → 영어 태그 매핑
+# Multilingual -> English tag mapping
 LANG_MAP = {
-    # 한국어
+    # Korean
     "재즈": "jazz", "클래식": "classical", "록": "rock", "팝": "pop",
     "뉴스": "news", "힙합": "hip hop", "발라드": "ballad", "국악": "korean traditional",
     "트로트": "trot", "인디": "indie", "라운지": "lounge", "앰비언트": "ambient",
@@ -632,7 +632,7 @@ LANG_MAP = {
     "게임음악": "game", "애니메이션": "anime", "동요": "children",
     "종교": "religious", "찬송가": "gospel", "불교": "buddhist",
 
-    # 일본어
+    # Japanese
     "ジャズ": "jazz", "クラシック": "classical", "ロック": "rock", "ポップ": "pop",
     "ニュース": "news", "ヒップホップ": "hip hop", "演歌": "enka",
     "アニメ": "anime", "Jポップ": "jpop", "邦楽": "japanese",
@@ -644,7 +644,7 @@ LANG_MAP = {
     "フォーク": "folk", "メタル": "metal", "パンク": "punk",
     "ゲーム": "game", "映画": "soundtrack", "童謡": "children",
 
-    # 중국어 (간체)
+    # Chinese (Simplified)
     "爵士乐": "jazz", "爵士": "jazz", "古典音乐": "classical", "古典": "classical",
     "摇滚": "rock", "流行": "pop", "新闻": "news", "嘻哈": "hip hop",
     "电子": "electronic", "电子音乐": "electronic", "舞曲": "dance",
@@ -655,54 +655,54 @@ LANG_MAP = {
     "金属": "metal", "朋克": "punk", "动漫": "anime", "游戏": "game",
     "华语": "chinese", "粤语": "cantonese", "国语": "mandarin",
 
-    # 중국어 (번체)
+    # Chinese (Traditional)
     "爵士樂": "jazz", "古典音樂": "classical", "搖滾": "rock", "流行音樂": "pop",
     "電子音樂": "electronic", "輕音樂": "easy listening",
 
-    # 스페인어
+    # Spanish
     "música clásica": "classical", "música pop": "pop", "música rock": "rock",
     "noticias": "news", "jazz latino": "latin jazz", "salsa": "salsa",
     "reggaeton": "reggaeton", "bachata": "bachata", "merengue": "merengue",
     "cumbia": "cumbia", "flamenco": "flamenco", "latina": "latin",
     "relajante": "relaxing", "dormir": "sleep", "estudiar": "study",
 
-    # 독일어
+    # German
     "klassische musik": "classical", "nachrichten": "news", "schlager": "schlager",
     "volksmusik": "folk", "deutsche musik": "german",
 
-    # 프랑스어
+    # French
     "musique classique": "classical", "musique pop": "pop", "actualités": "news",
     "chanson française": "chanson", "musique française": "french",
 
-    # 포르투갈어
+    # Portuguese
     "música brasileira": "brazilian", "samba": "samba", "forró": "forro",
     "sertanejo": "sertanejo", "mpb": "mpb", "axé": "axe",
 
-    # 러시아어
+    # Russian
     "джаз": "jazz", "классика": "classical", "рок": "rock", "поп": "pop",
     "новости": "news", "электронная": "electronic", "русская": "russian",
 
-    # 아랍어
+    # Arabic
     "جاز": "jazz", "كلاسيكي": "classical", "أخبار": "news",
     "موسيقى عربية": "arabic", "عربي": "arabic",
 
-    # 힌디어
+    # Hindi
     "जैज़": "jazz", "शास्त्रीय": "classical", "समाचार": "news",
     "बॉलीवुड": "bollywood", "हिंदी": "hindi",
 
-    # 베트남어
+    # Vietnamese
     "nhạc jazz": "jazz", "nhạc cổ điển": "classical", "tin tức": "news",
     "nhạc việt": "vietnamese", "nhạc trẻ": "vpop",
 
-    # 태국어
+    # Thai
     "แจ๊ส": "jazz", "คลาสสิก": "classical", "ข่าว": "news",
     "เพลงไทย": "thai", "ลูกทุ่ง": "luk thung",
 
-    # 인도네시아어
+    # Indonesian
     "berita": "news", "musik indonesia": "indonesian", "dangdut": "dangdut",
 }
 
-# 복합 장르 (토큰 병합용)
+# Compound genres (for token merge)
 COMPOUND_GENRES = {
     ("bossa", "nova"): "bossa nova",
     ("hip", "hop"): "hip hop",
@@ -730,15 +730,15 @@ COMPOUND_GENRES = {
     ("nu", "jazz"): "nu jazz",
 }
 
-# 국가명 → 국가코드 매핑 (검색 시 국가 우선 정렬용)
+# Country name -> code mapping (for country-first sorting)
 COUNTRY_NAMES = {
-    # 한국어
+    # Korean
     "한국": "KR", "대한민국": "KR", "미국": "US", "일본": "JP", "중국": "CN",
     "영국": "GB", "프랑스": "FR", "독일": "DE", "이탈리아": "IT", "스페인": "ES",
     "캐나다": "CA", "호주": "AU", "브라질": "BR", "멕시코": "MX", "러시아": "RU",
     "인도": "IN", "태국": "TH", "베트남": "VN", "인도네시아": "ID", "필리핀": "PH",
     "대만": "TW", "홍콩": "HK", "싱가포르": "SG", "말레이시아": "MY",
-    # 영어
+    # English
     "korea": "KR", "korean": "KR", "usa": "US", "america": "US", "american": "US",
     "japan": "JP", "japanese": "JP", "china": "CN", "chinese": "CN",
     "uk": "GB", "british": "GB", "england": "GB", "france": "FR", "french": "FR",
@@ -750,12 +750,12 @@ COUNTRY_NAMES = {
     "vietnam": "VN", "vietnamese": "VN", "indonesia": "ID", "indonesian": "ID",
     "philippines": "PH", "filipino": "PH", "taiwan": "TW", "taiwanese": "TW",
     "hongkong": "HK", "singapore": "SG", "malaysia": "MY", "malaysian": "MY",
-    # 일본어
+    # Japanese
     "韓国": "KR", "アメリカ": "US", "日本": "JP", "中国": "CN",
     "イギリス": "GB", "フランス": "FR", "ドイツ": "DE",
 }
 
-# 알려진 태그 목록 (퍼지 검색용)
+# Known tags list (for fuzzy search)
 KNOWN_TAGS = [
     "jazz", "classical", "rock", "pop", "electronic", "ambient", "lounge",
     "chillout", "hip hop", "r&b", "soul", "blues", "country", "folk",
@@ -779,7 +779,7 @@ KNOWN_TAGS = [
     "turkish", "greek", "russian", "polish", "czech", "hungarian",
 ]
 
-# 날씨/계절 → 태그 매핑
+# Weather/season -> tag mapping
 WEATHER_TAGS = {
     "rainy": ["jazz", "lounge", "piano", "ambient"],
     "sunny": ["pop", "bossa nova", "tropical", "summer"],
@@ -789,7 +789,7 @@ WEATHER_TAGS = {
     "cold": ["jazz", "classical", "lounge", "cozy"],
 }
 
-# 시간대 → 태그 매핑
+# Time of day -> tag mapping
 TIME_TAGS = {
     "morning": ["pop", "acoustic", "breakfast", "morning"],      # 6-10
     "daytime": ["pop", "rock", "hits", "energetic"],             # 10-17
@@ -799,20 +799,20 @@ TIME_TAGS = {
 
 
 # ============================================================
-# 검색 엔진 헬퍼 함수 (v2.0)
+# Search engine helper functions (v2.0)
 # ============================================================
 
 def translate_query(query: str) -> str:
     """다국어 쿼리를 영어 태그로 변환"""
     query_lower = query.lower().strip()
 
-    # 1. 정확한 매핑 체크
+    # 1. Check exact mapping
     if query in LANG_MAP:
         return LANG_MAP[query]
     if query_lower in LANG_MAP:
         return LANG_MAP[query_lower]
 
-    # 2. 각 단어별 변환
+    # 2. Convert each word
     words = query.split()
     translated = []
     for word in words:
@@ -850,20 +850,20 @@ def fuzzy_match(query: str, threshold: int = 2) -> str:
     """오타 교정 - 가장 가까운 알려진 태그 반환"""
     query_lower = query.lower().strip()
 
-    # 정확히 일치하면 그대로 반환
+    # Return as-is if exact match
     if query_lower in KNOWN_TAGS:
         return query_lower
 
-    # 너무 짧은 단어(3자 미만)는 퍼지 매칭 안 함 (fm → edm 방지)
+    # Skip fuzzy for short words (<3 chars) to prevent fm->edm
     if len(query_lower) < 3:
         return query_lower
 
-    # 라디오 관련 일반 단어는 퍼지 매칭 제외
+    # Exclude generic radio words from fuzzy
     SKIP_WORDS = {"radio", "fm", "am", "hd", "the", "and", "or", "with"}
     if query_lower in SKIP_WORDS:
         return query_lower
 
-    # 가장 가까운 태그 찾기
+    # Find closest tag
     best_match = None
     best_distance = threshold + 1
 
