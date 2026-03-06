@@ -119,14 +119,14 @@ Toggle with `!` key in CLI.
 ### Search Flow
 
 ```
-User Query: "한국 재즈 고음질"
+User Query: "korea jazz HQ" (or "한국 재즈 고음질" in Korean)
          │
          ▼
 ┌─────────────────────────────┐
 │  1. Parse Query             │
-│  - "한국" → country: KR     │
-│  - "재즈" → tag: jazz       │
-│  - "고음질" → min_bitrate:192│
+│  - "korea" → country: KR    │
+│  - "jazz" → tag: jazz       │
+│  - "HQ" → min_bitrate: 192  │
 └─────────────┬───────────────┘
               ▼
 ┌─────────────────────────────┐
@@ -169,9 +169,9 @@ TAG_EXPAND = {
 
 | Keyword | Filter |
 |---------|--------|
-| 고음질, HQ, high quality | min_bitrate: 192 |
-| 최고음질, HD | min_bitrate: 256 |
-| 저음질, LQ | max_bitrate: 96 |
+| HQ, high quality | min_bitrate: 192 |
+| HD | min_bitrate: 256 |
+| LQ, low quality | max_bitrate: 96 |
 
 ---
 
@@ -232,11 +232,11 @@ Blocked stations are:
 ```
 RadioCli (DB)
 
-a AI추천   t 취향   p 인기   h 고음질
-g 장르     c 국가   f 즐찾(2)  l 리스트
-w 분위기   i 인식   n 현재곡  sl 곡(0)
-r 이어듣기 s 정지   < 이전   > 다음
-q 종료     ! 모드   d DJ
+a AI Rec   t Taste  p Popular h HQ
+g Genre    c Country f Fav(2)  l List
+w Mood     i Recog  n Now     sl Song(0)
+r Resume   s Stop   < Prev   > Next
+q Quit     ! Mode   d DJ
 ```
 
 ### Command Reference
@@ -271,12 +271,14 @@ q 종료     ! 모드   d DJ
 ### Natural Language Search
 
 ```
-> 한국 재즈
-> 신나는 음악
+> korea jazz
+> energetic music
 > japan classical
 > relaxing lounge
-> 미국 뉴스 고음질
+> usa news HQ
 ```
+
+Multilingual also works: `재즈`, `クラシック`, `джаз`
 
 ---
 

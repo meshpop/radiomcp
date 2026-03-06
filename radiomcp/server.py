@@ -803,7 +803,7 @@ TIME_TAGS = {
 # ============================================================
 
 def translate_query(query: str) -> str:
-    """다국어 쿼리를 영어 태그로 변환"""
+    """Convert multilingual query to English tags"""
     query_lower = query.lower().strip()
 
     # 1. Check exact mapping
@@ -827,7 +827,7 @@ def translate_query(query: str) -> str:
 
 
 def levenshtein_distance(s1: str, s2: str) -> int:
-    """두 문자열 간 편집 거리 계산"""
+    """Calculate edit distance between two strings"""
     if len(s1) < len(s2):
         return levenshtein_distance(s2, s1)
     if len(s2) == 0:
@@ -847,7 +847,7 @@ def levenshtein_distance(s1: str, s2: str) -> int:
 
 
 def fuzzy_match(query: str, threshold: int = 2) -> str:
-    """오타 교정 - 가장 가까운 알려진 태그 반환"""
+    """Typo correction - return closest known tag"""
     query_lower = query.lower().strip()
 
     # Return as-is if exact match
@@ -868,7 +868,7 @@ def fuzzy_match(query: str, threshold: int = 2) -> str:
     best_distance = threshold + 1
 
     for tag in KNOWN_TAGS:
-        # 너무 짧거나 긴 태그는 스킵
+        # Skip tags too short or long
         if abs(len(tag) - len(query_lower)) > threshold:
             continue
 
@@ -881,7 +881,7 @@ def fuzzy_match(query: str, threshold: int = 2) -> str:
 
 
 def merge_compound_tokens(tokens: list) -> list:
-    """토큰 리스트에서 복합 장르 병합"""
+    """Merge compound genres from token list"""
     if len(tokens) < 2:
         return tokens
 
@@ -890,7 +890,7 @@ def merge_compound_tokens(tokens: list) -> list:
     while i < len(tokens):
         merged = False
 
-        # 3단어 조합 체크
+        # Check 3-word combinations
         if i + 2 < len(tokens):
             key3 = (tokens[i], tokens[i+1], tokens[i+2])
             if key3 in COMPOUND_GENRES:
@@ -899,7 +899,7 @@ def merge_compound_tokens(tokens: list) -> list:
                 merged = True
                 continue
 
-        # 2단어 조합 체크
+        # Check 2-word combinations
         if i + 1 < len(tokens):
             key2 = (tokens[i], tokens[i+1])
             if key2 in COMPOUND_GENRES:
@@ -917,20 +917,20 @@ def merge_compound_tokens(tokens: list) -> list:
 
 def parse_search_query(query: str) -> dict:
     """
-    검색 쿼리 파싱 (연산자 지원)
+    Parse search query (with operators)
 
-    지원 연산자:
-    - AND: 기본 (공백)
-    - OR: '|' 또는 'OR'
-    - NOT: '-' 접두사
-    - "exact": 따옴표로 정확한 구문
+    Supported operators:
+    - AND: default (space)
+    - OR: '|' or 'OR'
+    - NOT: '-' prefix
+    - "exact": quotes for exact phrase
 
     Returns:
         {
-            "must": [...],      # AND 조건 (모두 포함)
-            "should": [...],    # OR 조건 (하나 이상)
-            "must_not": [...],  # NOT 조건 (제외)
-            "exact": [...],     # 정확한 구문
+            "must": [...],      # AND condition (all must match)
+            "should": [...],    # OR condition (at least one)
+            "must_not": [...],  # NOT condition (exclude)
+            "exact": [...],     # Exact phrase
         }
     """
     result = {
@@ -940,14 +940,14 @@ def parse_search_query(query: str) -> dict:
         "exact": [],
     }
 
-    # 따옴표로 둘러싸인 정확한 구문 추출
+    # Extract exact phrases in quotes
     import re
     exact_matches = re.findall(r'"([^"]+)"', query)
     for match in exact_matches:
         result["exact"].append(match.lower())
     query = re.sub(r'"[^"]+"', '', query)
 
-    # OR로 분리
+    # Split by OR
     if ' OR ' in query or '|' in query:
         query = query.replace(' OR ', '|')
         or_parts = [p.strip() for p in query.split('|') if p.strip()]
@@ -957,7 +957,7 @@ def parse_search_query(query: str) -> dict:
             else:
                 result["should"].append(part.lower())
     else:
-        # 공백으로 분리 (AND)
+        # Split by space (AND)
         tokens = query.split()
         for token in tokens:
             token = token.strip()
@@ -972,16 +972,16 @@ def parse_search_query(query: str) -> dict:
 
 
 def score_station(station: dict, query_parts: dict, matched_tags: set) -> float:
-    """방송국 점수 계산"""
+    """Calculate station score"""
     score = 0.0
 
-    # 기본 인기도 점수 (로그 스케일)
+    # Base popularity score (log scale)
     import math
     votes = station.get("votes", 0)
     if votes > 0:
         score += math.log10(votes + 1)
 
-    # 비트레이트 보너스
+    # Bitrate bonus
     bitrate = station.get("bitrate", 0)
     if bitrate >= 320:
         score += 3
@@ -990,20 +990,20 @@ def score_station(station: dict, query_parts: dict, matched_tags: set) -> float:
     elif bitrate >= 192:
         score += 1
 
-    # 매칭 태그 수 보너스
+    # Matching tags count bonus
     station_tags = station.get("tags", "").lower()
     match_count = sum(1 for tag in matched_tags if tag in station_tags)
     score += match_count * 2
 
-    # 정확한 구문 매칭 보너스
+    # Exact phrase match bonus
     for exact in query_parts.get("exact", []):
         if exact in station_tags or exact in station.get("name", "").lower():
             score += 5
 
-    # must_not 페널티
+    # must_not penalty
     for exclude in query_parts.get("must_not", []):
         if exclude in station_tags:
-            score -= 100  # 사실상 제외
+            score -= 100  # Effectively exclude
 
     return score
 
@@ -1013,7 +1013,7 @@ def ensure_data_dir():
 
 
 def get_db():
-    """SQLite DB 연결 (싱글톤)"""
+    """SQLite DB connection (singleton)"""
     global db_conn
     if db_conn:
         return db_conn
@@ -1030,21 +1030,21 @@ def get_db():
 
 
 # ============================================================
-# 메모리 인덱스 (초고속 검색)
+# Memory index (ultra-fast search)
 # ============================================================
 
-# 전역 인덱스
-_stations_cache = None      # 전체 방송국 리스트
+# Global index
+_stations_cache = None      # All stations list
 _tag_index = None           # {tag: [indices...]}
 _name_words_index = None    # {word: [indices...]}
 
 
 def build_memory_index():
-    """DB를 메모리에 로드하고 인덱스 구축 (최초 1회)"""
+    """Load DB to memory and build index (once)"""
     global _stations_cache, _tag_index, _name_words_index
 
     if _stations_cache is not None:
-        return  # 이미 로드됨
+        return  # Already loaded
 
     db = get_db()
     if not db:
@@ -1067,7 +1067,7 @@ def build_memory_index():
         _name_words_index = {}
 
         for idx, station in enumerate(_stations_cache):
-            # 태그 인덱스
+            # Tag index
             tags = station.get("tags", "").lower()
             for tag in tags.split(","):
                 tag = tag.strip()
@@ -1076,7 +1076,7 @@ def build_memory_index():
                         _tag_index[tag] = []
                     _tag_index[tag].append(idx)
 
-            # 이름 단어 인덱스
+            # Name word index
             name = station.get("name", "").lower()
             for word in name.split():
                 word = word.strip()
@@ -1094,7 +1094,7 @@ def build_memory_index():
 
 
 def fast_search_by_name(query: str, limit: int = 20) -> list:
-    """이름으로 초고속 검색"""
+    """Ultra-fast search by name"""
     build_memory_index()
 
     if not _stations_cache:
@@ -1103,17 +1103,17 @@ def fast_search_by_name(query: str, limit: int = 20) -> list:
     query_lower = query.lower()
     query_words = query_lower.split()
 
-    # 1. 정확한 이름 매칭
+    # 1. Exact name matching
     exact_matches = []
     partial_matches = []
 
     for idx, station in enumerate(_stations_cache):
         name_lower = station.get("name", "").lower()
 
-        # 전체 쿼리가 이름에 포함
+        # Full query in name
         if query_lower in name_lower:
             exact_matches.append(idx)
-        # 모든 단어가 이름에 포함
+        # All words in name
         elif all(w in name_lower for w in query_words):
             partial_matches.append(idx)
 
@@ -1122,26 +1122,26 @@ def fast_search_by_name(query: str, limit: int = 20) -> list:
 
 
 def fast_search_by_tag(tags: list, limit: int = 20) -> list:
-    """태그로 초고속 검색"""
+    """Ultra-fast search by tag"""
     build_memory_index()
 
     if not _stations_cache or not _tag_index:
         return []
 
-    # 각 태그에 매칭되는 인덱스 수집
+    # Collect indices for each tag
     all_indices = set()
     for tag in tags:
         tag_lower = tag.lower()
-        # 정확 매칭
+        # Exact match
         if tag_lower in _tag_index:
             all_indices.update(_tag_index[tag_lower])
-        # 부분 매칭 (태그에 단어 포함)
+        # Partial match (word in tag)
         else:
             for idx_tag, indices in _tag_index.items():
                 if tag_lower in idx_tag or idx_tag in tag_lower:
-                    all_indices.update(indices[:50])  # 부분 매칭은 제한
+                    all_indices.update(indices[:50])  # Limit partial matches
 
-    # votes 기준 정렬 (이미 정렬된 상태라 인덱스 순으로 가져오면 됨)
+    # Sort by votes (already sorted, just get by index order)
     sorted_indices = sorted(all_indices)[:limit]
     return [_stations_cache[i] for i in sorted_indices]
 
@@ -1161,7 +1161,7 @@ def save_json(filepath: str, data: list):
 
 
 def api_get(endpoint: str, params: dict = None) -> list:
-    """Radio Browser API GET 호출"""
+    """Radio Browser API GET call"""
     url = f"{API_BASE}/{endpoint}"
     if params:
         query = urllib.parse.urlencode(params)
@@ -1177,43 +1177,43 @@ def api_get(endpoint: str, params: dict = None) -> list:
 
 
 def get_fresh_url(name: str) -> str:
-    """API에서 방송 이름으로 최신 URL 가져오기 (토큰 만료 대응)"""
+    """Get latest URL from API by name (handle token expiry)"""
     if not name:
         return ""
     encoded = urllib.parse.quote(name)
     results = api_get(f"stations/byname/{encoded}", {
         "limit": 5, "order": "clickcount", "reverse": "true", "lastcheckok": 1
     })
-    # 정확히 일치하는 것 먼저
+    # Exact match first
     for s in results:
         if s.get("name", "").lower() == name.lower():
             return s.get("url_resolved") or s.get("url", "")
-    # 없으면 첫번째 결과
+    # If none, first result
     if results:
         return results[0].get("url_resolved") or results[0].get("url", "")
     return ""
 
 
-# 블록 리스트 (로컬 파일에서 로드)
+# Blocklist (load from local file)
 BLOCK_LIST = []
 BLOCKED_URLS = set()
 BLOCKED_UUIDS = set()
 
-# 로컬 blocklist.json 경로 (패키지 내 또는 프로젝트 루트)
+# Local blocklist.json path (in package or project root)
 LOCAL_BLOCKLIST_PATHS = [
     os.path.join(PACKAGE_DIR, "blocklist.json"),
     os.path.expanduser("~/RadioCli/blocklist.json"),
 ]
 
-# 원격 블록 리스트 URL (GitHub → Cloudflare 폴백)
+# Remote blocklist URLs (GitHub -> Cloudflare fallback)
 BLOCKLIST_URLS = [
     "https://raw.githubusercontent.com/dragonflydiy/radiomcp/main/blocklist.json",  # GitHub (primary)
     "https://radiomcp.pages.dev/blocklist.json",  # Cloudflare Pages (fallback)
 ]
-REMOTE_BLOCKLIST_URL = BLOCKLIST_URLS[0]  # 하위 호환성
+REMOTE_BLOCKLIST_URL = BLOCKLIST_URLS[0]  # Backward compatibility
 
 def load_local_blocklist():
-    """로컬 blocklist.json에서 로드"""
+    """Load from local blocklist.json"""
     global BLOCK_LIST, BLOCKED_URLS, BLOCKED_UUIDS
     for path in LOCAL_BLOCKLIST_PATHS:
         if os.path.exists(path):
@@ -1227,72 +1227,72 @@ def load_local_blocklist():
             except Exception:
                 pass
 
-# 시작 시 로컬 블록리스트 로드
+# Load local blocklist on startup
 load_local_blocklist()
 
 def fetch_remote_blocklist():
-    """블록 리스트 가져오기 (GitHub → Cloudflare 폴백)"""
+    """Fetch blocklist (GitHub -> Cloudflare fallback)"""
     global BLOCK_LIST, BLOCKED_URLS, BLOCKED_UUIDS
 
     data = None
     last_error = None
 
-    # 순서대로 시도
+    # Try in order
     for url in BLOCKLIST_URLS:
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                break  # 성공하면 중단
+                break  # Stop on success
         except Exception as e:
             last_error = e
-            continue  # 다음 URL 시도
+            continue  # Try next URL
 
     if not data:
-        return  # 모든 소스 실패 시 로컬만 사용
+        return  # Use local only if all sources fail
 
-    # 패턴 블록 (이름 매칭)
+    # Pattern block (name matching)
     remote_patterns = [b["pattern"] for b in data.get("blocked", [])]
     for p in remote_patterns:
         if p not in BLOCK_LIST:
             BLOCK_LIST.append(p)
-    # URL 블록
+    # URL block
     BLOCKED_URLS.update(data.get("blocked_urls", []))
-    # UUID 블록
+    # UUID block
     BLOCKED_UUIDS.update(data.get("blocked_uuids", []))
-    # DB에서 블록된 방송 제거
+    # Remove blocked stations from DB
     purge_blocked_from_db()
 
 def purge_blocked_from_db():
-    """DB에서 블록된 방송 제거"""
+    """Remove blocked stations from DB"""
     conn = get_db()
     if not conn:
         return
     try:
         cursor = conn.cursor()
-        # 이름 패턴으로 삭제
+        # Delete by name pattern
         for pattern in BLOCK_LIST:
             cursor.execute("DELETE FROM stations WHERE LOWER(name) LIKE ?", (f"%{pattern.lower()}%",))
-        # UUID로 삭제
+        # Delete by UUID
         for uuid in BLOCKED_UUIDS:
             cursor.execute("DELETE FROM stations WHERE stationuuid = ?", (uuid,))
-        # URL로 삭제
+        # Delete by URL
         for url in BLOCKED_URLS:
             cursor.execute("DELETE FROM stations WHERE url = ? OR url_resolved = ?", (url, url))
         conn.commit()
     except Exception:
         pass
 
-# 시작 시 원격 블록 리스트 fetch
+# Fetch remote blocklist on startup
 fetch_remote_blocklist()
 
 def sync_popular_stations():
-    """시작 시 인기 방송 동기화 (Radio Browser → DB)"""
+    """Sync popular stations on startup (Radio Browser -> DB)"""
     db = get_db()
     if not db:
         return
 
-    # 주요 국가 인기 방송 동기화
+    # Sync popular stations from major countries
     countries = ["KR", "US", "JP", "GB", "DE", "FR"]
     total_added = 0
 
@@ -1309,24 +1309,24 @@ def sync_popular_stations():
                 if not uuid:
                     continue
 
-                # 이미 있으면 URL만 업데이트 (토큰 갱신)
+                # If exists, update URL only (token refresh)
                 cursor.execute("SELECT url_resolved FROM stations WHERE stationuuid = ?", (uuid,))
                 existing = cursor.fetchone()
 
                 new_url = s.get("url_resolved") or s.get("url", "")
                 if existing:
-                    # URL이 바뀌었으면 업데이트
+                    # Update if URL changed
                     if existing[0] != new_url:
                         cursor.execute("""
                             UPDATE stations SET url_resolved = ?, is_alive = 1 WHERE stationuuid = ?
                         """, (new_url, uuid))
                 else:
-                    # 신규 추가
+                    # Add new
                     name = s.get("name", "")
                     if is_blocked(name, new_url, uuid):
                         continue
 
-                    # 태그 자동 설정 (한국 방송)
+                    # Auto-set tags (Korean stations)
                     tags = s.get("tags", "")
                     if not tags and country == "KR":
                         if any(x in name for x in ["Classic", "클래식"]):
@@ -1353,19 +1353,19 @@ def sync_popular_stations():
         except Exception:
             pass
 
-# 시작 시 인기 방송 동기화 (main에서 호출)
+# Sync popular stations on startup (called from main)
 
 def is_blocked(name: str, url: str = "", uuid: str = "") -> bool:
-    """차단 목록 확인 (이름, URL, UUID)"""
+    """Check blocklist (name, URL, UUID)"""
     if not name and not url and not uuid:
         return False
-    # UUID 블록
+    # UUID block
     if uuid and uuid in BLOCKED_UUIDS:
         return True
-    # URL 블록
+    # URL block
     if url and url in BLOCKED_URLS:
         return True
-    # 이름 패턴 블록
+    # Name pattern block
     if name:
         name_lower = name.lower()
         if any(b.lower() in name_lower for b in BLOCK_LIST):
@@ -1374,7 +1374,7 @@ def is_blocked(name: str, url: str = "", uuid: str = "") -> bool:
 
 
 def format_station(s) -> dict:
-    """방송국 정보 포맷 (dict 또는 sqlite Row). 차단이면 None"""
+    """Format station info (dict or sqlite Row). None if blocked"""
     if isinstance(s, sqlite3.Row):
         s = dict(s)
     name = s.get("name", "Unknown")
@@ -1395,26 +1395,26 @@ def format_station(s) -> dict:
 
 
 def format_stations(items) -> list:
-    """여러 방송국 포맷 (차단 필터링)"""
+    """Format multiple stations (filter blocked)"""
     return [s for s in (format_station(x) for x in items) if s]
 
 
 def expand_tags(query: str) -> list:
-    """쿼리를 여러 태그로 확장 (복합 태그 + 유사어)"""
-    # 공백으로 분리
+    """Expand query to multiple tags (compound + synonyms)"""
+    # Split by space
     words = query.lower().strip().split()
     all_tags = set()
 
-    # 원본 쿼리도 포함
+    # Include original query
     all_tags.add(query.lower().strip())
 
-    # 각 단어별 유사어 확장
+    # Expand synonyms for each word
     for word in words:
         all_tags.add(word)
         if word in TAG_SYNONYMS:
             all_tags.update(TAG_SYNONYMS[word])
 
-    # 2단어 조합도 체크 (예: "bossa nova")
+    # Check 2-word combos (e.g. "bossa nova")
     if len(words) >= 2:
         for i in range(len(words) - 1):
             combo = f"{words[i]} {words[i+1]}"
@@ -1426,7 +1426,7 @@ def expand_tags(query: str) -> list:
 
 
 def get_time_of_day() -> str:
-    """현재 시간대 반환"""
+    """Return current time slot"""
     hour = datetime.now().hour
     if 6 <= hour < 10:
         return "morning"
@@ -1439,7 +1439,7 @@ def get_time_of_day() -> str:
 
 
 def db_search(query: str, field: str = "tags", limit: int = 20) -> list:
-    """DB에서 검색"""
+    """Search from DB"""
     db = get_db()
     if not db:
         return []
@@ -1460,7 +1460,7 @@ def db_search(query: str, field: str = "tags", limit: int = 20) -> list:
 
 
 def db_search_country(code: str, limit: int = 20) -> list:
-    """DB에서 국가별 검색"""
+    """Search by country from DB"""
     db = get_db()
     if not db:
         return []
@@ -1481,7 +1481,7 @@ def db_search_country(code: str, limit: int = 20) -> list:
 
 
 def db_get_popular(limit: int = 20) -> list:
-    """DB에서 인기 방송국"""
+    """Popular stations from DB"""
     db = get_db()
     if not db:
         return []
@@ -1502,7 +1502,7 @@ def db_get_popular(limit: int = 20) -> list:
 
 
 def mark_station_dead(url: str):
-    """방송국을 죽은 것으로 표시"""
+    """Mark station as dead"""
     db = get_db()
     if not db:
         return
@@ -1522,14 +1522,14 @@ def mark_station_dead(url: str):
 
 
 def is_valid_station(station: dict) -> bool:
-    """방송국이 DB에 추가해도 되는지 검증"""
+    """Validate if station can be added to DB"""
     url = station.get("url_resolved") or station.get("url", "")
 
-    # 토큰/세션 파라미터가 있는 URL 제외
+    # Exclude URLs with token/session params
     if "?" in url or "&" in url:
         return False
 
-    # 의심스러운 도메인 제외
+    # Exclude suspicious domains
     blocked_domains = [
         "duckdns.org", "no-ip.org", "ddns.net", "iptime.org",
         "zstream.win", "bsod.kr", "localhost", "127.0.0.1"
@@ -1539,12 +1539,12 @@ def is_valid_station(station: dict) -> bool:
         if domain in url_lower:
             return False
 
-    # IP 주소 직접 사용 제외 (예: http://211.33.246.4:port)
+    # Exclude direct IP addresses
     import re
     if re.search(r"https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", url_lower):
         return False
 
-    # 최소 품질 기준
+    # Minimum quality criteria
     if station.get("votes", 0) < 5:
         return False
 
@@ -1552,7 +1552,7 @@ def is_valid_station(station: dict) -> bool:
 
 
 def add_station_to_db(station: dict):
-    """새 방송국을 DB에 추가 (검증 통과시에만)"""
+    """Add new station to DB (if validation passes)"""
     if not is_valid_station(station):
         return
 
@@ -1593,7 +1593,7 @@ def db_advanced_search(
     codec: str = None,
     limit: int = 50
 ) -> list:
-    """DB에서 복합 필터 검색"""
+    """Search with compound filters from DB"""
     db = get_db()
     if not db:
         return []
@@ -1603,7 +1603,7 @@ def db_advanced_search(
         conditions = ["(is_alive = 1 OR is_alive IS NULL)"]
         params = []
 
-        # 태그 필터 (OR)
+        # Tag filter (OR)
         if tags:
             tag_conditions = []
             for tag in tags:
@@ -1611,22 +1611,22 @@ def db_advanced_search(
                 params.append(f"%{tag}%")
             conditions.append(f"({' OR '.join(tag_conditions)})")
 
-        # 국가 필터
+        # Country filter
         if country:
             conditions.append("countrycode = ?")
             params.append(country.upper())
 
-        # 언어 필터
+        # Language filter
         if language:
             conditions.append("language LIKE ?")
             params.append(f"%{language}%")
 
-        # 비트레이트 필터
+        # Bitrate filter
         if min_bitrate > 0:
             conditions.append("bitrate >= ?")
             params.append(min_bitrate)
 
-        # 코덱 필터
+        # Codec filter
         if codec:
             conditions.append("codec LIKE ?")
             params.append(f"%{codec}%")
@@ -1672,7 +1672,7 @@ def search(query: str, limit: int = 20) -> list[dict]:
     Returns:
         List of stations with name, url, country, tags, bitrate
     """
-    # 국가명 감지 (한국, korea, 일본, japan 등)
+    # Detect country name (korea, japan, etc.)
     detected_country = None
     query_lower = query.lower()
     for name, code in COUNTRY_NAMES.items():
@@ -1685,7 +1685,7 @@ def search(query: str, limit: int = 20) -> list[dict]:
     country_results = []
     seen_urls = set()
 
-    # 1. 먼저 이름으로 검색 (가장 정확, 최우선)
+    # 1. Search by name first (most accurate)
     for r in fast_search_by_name(query, limit):
         if r["url"] not in seen_urls:
             seen_urls.add(r["url"])
@@ -1693,18 +1693,18 @@ def search(query: str, limit: int = 20) -> list[dict]:
             r["match_type"] = "name"
             name_results.append(r)
 
-    # 이름 매칭이 충분하면 바로 반환 (태그 검색 생략)
+    # Return early if name match sufficient (skip tag search)
     if len(name_results) >= limit:
         return name_results[:limit]
 
-    # 2. 다국어 번역 + 태그 검색 (이름 매칭 부족시)
+    # 2. Multilingual + tag search (if name match insufficient)
     translated = translate_query(query)
     words = translated.lower().split()
     corrected_words = [fuzzy_match(w) for w in words]
     merged = merge_compound_tokens(corrected_words)
 
-    # 유사어 확장 (장르 쿼리만)
-    # 일반 단어(fm, radio, beach 등)는 태그 확장 안 함
+    # Expand synonyms (genre queries only)
+    # Skip tag expansion for generic words (fm, radio, beach)
     SKIP_TAG_EXPAND = {"fm", "am", "radio", "beach", "music", "the", "and", "or"}
     all_tags = []
     for word in merged:
@@ -1713,19 +1713,19 @@ def search(query: str, limit: int = 20) -> list[dict]:
             if word in TAG_SYNONYMS:
                 all_tags.extend(TAG_SYNONYMS[word][:2])
 
-    # 2-1. 국가명 감지 시 해당 국가 방송 먼저 검색 (최우선!)
+    # 2-1. If country detected, search that country first (priority!)
     if detected_country:
-        # 국가 + 태그/이름 조합 검색
+        # Search country + tag/name combo
         db = get_db()
         if db:
             try:
                 cursor = db.cursor()
-                # 원본 쿼리 + 번역된 태그 모두 검색 (한글 "뉴스" + 영어 "news")
+                # Search both original + translated tags
                 original_words = [w for w in query.split() if w.lower() not in COUNTRY_NAMES]
                 search_terms = list(set(original_words + [t for t in all_tags if t.lower() not in COUNTRY_NAMES]))
 
                 if search_terms:
-                    # 태그 OR 이름에서 검색
+                    # Search in tags OR name
                     conditions = []
                     params = []
                     for term in search_terms:
@@ -1749,7 +1749,7 @@ def search(query: str, limit: int = 20) -> list[dict]:
             except Exception:
                 pass
 
-    # 태그가 있을 때만 검색 (국가 검색 결과 부족 시)
+    # Search only if tags exist (when country results insufficient)
     if all_tags and len(country_results) < limit // 2:
         for r in fast_search_by_tag(all_tags, limit):
             if r["url"] not in seen_urls:
@@ -1758,12 +1758,12 @@ def search(query: str, limit: int = 20) -> list[dict]:
                 r["match_type"] = "tag"
                 tag_results.append(r)
 
-    # 국가 검색 결과 있으면 최우선으로 반환
+    # Return country results first if available
     if country_results:
-        # 국가 매칭 결과 먼저, 부족하면 이름/태그 매칭으로 채움
+        # Country matches first, fill with name/tag matches if needed
         remaining = limit - len(country_results)
         if remaining > 0:
-            # 이름 매칭 추가 (국가 필터)
+            # Add name matches (country filter)
             for r in name_results:
                 if r.get("countrycode", "").upper() == detected_country and r["url"] not in seen_urls:
                     country_results.append(r)
@@ -1772,10 +1772,10 @@ def search(query: str, limit: int = 20) -> list[dict]:
         country_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
         return country_results[:limit]
 
-    # 이름 매칭 우선 + 태그 매칭으로 채움
+    # Name matches first + fill with tag matches
     all_results = name_results + tag_results
 
-    # 3. API 검색 (이름 매칭이 없고 결과 부족시에만)
+    # 3. API search (only if no name match and results insufficient)
     has_name_match = any(r.get("match_type") == "name" for r in all_results)
     if not has_name_match and len(all_results) < limit // 2:
         for tag in all_tags[:2]:
@@ -1797,7 +1797,7 @@ def search(query: str, limit: int = 20) -> list[dict]:
                     if is_valid_station(s):
                         add_station_to_db(s)
 
-    # 정렬: 국가 매칭 > 이름 매칭 > votes
+    # Sort: country match > name match > votes
     def sort_key(r):
         country_match = 1 if detected_country and r.get("countrycode", "").upper() == detected_country else 0
         name_match = 1 if r.get("match_type") == "name" else 0
@@ -1851,51 +1851,51 @@ def advanced_search(
     seen_urls = set()
     search_tags = []
 
-    # 1. 쿼리 처리
+    # 1. Query processing
     if query:
-        # 다국어 번역
+        # Multilingual translation
         translated = translate_query(query)
 
-        # 검색 연산자 파싱
+        # Parse search operators
         parsed = parse_search_query(translated)
 
-        # 퍼지 매칭 + 복합어 병합
+        # Fuzzy matching + compound word merge
         must_tags = []
         for term in parsed["must"]:
             corrected = fuzzy_match(term)
             must_tags.append(corrected)
 
-        # 복합어 병합
+        # Merge compound words
         merged = merge_compound_tokens(must_tags)
 
-        # 유사어 확장
+        # Expand synonyms
         for tag in merged:
             search_tags.append(tag)
             if tag in TAG_SYNONYMS:
                 search_tags.extend(TAG_SYNONYMS[tag][:3])
 
-        # should (OR) 조건
+        # should (OR) condition
         for term in parsed["should"]:
             corrected = fuzzy_match(term)
             search_tags.append(corrected)
 
-        # exact 조건 (나중에 필터링)
+        # exact condition (filter later)
         exact_phrases = parsed["exact"]
 
-        # must_not 조건 (나중에 필터링)
+        # must_not condition (filter later)
         exclude_terms = parsed["must_not"]
     else:
         exact_phrases = []
         exclude_terms = []
 
-    # 2. 태그 파라미터 처리
+    # 2. Process tag parameters
     if tags:
         for tag in tags.split(","):
             tag = tag.strip().lower()
             if tag:
                 search_tags.append(tag)
 
-    # 3. DB 검색
+    # 3. DB search
     db_results = db_advanced_search(
         tags=search_tags if search_tags else None,
         country=country,
@@ -1907,13 +1907,13 @@ def advanced_search(
 
     for r in db_results:
         if r["url"] not in seen_urls:
-            # exact phrase 필터
+            # exact phrase filter
             if exact_phrases:
                 station_text = f"{r.get('name', '')} {r.get('tags', '')}".lower()
                 if not all(phrase in station_text for phrase in exact_phrases):
                     continue
 
-            # exclude 필터
+            # exclude filter
             if exclude_terms:
                 station_tags = r.get("tags", "").lower()
                 if any(term in station_tags for term in exclude_terms):
@@ -1923,7 +1923,7 @@ def advanced_search(
             r["source"] = "db"
             all_results.append(r)
 
-    # 4. API 검색 (결과 부족시)
+    # 4. API search (if results insufficient)
     if len(all_results) < limit and search_tags:
         for tag in search_tags[:3]:
             params = {
@@ -1943,7 +1943,7 @@ def advanced_search(
             for s in api_results:
                 url = s.get("url_resolved") or s.get("url", "")
                 if url and url not in seen_urls:
-                    # 국가 필터 강제 적용 (API가 무시할 수 있으므로)
+                    # Force country filter (API may ignore)
                     if country and s.get("countrycode", "").upper() != country.upper():
                         continue
 
@@ -1951,7 +1951,7 @@ def advanced_search(
                     if not station:
                         continue
 
-                    # exact/exclude 필터
+                    # exact/exclude filter
                     station_text = f"{station.get('name', '')} {station.get('tags', '')}".lower()
                     if exact_phrases and not all(p in station_text for p in exact_phrases):
                         continue
@@ -1965,7 +1965,7 @@ def advanced_search(
                     if is_valid_station(s):
                         add_station_to_db(s)
 
-    # 5. 정렬
+    # 5. Sorting
     if sort_by == "bitrate":
         all_results.sort(key=lambda x: x.get("bitrate", 0), reverse=True)
     elif sort_by == "name":
@@ -1992,7 +1992,7 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
     all_results = []
     seen_urls = set()
 
-    # 1. DB에서 검색 (검증된 방송)
+    # 1. Search DB (verified stations)
     db_results = db_search_country(country_code, limit)
     for r in db_results:
         if r["url"] not in seen_urls:
@@ -2000,7 +2000,7 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
             r["source"] = "db"
             all_results.append(r)
 
-    # 2. Radio Browser API (최신 결과)
+    # 2. Radio Browser API (latest results)
     code = urllib.parse.quote(country_code.upper())
     api_results = api_get(f"stations/bycountrycodeexact/{code}", {
         "limit": limit,
@@ -2009,11 +2009,11 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
         "lastcheckok": 1
     })
 
-    # API 결과 병합 (국가 필터 강제 적용)
+    # Merge API results (force country filter)
     for s in api_results:
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen_urls:
-            # 국가 코드 검증 (API가 무시할 수 있으므로)
+            # Verify country code (API may ignore)
             if s.get("countrycode", "").upper() != country_code.upper():
                 continue
             station = format_station(s)
@@ -2022,7 +2022,7 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
             seen_urls.add(url)
             station["source"] = "api"
             all_results.append(station)
-            # 정상적인 방송만 DB에 저장
+            # Save only valid stations to DB
             if is_valid_station(s):
                 add_station_to_db(s)
 
@@ -2042,7 +2042,7 @@ def search_by_language(language: str, limit: int = 20) -> list[dict]:
     Returns:
         List of radio stations
     """
-    # 언어 코드 → 전체 이름 매핑
+    # Language code -> full name mapping
     LANG_CODES = {
         "ko": "korean", "en": "english", "ja": "japanese", "de": "german",
         "fr": "french", "es": "spanish", "pt": "portuguese", "it": "italian",
@@ -2058,7 +2058,7 @@ def search_by_language(language: str, limit: int = 20) -> list[dict]:
     all_results = []
     seen_urls = set()
 
-    # DB 검색
+    # DB search
     db = get_db()
     if db:
         try:
@@ -2114,7 +2114,7 @@ def get_popular(limit: int = 20) -> list[dict]:
     Returns:
         List of popular stations
     """
-    # 1. DB에서 가져오기
+    # 1. Get from DB
     results = db_get_popular(limit)
 
     # 2. API fallback
@@ -2139,10 +2139,10 @@ def play(url: str, name: str = "") -> dict:
     """
     global current_station, player_proc
 
-    # 기존 재생 중지
+    # Stop existing playback
     stop()
 
-    # API에서 최신 URL 가져오기 (토큰 만료 대응)
+    # Get latest URL from API (handle token expiry)
     play_url = url
     url_refreshed = False
     if name:
@@ -2151,10 +2151,10 @@ def play(url: str, name: str = "") -> dict:
             play_url = fresh_url
             url_refreshed = (fresh_url != url)
 
-    # 백엔드별 재생
+    # Play by backend
     try:
         if PLAYER_BACKEND == "mpv":
-            # === mpv 백엔드 ===
+            # === mpv backend ===
             kill_existing_mpv()
 
             mpv_log = open(os.path.join(DATA_DIR, "mpv.log"), "w")
@@ -2184,7 +2184,7 @@ def play(url: str, name: str = "") -> dict:
                 return {"status": "error", "message": "Stream failed to start"}
 
         elif PLAYER_BACKEND == "vlc":
-            # === VLC 백엔드 ===
+            # === VLC backend ===
             player = get_vlc_player()
             if not player.play(play_url):
                 return {"status": "error", "message": "VLC failed to start"}
@@ -2194,7 +2194,7 @@ def play(url: str, name: str = "") -> dict:
                 return {"status": "error", "message": "Stream failed to start"}
 
         elif PLAYER_BACKEND == "ffplay":
-            # === ffplay 백엔드 ===
+            # === ffplay backend ===
             player = get_ffplay_player()
             if not player.play(play_url):
                 return {"status": "error", "message": "ffplay failed to start"}
@@ -2204,15 +2204,15 @@ def play(url: str, name: str = "") -> dict:
                 return {"status": "error", "message": "Stream failed to start"}
 
         elif PLAYER_BACKEND == "browser":
-            # === 브라우저 백엔드 ===
+            # === Browser backend ===
             player = get_browser_player()
             player.play(play_url)
-            # 브라우저는 재생 확인 불가
+            # Browser cannot confirm playback
 
         else:
             return {"status": "error", "message": f"Unknown player backend: {PLAYER_BACKEND}"}
 
-        # DB에서 방송국 상세 정보 가져오기
+        # Get station details from DB
         station_info = {"name": name, "url": play_url}
         db = get_db()
         if db and name:
@@ -2233,9 +2233,9 @@ def play(url: str, name: str = "") -> dict:
                 pass
 
         current_station = station_info
-        save_last_station()  # 즉시 저장 (resume용)
+        save_last_station()  # Save immediately (for resume)
 
-        # AI가 소개하기 좋게 상세 정보 리턴
+        # Return detailed info for AI
         result = {
             "status": "playing",
             "name": name,
@@ -2279,7 +2279,7 @@ def stop() -> dict:
     elif PLAYER_BACKEND == "browser":
         player = get_browser_player()
         player.stop()
-        result["note"] = "브라우저 탭을 수동으로 닫아주세요"
+        result["note"] = "Please close the browser tab manually"
 
     current_station = None
     return result
@@ -2311,7 +2311,7 @@ def get_player_backend() -> dict:
     else:
         install_guide.append("ffplay: brew install ffmpeg (macOS) / apt install ffmpeg (Linux)")
 
-    available.append("browser")  # 항상 가능
+    available.append("browser")  # Always available
 
     result = {
         "current": PLAYER_BACKEND,
@@ -2319,10 +2319,10 @@ def get_player_backend() -> dict:
         "recommendation": available[0] if available else "browser"
     }
 
-    # 플레이어가 browser만 있으면 설치 안내
+    # Show install guide if only browser available
     if len(available) == 1:
         result["install_guide"] = install_guide
-        result["note"] = "더 좋은 재생 품질을 위해 mpv, vlc, 또는 ffmpeg를 설치하세요"
+        result["note"] = "Install mpv, vlc, or ffmpeg for better playback quality"
 
     return result
 
@@ -2344,7 +2344,7 @@ def set_player_backend(backend: str) -> dict:
     if backend not in valid_backends:
         return {"status": "error", "message": f"Invalid backend. Choose from: {valid_backends}"}
 
-    # 백엔드 사용 가능 여부 확인
+    # Check backend availability
     if backend == "mpv" and not shutil.which("mpv"):
         return {"status": "error", "message": "mpv not installed. Install: brew install mpv (macOS) / apt install mpv (Linux)"}
     if backend == "vlc" and not (shutil.which("vlc") or shutil.which("cvlc")):
@@ -2424,7 +2424,7 @@ def now_playing() -> dict:
 
 
 def record_stream(url: str, duration: int = 12) -> bool:
-    """스트림에서 오디오 녹음 (ffmpeg 사용)"""
+    """Record audio from stream (using ffmpeg)"""
     if not shutil.which("ffmpeg"):
         return False
 
@@ -2444,12 +2444,12 @@ def record_stream(url: str, duration: int = 12) -> bool:
 
 
 def recognize_with_acoustid(audio_file: str) -> dict:
-    """AcoustID + Chromaprint로 곡 인식"""
+    """Recognize song with AcoustID + Chromaprint"""
     if not shutil.which("fpcalc"):
         return None
 
     try:
-        # 오디오 핑거프린트 생성
+        # Generate audio fingerprint
         result = subprocess.run(
             ["fpcalc", "-json", audio_file],
             capture_output=True, text=True, timeout=30
@@ -2461,7 +2461,7 @@ def recognize_with_acoustid(audio_file: str) -> dict:
         if not fingerprint:
             return None
 
-        # AcoustID API 조회
+        # Query AcoustID API
         params = urllib.parse.urlencode({
             "client": ACOUSTID_API_KEY,
             "fingerprint": fingerprint,
@@ -2497,9 +2497,9 @@ def recognize_with_acoustid(audio_file: str) -> dict:
 
 
 def recognize_with_whisper(audio_file: str) -> dict:
-    """Whisper로 음성 인식"""
+    """Speech recognition with Whisper"""
     try:
-        # mlx-whisper 시도 (Apple Silicon)
+        # Try mlx-whisper (Apple Silicon)
         result = subprocess.run(
             ["mlx_whisper", audio_file, "--language", "auto", "--output-format", "json"],
             capture_output=True, text=True, timeout=60
@@ -2510,7 +2510,7 @@ def recognize_with_whisper(audio_file: str) -> dict:
         pass
 
     try:
-        # openai-whisper 시도
+        # Try openai-whisper
         result = subprocess.run(
             ["whisper", audio_file, "--language", "auto", "--output_format", "txt"],
             capture_output=True, text=True, timeout=120
@@ -2556,7 +2556,7 @@ def recognize_song(duration: int = 12) -> dict:
     if not url:
         return {"error": "no_stream_url"}
 
-    # 1. 먼저 메타데이터 확인 (가장 빠름)
+    # 1. Check metadata first (fastest)
     metadata = now_playing()
     if metadata.get("title") and metadata.get("status") == "playing":
         result = {
@@ -2569,14 +2569,14 @@ def recognize_song(duration: int = 12) -> dict:
         save_recognized(result)
         return result
 
-    # 2. 오디오 녹음
+    # 2. Record audio
     if not shutil.which("ffmpeg"):
         return {"error": "ffmpeg_not_installed", "hint": "brew install ffmpeg"}
 
     if not record_stream(url, duration):
         return {"error": "recording_failed"}
 
-    # 3. AcoustID 시도
+    # 3. Try AcoustID
     if shutil.which("fpcalc"):
         acoustid_result = recognize_with_acoustid(RECORD_FILE)
         if acoustid_result:
@@ -2592,7 +2592,7 @@ def recognize_song(duration: int = 12) -> dict:
             save_recognized(result)
             return result
 
-    # 4. Whisper 시도
+    # 4. Try Whisper
     if shutil.which("whisper") or shutil.which("mlx_whisper"):
         whisper_result = recognize_with_whisper(RECORD_FILE)
         if whisper_result and whisper_result.get("transcription"):
@@ -2609,11 +2609,11 @@ def recognize_song(duration: int = 12) -> dict:
 
 
 def save_recognized(result: dict):
-    """인식 결과 저장"""
+    """Save recognition result"""
     songs = load_json(RECOGNIZED_FILE)
     result["recognized_at"] = datetime.now().isoformat()
     songs.append(result)
-    save_json(RECOGNIZED_FILE, songs[-100:])  # 최근 100개 유지
+    save_json(RECOGNIZED_FILE, songs[-100:])  # Keep last 100
 
 
 @mcp.tool()
@@ -2737,7 +2737,7 @@ def recommend(mood: str = "relaxing") -> list[dict]:
     seen = set()
 
     for tag in tags[:2]:
-        # DB 검색
+        # DB search
         db_results = db_search(tag, "tags", 15)
         for r in db_results:
             if r["url"] not in seen:
@@ -2745,7 +2745,7 @@ def recommend(mood: str = "relaxing") -> list[dict]:
                 r["source"] = "db"
                 all_results.append(r)
 
-        # API 검색
+        # API search
         encoded_tag = urllib.parse.quote(tag)
         api_results = api_get(f"stations/bytag/{encoded_tag}", {
             "limit": 15,
@@ -2847,7 +2847,7 @@ def health_check(limit: int = 100) -> dict:
 
     try:
         cursor = db.cursor()
-        # 오래된 검증 또는 미검증 방송 우선
+        # Prioritize old verified or unverified stations
         cursor.execute("""
             SELECT stationuuid, name, url, url_resolved
             FROM stations
@@ -2906,7 +2906,7 @@ def sync_with_api(country_code: str = None, tag: str = None, limit: int = 100) -
     if not db:
         return {"status": "no_db"}
 
-    # API에서 가져오기
+    # Get from API
     if country_code:
         code = urllib.parse.quote(country_code.upper())
         api_results = api_get(f"stations/bycountrycodeexact/{code}", {
@@ -2933,21 +2933,21 @@ def sync_with_api(country_code: str = None, tag: str = None, limit: int = 100) -
             uuid = s.get("stationuuid", "")
             url = s.get("url_resolved") or s.get("url", "")
 
-            # 유효성 검사
+            # Validate
             if not is_valid_station(s):
                 skipped += 1
                 continue
 
-            # DB에 있는지 확인
+            # Check if in DB
             cursor.execute("SELECT stationuuid, url_resolved FROM stations WHERE stationuuid = ?", (uuid,))
             existing = cursor.fetchone()
 
             if not existing:
-                # 신규 추가
+                # Add new
                 add_station_to_db(s)
                 new_count += 1
             elif existing[1] != url:
-                # URL 변경됨 - 업데이트
+                # URL changed - update
                 cursor.execute("""
                     UPDATE stations SET url = ?, url_resolved = ?,
                         is_alive = 1, last_checked_at = ?
@@ -2981,7 +2981,7 @@ def set_sleep_timer(minutes: int) -> dict:
     global sleep_timer
     import threading
 
-    # 기존 타이머 취소
+    # Cancel existing timer
     if sleep_timer:
         sleep_timer.cancel()
         sleep_timer = None
@@ -3020,7 +3020,7 @@ def set_alarm(hour: int, minute: int = 0, station_query: str = "pop") -> dict:
     now = datetime.now()
     alarm_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
-    # 이미 지난 시간이면 내일로
+    # If time passed, set for tomorrow
     if alarm_time <= now:
         alarm_time += timedelta(days=1)
 
@@ -3103,7 +3103,7 @@ def similar_stations(limit: int = 10) -> list[dict]:
     if not current_station:
         return []
 
-    # 현재 방송국의 태그 가져오기
+    # Get current station tags
     db = get_db()
     if db:
         cursor = db.cursor()
@@ -3113,10 +3113,10 @@ def similar_stations(limit: int = 10) -> list[dict]:
         if row and row[0]:
             tags = row[0].split(",")
             if tags:
-                # 첫 번째 태그로 검색
+                # Search by first tag
                 main_tag = tags[0].strip()
                 results = search(main_tag, limit + 1)
-                # 현재 방송국 제외
+                # Exclude current station
                 return [r for r in results if r["url"] != current_station.get("url")][:limit]
 
     return []
@@ -3236,10 +3236,10 @@ def get_user_profile() -> dict:
     if not history:
         return {"status": "no_history", "message": "Listen to some radio first"}
 
-    # 태그 가중치 (duration 기반)
+    # Tag weights (duration based)
     tag_weights = {}
 
-    # 시간대별 선호
+    # Time of day preferences
     time_prefs = {
         "morning": {},    # 6-10
         "daytime": {},    # 10-17
@@ -3247,34 +3247,34 @@ def get_user_profile() -> dict:
         "night": {},      # 21-6
     }
 
-    # 요일별 선호
-    day_prefs = {i: {} for i in range(7)}  # 0=월요일
+    # Day of week preferences
+    day_prefs = {i: {} for i in range(7)}  # 0=Monday
 
     total_duration = 0
     total_listens = len(history)
 
     for entry in history:
         tags_str = entry.get("tags", "")
-        duration = entry.get("duration", 60)  # 기본 1분
+        duration = entry.get("duration", 60)  # Default 1 min
         timestamp = entry.get("timestamp", "")
 
         total_duration += duration
 
-        # 태그 파싱
+        # Parse tags
         tags = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
         if not tags:
             continue
 
-        # duration 가중치 (분 단위, 최대 10점)
+        # Duration weight (in minutes, max 10)
         weight = min(duration / 60, 10)
 
-        # 시간 파싱
+        # Parse time
         try:
             dt = datetime.fromisoformat(timestamp)
             hour = dt.hour
             weekday = dt.weekday()
 
-            # 시간대 결정
+            # Determine time slot
             if 6 <= hour < 10:
                 time_slot = "morning"
             elif 10 <= hour < 17:
@@ -3288,25 +3288,25 @@ def get_user_profile() -> dict:
             weekday = 0
 
         for tag in tags:
-            # 전체 가중치
+            # Total weight
             tag_weights[tag] = tag_weights.get(tag, 0) + weight
 
-            # 시간대별
+            # By time slot
             time_prefs[time_slot][tag] = time_prefs[time_slot].get(tag, 0) + weight
 
-            # 요일별
+            # By day
             day_prefs[weekday][tag] = day_prefs[weekday].get(tag, 0) + weight
 
-    # 정렬
+    # Sort
     top_tags = sorted(tag_weights.items(), key=lambda x: -x[1])[:10]
 
-    # 시간대별 상위 태그
+    # Top tags by time slot
     time_top = {}
     for slot, tags in time_prefs.items():
         if tags:
             time_top[slot] = sorted(tags.items(), key=lambda x: -x[1])[:5]
 
-    # 요일별 상위 태그
+    # Top tags by day
     day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     day_top = {}
     for day, tags in day_prefs.items():
@@ -3336,16 +3336,16 @@ def personalized_recommend(limit: int = 10) -> dict:
     """
     profile = get_user_profile()
     if profile.get("status") == "no_history":
-        # 기록 없으면 시간대 기반 추천
+        # If no history, recommend by time slot
         return recommend_by_time()
 
-    # 현재 컨텍스트
+    # Current context
     now = datetime.now()
     hour = now.hour
     weekday = now.weekday()
     day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-    # 시간대
+    # Time slot
     if 6 <= hour < 10:
         time_slot = "morning"
     elif 10 <= hour < 17:
@@ -3355,26 +3355,26 @@ def personalized_recommend(limit: int = 10) -> dict:
     else:
         time_slot = "night"
 
-    # 태그 수집 (우선순위: 시간대+요일 > 시간대 > 전체)
+    # Collect tags (priority: slot+day > slot > all)
     recommended_tags = []
 
-    # 1. 해당 요일 선호 태그
+    # 1. Preferred tags for this day
     day_prefs = profile.get("day_preferences", {}).get(day_names[weekday], [])
     for tag, _ in day_prefs[:2]:
         recommended_tags.append(tag)
 
-    # 2. 해당 시간대 선호 태그
+    # 2. Preferred tags for this time slot
     time_prefs = profile.get("time_preferences", {}).get(time_slot, [])
     for tag, _ in time_prefs[:3]:
         if tag not in recommended_tags:
             recommended_tags.append(tag)
 
-    # 3. 전체 선호 태그
+    # 3. Overall preferred tags
     for tag, _ in profile.get("top_tags", [])[:5]:
         if tag not in recommended_tags:
             recommended_tags.append(tag)
 
-    # 검색
+    # Search
     all_results = []
     seen = set()
 
@@ -3462,7 +3462,7 @@ def refresh_blocklist() -> dict:
 
 
 # ============================================================
-# AI Helper Tools - 인공지능이 쓰기 좋게
+# AI Helper Tools - Easy for AI to use
 # ============================================================
 
 @mcp.tool()
@@ -3548,11 +3548,11 @@ def expand_search(query: str) -> dict:
     query_lower = query.lower()
     related = []
 
-    # 직접 매칭
+    # Direct match
     if query_lower in expansions:
         related = expansions[query_lower]
     else:
-        # 부분 매칭
+        # Partial match
         for key, terms in expansions.items():
             if key in query_lower or query_lower in key:
                 related.extend(terms)
@@ -3585,12 +3585,12 @@ def get_radio_status() -> dict:
         "db_stations": 0
     }
 
-    # 재생 상태
+    # Playback status
     if current_station:
         status["playback"] = "playing"
         status["current_station"] = current_station
 
-        # 현재 곡
+        # Current song
         try:
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             sock.settimeout(1)
@@ -3604,13 +3604,13 @@ def get_radio_status() -> dict:
         except:
             pass
 
-    # 즐겨찾기/기록
+    # Favorites/history
     favs = load_json(FAVORITES_FILE)
     history = load_json(HISTORY_FILE)
     status["favorites_count"] = len(favs) if favs else 0
     status["history_count"] = len(history) if history else 0
 
-    # DB 상태
+    # DB status
     if db:
         try:
             count = db.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 1").fetchone()[0]
@@ -3642,7 +3642,7 @@ def check_stream(url: str) -> dict:
             content_type = resp.headers.get('Content-Type', '')
             icy_name = resp.headers.get('icy-name', '')
 
-            # 스트림 타입 확인
+            # Check stream type
             is_stream = any(t in content_type.lower() for t in
                           ['audio/', 'application/ogg', 'mpegurl', 'x-scpls'])
 
@@ -3762,7 +3762,7 @@ def get_listening_stats(period: str = "week") -> dict:
 
     now = datetime.now()
 
-    # 기간 필터
+    # Period filter
     if period == "today":
         cutoff = now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif period == "week":
@@ -3772,7 +3772,7 @@ def get_listening_stats(period: str = "week") -> dict:
     else:  # all
         cutoff = datetime.min
 
-    # 필터링
+    # Filter
     filtered = []
     for entry in history:
         try:
@@ -3786,10 +3786,10 @@ def get_listening_stats(period: str = "week") -> dict:
     if not filtered:
         return {"status": "no_data", "period": period, "message": f"No listening data for {period}"}
 
-    # 통계 계산
+    # Calculate stats
     total_duration = sum(e.get("duration", 60) for e in filtered)
 
-    # 방송국별 청취
+    # Listens per station
     station_times = {}
     for e in filtered:
         name = e.get("name", "Unknown")
@@ -3797,7 +3797,7 @@ def get_listening_stats(period: str = "week") -> dict:
 
     top_stations = sorted(station_times.items(), key=lambda x: -x[1])[:5]
 
-    # 장르별 청취
+    # Listens per genre
     tag_times = {}
     for e in filtered:
         tags = e.get("tags", "").split(",")
@@ -3809,7 +3809,7 @@ def get_listening_stats(period: str = "week") -> dict:
 
     top_tags = sorted(tag_times.items(), key=lambda x: -x[1])[:5]
 
-    # 일별 청취 시간 (최근 7일)
+    # Daily listening time (last 7 days)
     daily = {}
     for e in filtered:
         try:
@@ -3819,7 +3819,7 @@ def get_listening_stats(period: str = "week") -> dict:
         except:
             pass
 
-    # 최근 7일만
+    # Last 7 days only
     recent_days = sorted(daily.items(), reverse=True)[:7]
 
     return {
@@ -3835,7 +3835,7 @@ def get_listening_stats(period: str = "week") -> dict:
 
 
 # ============================================================
-# 스테이션 상태 체크
+# Station health check
 # ============================================================
 @mcp.tool()
 def check_station(url: str) -> dict:
@@ -3870,7 +3870,7 @@ def check_station(url: str) -> dict:
 
 
 # ============================================================
-# 스테이션 공유
+# Station sharing
 # ============================================================
 @mcp.tool()
 def share_station(name: str = "") -> dict:
@@ -3886,7 +3886,7 @@ def share_station(name: str = "") -> dict:
     station = None
 
     if name:
-        # DB에서 검색
+        # Search from DB
         db = get_db()
         if db:
             try:
@@ -3907,7 +3907,7 @@ def share_station(name: str = "") -> dict:
             except:
                 pass
     else:
-        # 현재 재생 중인 방송
+        # Currently playing station
         station = current_station
 
     if not station:
@@ -3928,11 +3928,11 @@ def share_station(name: str = "") -> dict:
 
 def main():
     """Entry point for radiomcp command"""
-    # 싱글톤 락 비활성화 - Claude Desktop이 여러 서버 띄울 수 있음
-    # 대신 PID 파일로 mpv 공유
-    # acquire_singleton_lock()  # 비활성화
+    # Singleton lock disabled - Claude Desktop may spawn multiple servers
+    # Share mpv via PID file instead
+    # acquire_singleton_lock()  # Disabled
 
-    # 백그라운드에서 인기 방송 동기화
+    # Sync popular stations in background
     sync_thread = threading.Thread(target=sync_popular_stations, daemon=True)
     sync_thread.start()
     mcp.run()

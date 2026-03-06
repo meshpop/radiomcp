@@ -37,17 +37,17 @@
 │  │                         radio_api_v4.py                               │   │
 │  │                                                                       │   │
 │  │  Endpoints:                                                           │   │
-│  │  • /search?q=&countrycode=&tag=    검색 (다국어 지원)                  │   │
-│  │  • /stations?country=&tag=         필터 조회                          │   │
-│  │  • /station/{id}                   단일 방송국                        │   │
-│  │  • /countries, /tags, /languages   메타데이터                         │   │
-│  │  • /health, /stats                 상태                               │   │
+│  │  • /search?q=&countrycode=&tag=    Search (multilingual)              │   │
+│  │  • /stations?country=&tag=         Filter query                       │   │
+│  │  • /station/{id}                   Single station                     │   │
+│  │  • /countries, /tags, /languages   Metadata                           │   │
+│  │  • /health, /stats                 Status                             │   │
 │  │                                                                       │   │
 │  │  Features:                                                            │   │
-│  │  • 다국어 키워드 매핑 (183개: ko, ja, zh, ru, fr, de, es)             │   │
-│  │  • 검색 관련성 스코어링 (word-boundary 우선)                          │   │
-│  │  • 실시간 URL Resolver (한국 방송)                                    │   │
-│  │  • Health Score 계산                                                  │   │
+│  │  • Multilingual keywords (183: ko, ja, zh, ru, fr, de, es)            │   │
+│  │  • Search relevance scoring (word-boundary priority)                  │   │
+│  │  • Real-time URL Resolver (Korean broadcasters)                       │   │
+│  │  • Health Score calculation                                           │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                    │                                         │
 │          ┌─────────────────────────┼─────────────────────────┐              │
@@ -56,9 +56,9 @@
 │  │   SQLite DB  │         │   Korean     │         │     HLS      │        │
 │  │radio_unified │         │  Resolvers   │         │  Validator   │        │
 │  │    .db       │         │              │         │              │        │
-│  │              │         │ • KBS API    │         │ • M3U8 파싱  │        │
-│  │ 51,915 방송국│         │ • MBC API    │         │ • 세그먼트   │        │
-│  │              │         │ • YTN        │         │   검증       │        │
+│  │              │         │ • KBS API    │         │ • M3U8 parse │        │
+│  │ 51,915       │         │ • MBC API    │         │ • Segment    │        │
+│  │ stations     │         │ • YTN        │         │   verify     │        │
 │  └──────────────┘         └──────────────┘         └──────────────┘        │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -69,13 +69,13 @@
 │                                                                              │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
 │  │  04:00  radio_revalidate_v2.py                                     │     │
-│  │         └─ 기존 방송국 URL 검증 → is_verified 업데이트              │     │
+│  │         └─ Validate station URLs → update is_verified              │     │
 │  │                                                                     │     │
 │  │  05:00  sync_radiobrowser.py                                       │     │
-│  │         └─ Radio Browser API → 신규/업데이트 방송국 동기화          │     │
+│  │         └─ Radio Browser API → sync new/updated stations           │     │
 │  │                                                                     │     │
 │  │  05:30  auto_broadcaster.py                                        │     │
-│  │         └─ 주요 방송사 URL 갱신 (KBS, MBC, BBC 등)                  │     │
+│  │         └─ Refresh major broadcaster URLs (KBS, MBC, BBC)          │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
 │                              DATA SOURCES                                    │
