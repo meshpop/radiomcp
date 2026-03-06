@@ -5,6 +5,7 @@ import re
 from urllib.parse import urljoin
 
 TIMEOUT = 10
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 
 
 def validate_hls(url: str) -> dict:
@@ -27,7 +28,7 @@ def validate_hls(url: str) -> dict:
     try:
         # 1. Get playlist
         resp = requests.get(url, timeout=TIMEOUT, headers={
-            'User-Agent': 'RadioCli/1.0'
+            'User-Agent': USER_AGENT
         })
         base_url = url  # Base for relative URLs
 
@@ -115,7 +116,7 @@ def validate_stream(url: str) -> dict:
     else:
         # Regular stream
         try:
-            resp = requests.get(url, timeout=TIMEOUT, stream=True)
+            resp = requests.get(url, timeout=TIMEOUT, stream=True, headers={'User-Agent': USER_AGENT})
             data = resp.raw.read(4096)
             return {
                 'url': url,
