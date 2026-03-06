@@ -1,0 +1,95 @@
+{
+  "_comment": "Broadcaster Registry - Auto-managed resolvers for major broadcasters",
+  "_updated": "2026-03-06",
+  
+  "broadcasters": {
+    "kbs": {
+      "name": "KBS (Korean Broadcasting System)",
+      "country": "KR",
+      "api_type": "cloudfront_signed",
+      "api_url": "https://cfpwwwapi.kbs.co.kr/api/v1/landing/live/channel_code/{code}",
+      "channels": [
+        {"id": "kbs1-radio", "name": "KBS 1라디오", "code": "21", "tags": "news,talk"},
+        {"id": "kbs2-radio", "name": "KBS 2라디오 해피FM", "code": "22", "tags": "entertainment,music"},
+        {"id": "kbs3-radio", "name": "KBS 3라디오", "code": "23", "tags": "education,talk"},
+        {"id": "kbs-classic", "name": "KBS 클래식FM", "code": "24", "tags": "classical"},
+        {"id": "kbs-cool", "name": "KBS Cool FM", "code": "25", "tags": "pop,music"},
+        {"id": "kbs-world", "name": "KBS 한민족방송", "code": "26", "tags": "korean,world"}
+      ]
+    },
+    
+    "mbc": {
+      "name": "MBC (Munhwa Broadcasting Corporation)",
+      "country": "KR",
+      "api_type": "direct_api",
+      "api_url": "https://sminiplay.imbc.com/aacplay.ashx?channel={id}&protocol=M3U8&agent=webapp",
+      "channels": [
+        {"id": "mfm", "name": "MBC FM4U", "tags": "pop,music"},
+        {"id": "sfm", "name": "MBC 표준FM", "tags": "news,talk"},
+        {"id": "chm", "name": "MBC 올댓뮤직", "tags": "music"}
+      ]
+    },
+    
+    "sbs": {
+      "name": "SBS (Seoul Broadcasting System)",
+      "country": "KR",
+      "api_type": "unknown",
+      "status": "research_needed",
+      "channels": [
+        {"id": "powerfm", "name": "SBS 파워FM", "tags": "pop,music"},
+        {"id": "lovefm", "name": "SBS 러브FM", "tags": "talk,music"}
+      ]
+    },
+    
+    "ytn": {
+      "name": "YTN (Yonhap Television News)",
+      "country": "KR",
+      "api_type": "static_url",
+      "channels": [
+        {"id": "ytn-radio", "name": "YTN 라디오", "url": "https://ytnlive.ytndj.co.kr/live/ytnradio.m3u8", "tags": "news"},
+        {"id": "ytn-science", "name": "YTN 사이언스", "url": "https://ytnlive.ytndj.co.kr/live/ytnscience.m3u8", "tags": "science,education"}
+      ]
+    },
+    
+    "bbc": {
+      "name": "BBC (British Broadcasting Corporation)",
+      "country": "GB",
+      "api_type": "static_url",
+      "base_url": "http://stream.live.vc.bbcmedia.co.uk/{channel_id}",
+      "channels": [
+        {"id": "bbc_radio_one", "name": "BBC Radio 1", "tags": "pop,music,uk"},
+        {"id": "bbc_radio_two", "name": "BBC Radio 2", "tags": "pop,music,uk"},
+        {"id": "bbc_radio_three", "name": "BBC Radio 3", "tags": "classical,uk"},
+        {"id": "bbc_radio_fourfm", "name": "BBC Radio 4", "tags": "talk,news,uk"},
+        {"id": "bbc_radio_five_live", "name": "BBC Radio 5 Live", "tags": "news,sports,uk"},
+        {"id": "bbc_6music", "name": "BBC Radio 6 Music", "tags": "alternative,music,uk"},
+        {"id": "bbc_asian_network", "name": "BBC Asian Network", "tags": "asian,music,uk"},
+        {"id": "bbc_world_service", "name": "BBC World Service", "tags": "news,world,uk"},
+        {"id": "bbc_radio_1xtra", "name": "BBC Radio 1Xtra", "tags": "hiphop,rnb,uk"},
+        {"id": "bbc_radio_four_extra", "name": "BBC Radio 4 Extra", "tags": "comedy,drama,uk"}
+      ]
+    },
+    
+    "nhk": {
+      "name": "NHK (Nippon Hoso Kyokai)",
+      "country": "JP",
+      "api_type": "geo_restricted",
+      "status": "japan_only",
+      "note": "Requires Japanese IP address",
+      "channels": [
+        {"id": "nhk-r1", "name": "NHK Radio 1", "tags": "news,talk"},
+        {"id": "nhk-r2", "name": "NHK Radio 2", "tags": "education"},
+        {"id": "nhk-fm", "name": "NHK FM", "tags": "music,classical"}
+      ]
+    },
+    
+    "npr": {
+      "name": "NPR (National Public Radio)",
+      "country": "US",
+      "api_type": "static_url",
+      "channels": [
+        {"id": "npr-news", "name": "NPR News", "url": "https://npr-ice.streamguys1.com/live.mp3", "tags": "news,talk,us"}
+      ]
+    }
+  }
+}
