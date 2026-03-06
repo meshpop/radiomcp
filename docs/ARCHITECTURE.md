@@ -1,5 +1,21 @@
 # Radio System Architecture
 
+## Projects
+
+| Project | Description | Status |
+|---------|-------------|--------|
+| **radiocli** | CLI app | Released |
+| **radiomcp** | MCP server for Claude Desktop | Released |
+| **Radio API** | Backend API (g3:8092) | Running |
+| **Radio MCP API** | Public MCP server for API | Planned |
+
+**Current:**
+- radiocli/radiomcp → Local DB (radio_stations.db)
+
+**Future:**
+- radiocli/radiomcp → Radio API (g3:8092)
+- Radio MCP API → Public MCP server
+
 ## Overview
 
 ```

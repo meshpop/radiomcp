@@ -1,6 +1,6 @@
 # RadioCli / radiomcp
 
-Search and play 24,000+ internet radio stations from 197 countries.
+Search and play 51,000+ internet radio stations from 200+ countries.
 
 [한국어](README.ko.md)
 
@@ -267,6 +267,15 @@ Example: `jazz HQ`
 - chromaprint (for AcoustID)
 - edge-tts (for DJ mode)
 - ollama (for LLM, optional)
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system architecture.
+
+**Data Pipeline (g3 server):**
+- Daily URL validation & new station sync
+- Korean broadcaster URL resolvers (KBS, MBC, YTN)
+- 51,000+ stations from Radio Browser, Icecast, TuneIn, Shoutcast
 
 ## License
 

@@ -253,7 +253,7 @@ All data in `~/.radiocli/`:
 | `last_station.json` | Last played (for resume) |
 | `mpv.sock` | mpv IPC socket |
 
-Database: `~/RadioCli/radio_stations.db` (24k+ stations)
+Database: `~/RadioCli/radio_stations.db` (51k+ stations)
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 # radiomcp
 
-MCP server for internet radio - search and play 24,000+ stations from 197 countries.
+MCP server for internet radio - search and play 51,000+ stations from 200+ countries.
 
 ## Installation
 
@@ -50,9 +50,10 @@ Just ask Claude naturally:
 
 ## Features
 
-- **24,000+ stations** from 197 countries
+- **51,000+ stations** from 200+ countries
 - **Fast search** (~5ms local DB)
 - **Multilingual** (50+ languages: Korean, Japanese, Chinese, Russian, etc.)
+- **Korean broadcasters** (KBS, MBC, YTN - auto token refresh)
 - **AI recommendations** (mood, time, weather, personalized)
 - **Song recognition** (stream metadata + AcoustID)
 - **Sleep timer & alarm**
@@ -60,6 +61,7 @@ Just ask Claude naturally:
 - **Volume control** (mpv)
 - **Auto URL refresh** (handles token expiration)
 - **Remote blocklist** (GitHub-based updates)
+- **Daily updates** (new stations synced automatically)
 
 ## Tools
 
