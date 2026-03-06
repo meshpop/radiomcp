@@ -1,0 +1,256 @@
+# Radio System Architecture
+
+## Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENTS                                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  RadioCli   │  │  Radio MCP  │  │   Web App   │  │ Mobile App  │        │
+│  │   (CLI)     │  │  (Claude)   │  │  (Future)   │  │  (Future)   │        │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
+└─────────┼────────────────┼────────────────┼────────────────┼────────────────┘
+          │                │                │                │
+          └────────────────┴────────────────┴────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         RADIO API (g3:8092)                                  │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                         radio_api_v4.py                               │   │
+│  │                                                                       │   │
+│  │  Endpoints:                                                           │   │
+│  │  • /search?q=&countrycode=&tag=    검색 (다국어 지원)                  │   │
+│  │  • /stations?country=&tag=         필터 조회                          │   │
+│  │  • /station/{id}                   단일 방송국                        │   │
+│  │  • /countries, /tags, /languages   메타데이터                         │   │
+│  │  • /health, /stats                 상태                               │   │
+│  │                                                                       │   │
+│  │  Features:                                                            │   │
+│  │  • 다국어 키워드 매핑 (183개: ko, ja, zh, ru, fr, de, es)             │   │
+│  │  • 검색 관련성 스코어링 (word-boundary 우선)                          │   │
+│  │  • 실시간 URL Resolver (한국 방송)                                    │   │
+│  │  • Health Score 계산                                                  │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                         │
+│          ┌─────────────────────────┼─────────────────────────┐              │
+│          ▼                         ▼                         ▼              │
+│  ┌──────────────┐         ┌──────────────┐         ┌──────────────┐        │
+│  │   SQLite DB  │         │   Korean     │         │     HLS      │        │
+│  │radio_unified │         │  Resolvers   │         │  Validator   │        │
+│  │    .db       │         │              │         │              │        │
+│  │              │         │ • KBS API    │         │ • M3U8 파싱  │        │
+│  │ 51,915 방송국│         │ • MBC API    │         │ • 세그먼트   │        │
+│  │              │         │ • YTN        │         │   검증       │        │
+│  └──────────────┘         └──────────────┘         └──────────────┘        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Cron Jobs (Daily)
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         DATA PIPELINE                                        │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────┐     │
+│  │  04:00  radio_revalidate_v2.py                                     │     │
+│  │         └─ 기존 방송국 URL 검증 → is_verified 업데이트              │     │
+│  │                                                                     │     │
+│  │  05:00  sync_radiobrowser.py                                       │     │
+│  │         └─ Radio Browser API → 신규/업데이트 방송국 동기화          │     │
+│  │                                                                     │     │
+│  │  05:30  auto_broadcaster.py                                        │     │
+│  │         └─ 주요 방송사 URL 갱신 (KBS, MBC, BBC 등)                  │     │
+│  └────────────────────────────────────────────────────────────────────┘     │
+│                                                                              │
+│                              DATA SOURCES                                    │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
+│  │Radio Browser│ │   Icecast   │ │   TuneIn    │ │  Shoutcast  │           │
+│  │  27,468     │ │   14,253    │ │   10,042    │ │   (Weekly)  │           │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘           │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Data Flow
+
+### 1. New Station Discovery
+```
+Radio Browser API ──┐
+Icecast Directory ──┼──▶ sync_radiobrowser.py ──▶ radio_unified.db
+TuneIn Scraper ─────┤                              (INSERT OR REPLACE)
+Shoutcast Crawler ──┘
+```
+
+### 2. Station Validation
+```
+radio_unified.db ──▶ radio_revalidate_v2.py ──▶ radio_unified.db
+     │                      │                        │
+     │                      ├─ HTTP HEAD/GET         │
+     │                      ├─ HLS Segment Test      │
+     │                      └─ Timeout Check         │
+     │                                               │
+     └─ is_verified=1 (working)                      │
+        is_verified=0 (dead)                         │
+        bytes_received (stream size)                 │
+```
+
+### 3. Korean Broadcaster Resolution
+```
+Client Request: "KBS 1라디오"
+        │
+        ▼
+┌───────────────────────────────────────┐
+│ API: station has resolver='kbs'       │
+│      │                                │
+│      ▼                                │
+│ korean_resolvers.py                   │
+│      │                                │
+│      ├─ KBS: cfpwwwapi.kbs.co.kr     │
+│      │       → CloudFront Signed URL  │
+│      │       → Valid ~5 hours         │
+│      │                                │
+│      ├─ MBC: sminiplay.imbc.com      │
+│      │       → Token URL              │
+│      │       → Valid ~1 hour          │
+│      │                                │
+│      └─ YTN: Static URLs              │
+│              → No expiration          │
+└───────────────────────────────────────┘
+        │
+        ▼
+Client receives: Fresh streaming URL with valid token
+```
+
+## Database Schema
+
+```sql
+CREATE TABLE stations (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    url TEXT,
+    url_resolved TEXT,
+    homepage TEXT,
+    favicon TEXT,
+    country TEXT,
+    countrycode TEXT,        -- ISO 3166-1 alpha-2
+    language TEXT,
+    tags TEXT,               -- Comma-separated
+    codec TEXT,              -- mp3, aac, ogg, etc.
+    bitrate INTEGER,
+    votes INTEGER,
+    clickcount INTEGER,
+    listeners INTEGER,
+
+    -- Validation
+    is_verified INTEGER,     -- 1=working, 0=dead
+    bytes_received INTEGER,  -- Stream test bytes
+    verified_at TEXT,
+
+    -- Source tracking
+    source TEXT,             -- radiobrowser, icecast, tunein, etc.
+    resolver TEXT,           -- kbs, mbc, ytn (for Korean)
+    broadcaster TEXT,        -- Broadcaster registry ID
+
+    -- Metadata
+    geo_lat REAL,
+    geo_long REAL,
+    created_at TEXT,
+    is_blocked INTEGER       -- Takedown requests
+);
+
+CREATE TABLE clicks (
+    id INTEGER PRIMARY KEY,
+    station_id TEXT,
+    ip TEXT,
+    clicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## Health Score Calculation
+
+```python
+def calc_health(station):
+    score = 0
+
+    if station['is_verified']:      score += 40  # Stream works
+    if bytes_received > 4000:       score += 20  # Good bandwidth
+    if bitrate >= 128:              score += 20  # High quality
+    elif bitrate >= 64:             score += 10  # Medium quality
+    if listeners > 0:               score += 10  # Has audience
+    if votes > 0:                   score += 10  # Community rated
+
+    # Grade: A(80+), B(60+), C(40+), D(<40)
+    return score
+```
+
+## Multilingual Search
+
+```
+User Input          → Keyword Lookup    → DB Search
+─────────────────────────────────────────────────────
+"재즈"              → "jazz"            → tags LIKE '%jazz%'
+"クラシック"        → "classical"       → tags LIKE '%classical%'
+"новости"           → "news"            → tags LIKE '%news%'
+"한국"              → "korea"           → country LIKE '%korea%'
+```
+
+**Supported Languages:** Korean, Japanese, Chinese, Russian, French, German, Spanish, Italian, Portuguese, Vietnamese, Thai
+
+## File Structure (g3 Server)
+
+```
+/home/dragon/
+├── radio_api_v4.py          # Main API server (port 8092)
+├── radio_unified.db         # SQLite database (51,915 stations)
+├── korean_resolvers.py      # KBS, MBC, YTN URL resolvers
+├── hls_validator.py         # HLS stream validation
+├── radio_revalidate_v2.py   # Daily URL validation
+├── sync_radiobrowser.py     # Radio Browser sync
+├── auto_broadcaster.py      # Major broadcaster updates
+├── broadcaster_registry.json # Broadcaster definitions
+└── logs/
+    ├── sync_radiobrowser.log
+    ├── auto_broadcaster.log
+    └── radio_revalidate.log
+```
+
+## Client Integration
+
+### RadioCli (CLI)
+```
+radiocli → Local DB (radio_stations.db) → mpv/vlc/ffplay
+                ↓
+         Falls back to API when needed
+```
+
+### Radio MCP (Claude Desktop)
+```
+Claude → MCP Server → g3 API → Stream URL → mpv
+                         ↓
+                   AI translates user intent to API params
+```
+
+## API Endpoints Summary
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/search?q=&countrycode=&tag=` | GET | Full-text search with filters |
+| `/stations?country=&tag=` | GET | List with filters |
+| `/station/{id}` | GET | Single station (with resolver) |
+| `/stations/bycountrycode/{cc}` | GET | By country code |
+| `/countries` | GET | Country list with counts |
+| `/tags` | GET | Tag list with counts |
+| `/languages` | GET | Language list |
+| `/health` | GET | API health status |
+| `/stats` | GET | Database statistics |
+
+## Deployment
+
+```bash
+# API Server (systemd or nohup)
+nohup python3 /home/dragon/radio_api_v4.py > /tmp/radio_api.log 2>&1 &
+
+# Cron Jobs
+0 4 * * * /usr/bin/python3 /home/dragon/radio_revalidate_v2.py
+0 5 * * * /usr/bin/python3 /home/dragon/sync_radiobrowser.py
+30 5 * * * /usr/bin/python3 /home/dragon/auto_broadcaster.py
+```
