@@ -305,6 +305,46 @@ MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
 MPV_PID_FILE = os.path.join(DATA_DIR, "mpv.pid")  # CLI와 공유
 LOCK_FILE = os.path.join(DATA_DIR, "server.lock")
 API_BASE = "https://de1.api.radio-browser.info/json"
+
+# G3 URL Validator API (optional, for detailed stream info)
+G3_VALIDATOR_URL = os.environ.get("G3_VALIDATOR_URL", "http://g3:8100/api/validate")
+G3_VALIDATOR_ENABLED = os.environ.get("G3_VALIDATOR_ENABLED", "false").lower() == "true"
+
+
+def g3_validate_url(url: str, timeout: int = 5) -> dict:
+    """
+    Validate URL using G3 URL Validator API.
+    Returns detailed stream info (bitrate, format, etc.)
+    """
+    if not G3_VALIDATOR_ENABLED:
+        return {"valid": False, "error": "G3 validator disabled"}
+    
+    try:
+        api_url = f"{G3_VALIDATOR_URL}?url={urllib.parse.quote(url)}"
+        req = urllib.request.Request(api_url, headers={"User-Agent": "RadioMCP/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:
+        return {"valid": False, "error": str(e)}
+
+
+def g3_batch_validate(urls: list, timeout: int = 10) -> list:
+    """
+    Batch validate URLs using G3 API.
+    """
+    if not G3_VALIDATOR_ENABLED:
+        return [{"url": u, "valid": False, "error": "G3 validator disabled"} for u in urls]
+    
+    try:
+        req = urllib.request.Request(
+            f"{G3_VALIDATOR_URL.replace('/validate', '/validate/batch')}",
+            data=json.dumps({"urls": urls, "timeout": timeout}).encode(),
+            headers={"Content-Type": "application/json", "User-Agent": "RadioMCP/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=timeout + 5) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:
+        return [{"url": u, "valid": False, "error": str(e)} for u in urls]
 ACOUSTID_API_KEY = os.environ.get("ACOUSTID_API_KEY", "vQEDUkpM7e")
 
 # DB 경로 (우선순위: 로컬 > 패키지 > 프로젝트)
@@ -3619,6 +3659,45 @@ def check_stream(url: str) -> dict:
         return {"status": "dead", "url": url, "error": str(e.reason)}
     except Exception as e:
         return {"status": "error", "url": url, "error": str(e)}
+
+
+@mcp.tool()
+def check_stream_detailed(url: str) -> dict:
+    """
+    Check stream with detailed info via G3 validator (if enabled).
+    Returns bitrate, audio format, stream name, server location.
+    
+    Requires: G3_VALIDATOR_ENABLED=true environment variable
+
+    Args:
+        url: Stream URL to check
+
+    Returns:
+        Detailed stream info
+    """
+    if not G3_VALIDATOR_ENABLED:
+        # Fallback to basic check
+        return check_stream(url)
+    
+    result = g3_validate_url(url)
+    if result.get("valid"):
+        return {
+            "status": "alive",
+            "url": url,
+            "is_media_stream": result.get("is_media_stream", False),
+            "bitrate": result.get("bitrate"),
+            "audio_format": result.get("audio_format"),
+            "stream_name": result.get("stream_name"),
+            "server": result.get("server"),
+            "server_location": result.get("server_location"),
+            "response_time_ms": result.get("response_time_ms")
+        }
+    else:
+        return {
+            "status": "dead",
+            "url": url,
+            "error": result.get("error", "Validation failed")
+        }
 
 
 @mcp.tool()
