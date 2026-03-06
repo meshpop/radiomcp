@@ -105,3 +105,9 @@
 - [x] `recommend_by_weather` - switched to Open-Meteo (stable) (timeout, connection reset)
 - [x] Using: ip-api.com (location) + Open-Meteo (weather)
 - [ ] Current fallback: time-based recommendation when weather API fails
+
+### Infrastructure Architecture (Future)
+- [ ] g3 (home server): URL validation, health checks, DB maintenance
+- [ ] VPS: Public API service with clean DB
+- [ ] Periodic sync: g3 → VPS (validated stations only)
+- [ ] Batch jobs on g3: dead station cleanup, new station discovery
