@@ -3928,6 +3928,7 @@ def share_station(name: str = "") -> dict:
 
 def cpu_watchdog():
     """Monitor CPU usage and auto-terminate if spinning"""
+    import sys
     import resource
     last_cpu = resource.getrusage(resource.RUSAGE_SELF).ru_utime
     high_cpu_count = 0
@@ -3937,9 +3938,9 @@ def cpu_watchdog():
         cpu_delta = current_cpu - last_cpu
         if cpu_delta > 30:  # More than 30s CPU in 1 minute = spinning
             high_cpu_count += 1
-            print(f"[WATCHDOG] High CPU detected: {cpu_delta:.1f}s ({high_cpu_count}/3)", flush=True)
+            sys.stderr.write(f"[WATCHDOG] High CPU: {cpu_delta:.1f}s ({high_cpu_count}/3)\n")
             if high_cpu_count >= 3:  # 3 consecutive = terminate
-                print("[WATCHDOG] CPU spinning detected, terminating process", flush=True)
+                sys.stderr.write("[WATCHDOG] CPU spinning, terminating\n")
                 os._exit(1)  # Force exit
         else:
             high_cpu_count = 0  # Reset counter
@@ -3950,8 +3951,9 @@ def main():
     """Entry point for radiomcp command"""
     import sys
 
-    # Log startup info
-    print(f"[radiomcp] Starting PID={os.getpid()} Python={sys.version.split()[0]} MCP=1.26.0", flush=True)
+    # Log to stderr (stdout is reserved for MCP JSON-RPC)
+    sys.stderr.write(f"[radiomcp] Starting PID={os.getpid()} MCP=1.26.0\n")
+    sys.stderr.flush()
 
     # Singleton lock disabled - Claude Desktop may spawn multiple servers
     # Share mpv via PID file instead
@@ -3968,10 +3970,10 @@ def main():
     try:
         mcp.run()
     except Exception as e:
-        print(f"[radiomcp] Fatal error: {e}", flush=True)
+        sys.stderr.write(f"[radiomcp] Fatal error: {e}\n")
         raise
     finally:
-        print(f"[radiomcp] Shutting down PID={os.getpid()}", flush=True)
+        sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}\n")
 
 
 if __name__ == "__main__":
