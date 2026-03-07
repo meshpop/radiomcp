@@ -256,7 +256,7 @@ Example: `jazz HQ`
 └── mpv.sock              # mpv socket
 
 ~/RadioCli/
-└── radio_stations.db     # Station DB (24k+)
+└── radio_stations.db     # Station DB (51k+)
 ```
 
 ## Dependencies

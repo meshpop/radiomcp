@@ -270,7 +270,7 @@ RADIOCLI_LLM=none ./radio.py
 └── mpv.sock              # mpv 소켓
 
 ~/RadioCli/
-└── radio_stations.db     # 방송국 DB (24k+)
+└── radio_stations.db     # 방송국 DB (51k+)
 ```
 
 ## 의존성

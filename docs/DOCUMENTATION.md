@@ -2,7 +2,7 @@
 
 ## Overview
 
-RadioCli is a terminal-based internet radio player with 24,000+ verified stations. It consists of two components:
+RadioCli is a terminal-based internet radio player with 51,000+ verified stations. It consists of two components:
 
 1. **RadioCli (CLI)** - Terminal application for direct radio playback
 2. **Radio MCP Server** - Model Context Protocol server for AI assistant integration
@@ -25,7 +25,7 @@ Both share the same SQLite database and support multilingual search, song recogn
 |                     Core Components                        |
 +-----------------------------------------------------------+
 |  SQLite DB        |  Radio Browser API  |  mpv Player     |
-|  (24k+ stations)  |  (fallback search)  |  (IPC socket)   |
+|  (51k+ stations)  |  (fallback search)  |  (IPC socket)   |
 +-------------------+---------------------+-----------------+
 |  Favorites/History (JSON)  |  Song Recognition (AcoustID) |
 +----------------------------+------------------------------+
@@ -40,7 +40,7 @@ Both share the same SQLite database and support multilingual search, song recogn
 ```
 RadioCli/
 |-- radio.py                 # Main CLI application
-|-- radio_stations.db        # SQLite database (24k+ stations)
+|-- radio_stations.db        # SQLite database (51k+ stations)
 |-- languages.json           # UI translations (ko, en, ja, zh)
 |-- README.md                # Project readme
 |

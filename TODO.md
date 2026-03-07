@@ -112,10 +112,10 @@
 - [ ] Periodic sync: g3 → VPS (validated stations only)
 
 ### g3 Cron Jobs (Completed)
-- [x] 04:00 daily: `radio_revalidate_v2.py` - HLS + regular stream validation
+- [x] 02:00 daily: `radio_revalidate_v2.py` - HLS + regular stream validation
 - [x] 05:00 daily: `sync_radiobrowser.py` - Radio Browser new/updated stations
-- [x] 05:30 daily: `auto_broadcaster.py` - Major broadcaster sync
-- [x] 06:00 Sunday: `shoutcast_crawler.py` - Shoutcast crawling
+- [x] 07:00 daily: `auto_broadcaster.py` - Major broadcaster sync
+- [x] 08:00 Sunday: `shoutcast_crawler.py` - Shoutcast crawling
 
 ### Data Sources (radio_unified.db)
 - [x] Radio Browser API: 27,196 stations

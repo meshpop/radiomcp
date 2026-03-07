@@ -68,14 +68,17 @@
 │                         DATA PIPELINE                                        │
 │                                                                              │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │  04:00  radio_revalidate_v2.py                                     │     │
+│  │  02:00  radio_revalidate_v2.py                                     │     │
 │  │         └─ Validate station URLs → update is_verified              │     │
 │  │                                                                     │     │
 │  │  05:00  sync_radiobrowser.py                                       │     │
 │  │         └─ Radio Browser API → sync new/updated stations           │     │
 │  │                                                                     │     │
-│  │  05:30  auto_broadcaster.py                                        │     │
+│  │  07:00  auto_broadcaster.py                                        │     │
 │  │         └─ Refresh major broadcaster URLs (KBS, MBC, BBC)          │     │
+│  │                                                                     │     │
+│  │  08:00  shoutcast_crawler.py (Sunday only)                         │     │
+│  │         └─ Crawl Shoutcast directory                               │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
 │                              DATA SOURCES                                    │
@@ -266,7 +269,8 @@ Claude → MCP Server → g3 API → Stream URL → mpv
 nohup python3 /home/dragon/radio_api_v4.py > /tmp/radio_api.log 2>&1 &
 
 # Cron Jobs
-0 4 * * * /usr/bin/python3 /home/dragon/radio_revalidate_v2.py
+0 2 * * * /usr/bin/python3 /home/dragon/radio_revalidate_v2.py
 0 5 * * * /usr/bin/python3 /home/dragon/sync_radiobrowser.py
-30 5 * * * /usr/bin/python3 /home/dragon/auto_broadcaster.py
+0 7 * * * /usr/bin/python3 /home/dragon/auto_broadcaster.py
+0 8 * * 0 /usr/bin/python3 /home/dragon/shoutcast_crawler.py
 ```
