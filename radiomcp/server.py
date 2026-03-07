@@ -495,10 +495,10 @@ def cleanup():
     # Release singleton lock
     release_singleton_lock()
 
-# Register exit handler
+# Register exit handler only (let anyio handle signals)
 atexit.register(cleanup)
-signal.signal(signal.SIGTERM, lambda s, f: (cleanup(), exit(0)))
-signal.signal(signal.SIGINT, lambda s, f: (cleanup(), exit(0)))
+# Note: Don't override SIGTERM/SIGINT - anyio needs them for graceful shutdown
+# The atexit handler will run cleanup on normal exit
 
 # Watchdog: Monitor Claude Desktop in separate process
 def start_mpv_watchdog():
@@ -3926,16 +3926,52 @@ def share_station(name: str = "") -> dict:
     }
 
 
+def cpu_watchdog():
+    """Monitor CPU usage and auto-terminate if spinning"""
+    import resource
+    last_cpu = resource.getrusage(resource.RUSAGE_SELF).ru_utime
+    high_cpu_count = 0
+    while True:
+        time.sleep(60)  # Check every minute
+        current_cpu = resource.getrusage(resource.RUSAGE_SELF).ru_utime
+        cpu_delta = current_cpu - last_cpu
+        if cpu_delta > 30:  # More than 30s CPU in 1 minute = spinning
+            high_cpu_count += 1
+            print(f"[WATCHDOG] High CPU detected: {cpu_delta:.1f}s ({high_cpu_count}/3)", flush=True)
+            if high_cpu_count >= 3:  # 3 consecutive = terminate
+                print("[WATCHDOG] CPU spinning detected, terminating process", flush=True)
+                os._exit(1)  # Force exit
+        else:
+            high_cpu_count = 0  # Reset counter
+        last_cpu = current_cpu
+
+
 def main():
     """Entry point for radiomcp command"""
+    import sys
+
+    # Log startup info
+    print(f"[radiomcp] Starting PID={os.getpid()} Python={sys.version.split()[0]} MCP=1.26.0", flush=True)
+
     # Singleton lock disabled - Claude Desktop may spawn multiple servers
     # Share mpv via PID file instead
     # acquire_singleton_lock()  # Disabled
 
+    # Start CPU watchdog (auto-terminate if spinning)
+    watchdog = threading.Thread(target=cpu_watchdog, daemon=True)
+    watchdog.start()
+
     # Sync popular stations in background
     sync_thread = threading.Thread(target=sync_popular_stations, daemon=True)
     sync_thread.start()
-    mcp.run()
+
+    try:
+        mcp.run()
+    except Exception as e:
+        print(f"[radiomcp] Fatal error: {e}", flush=True)
+        raise
+    finally:
+        print(f"[radiomcp] Shutting down PID={os.getpid()}", flush=True)
 
 
 if __name__ == "__main__":
