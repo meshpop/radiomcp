@@ -62,23 +62,23 @@
 │  └──────────────┘         └──────────────┘         └──────────────┘        │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
-                                    │ Cron Jobs (Daily)
+                                    │ SASR System (Daily Cron)
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         DATA PIPELINE                                        │
+│                    SASR - Station Auto Sync & Revalidate                     │
 │                                                                              │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │  02:00  radio_revalidate_v2.py                                     │     │
-│  │         └─ Validate station URLs → update is_verified              │     │
+│  │  [R] 02:00  radio_revalidate_v2.py                                 │     │
+│  │             └─ Validate station URLs → update is_verified          │     │
 │  │                                                                     │     │
-│  │  05:00  sync_radiobrowser.py                                       │     │
-│  │         └─ Radio Browser API → sync new/updated stations           │     │
+│  │  [S] 05:00  sync_radiobrowser.py                                   │     │
+│  │             └─ Radio Browser API → sync new/updated stations       │     │
 │  │                                                                     │     │
-│  │  07:00  auto_broadcaster.py                                        │     │
-│  │         └─ Refresh major broadcaster URLs (KBS, MBC, BBC)          │     │
+│  │  [A] 07:00  auto_broadcaster.py                                    │     │
+│  │             └─ Refresh major broadcaster URLs (KBS, MBC, BBC)      │     │
 │  │                                                                     │     │
-│  │  08:00  shoutcast_crawler.py (Sunday only)                         │     │
-│  │         └─ Crawl Shoutcast directory                               │     │
+│  │  [S] 08:00  shoutcast_crawler.py (Sunday only)                     │     │
+│  │             └─ Crawl Shoutcast directory                           │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
 │                              DATA SOURCES                                    │
