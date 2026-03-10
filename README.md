@@ -1,15 +1,15 @@
-# RadioCli / radiomcp
+# Airtune
 
-Search and play 51,000+ internet radio stations from 200+ countries.
+Search and play 55,000+ internet radio stations from 200+ countries.
 
-[한국어](README.ko.md)
+Powered by [Airtune API](https://api.airtune.ai) | [한국어](README.ko.md)
 
 ## Components
 
 | Component | Description |
 |-----------|-------------|
-| **radiomcp** | MCP Server - integrates with Claude Desktop |
-| **radio.py** | CLI App - use directly in terminal |
+| **radiomcp** | MCP Server + HTTP API + CLI - integrates with Claude Desktop, Codex, GPT |
+| **radio** | TUI App - interactive terminal player |
 
 ## radiomcp (MCP Server)
 
@@ -45,7 +45,20 @@ Install one of the following for better playback quality. Falls back to browser 
 }
 ```
 
-### Usage
+### CLI Mode
+
+```bash
+radiomcp search jazz
+radiomcp search "korean news"
+radiomcp play <url> "Station Name"
+radiomcp stop
+radiomcp now
+radiomcp recommend focus
+radiomcp update              # Update station DB from Airtune API
+radiomcp serve --port 8100   # Start HTTP API server
+```
+
+### Usage with Claude
 
 Ask Claude in natural language:
 - "Play some jazz radio"
@@ -66,9 +79,9 @@ See [radiomcp/README.md](radiomcp/README.md) for details.
 
 ---
 
-## radio.py (CLI)
+## radio (TUI)
 
-CLI app for searching and listening to internet radio worldwide.
+Interactive terminal player for internet radio. Installed with `pip install radiomcp`.
 
 ### Installation
 
@@ -77,13 +90,14 @@ CLI app for searching and listening to internet radio worldwide.
 brew install mpv
 
 # Optional (for song recognition)
-brew install chromaprint ffmpeg
+brew install ffmpeg
+pip install openai-whisper
 ```
 
 ### Run
 
 ```bash
-./radio.py
+radio
 ```
 
 ### Usage
@@ -110,8 +124,8 @@ brew install chromaprint ffmpeg
 
 | Mode | Speed | Description |
 |------|-------|-------------|
-| DB only | 0.1s | Local DB (default) |
-| DB+API | 1s+ | Includes Radio Browser API |
+| DB only | 0.1s | Local SQLite (default, instant) |
+| DB+API | 1s+ | Includes RadioGraph API |
 
 Toggle with `!` key
 
@@ -178,7 +192,7 @@ Auto-fetches latest URL on play (handles token expiration)
 #### DJ Mode
 
 ```bash
-RADIOCLI_DJ=1 ./radio.py
+RADIOCLI_DJ=1 radio
 ```
 
 | Key | Function |
@@ -190,8 +204,9 @@ Supports 10 languages: English, Korean, Japanese, French, German, Spanish, Chine
 ### DB Management
 
 ```bash
-./radio.py --db-stats    # DB statistics
-./radio.py --cleanup     # Clean dead stations
+radio --db-stats         # DB statistics
+radio --cleanup          # Clean dead stations
+radiomcp update          # Sync latest stations from RadioGraph API
 ```
 
 ## Multilingual Search
@@ -255,16 +270,16 @@ Example: `jazz HQ`
 ├── playlists.json        # Playlists
 └── mpv.sock              # mpv socket
 
-~/RadioCli/
-└── radio_stations.db     # Station DB (51k+)
 ```
+
+Station DB (`radio_stations.db`, 24k+ stations) is bundled with the package and stored in `~/.radiocli/` after first run. Use `radiomcp update` to sync latest stations.
 
 ## Dependencies
 
-- Python 3.10+
+- Python 3.9+
 - mpv (required for CLI)
 - ffmpeg (for song recording)
-- chromaprint (for AcoustID)
+- openai-whisper (for DJ speech recognition, optional)
 - edge-tts (for DJ mode)
 - ollama (for LLM, optional)
 
@@ -275,8 +290,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system architecture.
 **Data Pipeline (g3 server):**
 - Daily URL validation & new station sync
 - Korean broadcaster URL resolvers (KBS, MBC, YTN)
-- 51,000+ stations from Radio Browser, Icecast, TuneIn, Shoutcast
+- 40,000+ stations from Radio Browser + Icecast
 
 ## License
 
-MIT
+- **Code**: MIT - See [LICENSE](LICENSE)
+- **Station Database**: ODbL 1.0 - See [DATA_LICENSE.md](DATA_LICENSE.md)
+- **Attribution**: See [ATTRIBUTION.md](ATTRIBUTION.md)

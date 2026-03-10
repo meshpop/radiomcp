@@ -1,6 +1,8 @@
 # radiomcp
 
-MCP server for internet radio - search and play 51,000+ stations from 200+ countries.
+MCP server for internet radio - search and play 55,000+ stations from 200+ countries.
+
+Powered by [Airtune API](https://api.airtune.ai).
 
 ## Installation
 
@@ -55,7 +57,7 @@ Just ask Claude naturally:
 - **Multilingual** (50+ languages: Korean, Japanese, Chinese, Russian, etc.)
 - **Korean broadcasters** (KBS, MBC, YTN - auto token refresh)
 - **AI recommendations** (mood, time, weather, personalized)
-- **Song recognition** (stream metadata + AcoustID)
+- **Song recognition** (stream metadata + Whisper)
 - **Sleep timer & alarm**
 - **Favorites & history**
 - **Volume control** (mpv)
@@ -121,13 +123,16 @@ See [HELP.md](HELP.md) for complete documentation.
 
 ## Data Sources
 
-- [Radio Browser API](https://api.radio-browser.info/) - station database
-- [AcoustID](https://acoustid.org/) - song recognition
+- [Radio Browser](https://www.radio-browser.info/) - station metadata ([ODbL](https://opendatacommons.org/licenses/odbl/))
+- [Icecast Directory](https://dir.xiph.org/) - additional stations (open source)
+- [Whisper](https://github.com/openai/whisper) - DJ speech recognition
 - [wttr.in](https://wttr.in/) - weather data
 
 ## License
 
-MIT - See [LICENSE](LICENSE)
+- **Code**: MIT - See [LICENSE](LICENSE)
+- **Station Database**: ODbL 1.0 - See [DATA_LICENSE.md](DATA_LICENSE.md)
+- **Attribution**: See [ATTRIBUTION.md](ATTRIBUTION.md)
 
 ## Disclaimer
 

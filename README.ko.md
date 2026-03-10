@@ -1,13 +1,15 @@
-# RadioCli / radiomcp
+# Airtune
 
-51,000+ 인터넷 라디오 방송국 검색 및 재생 (200+ 국가)
+55,000+ 인터넷 라디오 방송국 검색 및 재생 (200+ 국가).
+
+[Airtune API](https://api.airtune.ai) 기반.
 
 ## Components
 
 | 컴포넌트 | 설명 |
 |---------|------|
-| **radiomcp** | MCP 서버 - Claude Desktop과 연동 |
-| **radio.py** | CLI 앱 - 터미널에서 직접 사용 |
+| **radiomcp** | MCP 서버 + HTTP API + CLI - Claude Desktop, Codex, GPT 연동 |
+| **radio** | TUI 앱 - 터미널 인터랙티브 플레이어 |
 
 ## radiomcp (MCP Server)
 
@@ -64,9 +66,9 @@ Claude에게 자연어로 요청:
 
 ---
 
-## radio.py (CLI)
+## radio (TUI)
 
-터미널에서 전세계 인터넷 라디오를 검색하고 듣는 CLI 앱
+터미널에서 전세계 인터넷 라디오를 검색하고 듣는 인터랙티브 플레이어. `pip install radiomcp`로 함께 설치됨.
 
 ## 설치
 
@@ -75,13 +77,14 @@ Claude에게 자연어로 요청:
 brew install mpv
 
 # 선택 (곡 인식용)
-brew install chromaprint ffmpeg
+brew install ffmpeg
+pip install openai-whisper
 ```
 
 ## 실행
 
 ```bash
-./radio.py
+radio
 ```
 
 ## 사용법
@@ -109,8 +112,8 @@ brew install chromaprint ffmpeg
 
 | 모드 | 속도 | 설명 |
 |------|------|------|
-| DB만 | 0.1초 | 로컬 DB (기본값) |
-| DB+API | 1초+ | Radio Browser API 포함 |
+| DB만 | 0.1초 | 로컬 SQLite (기본값, 즉시) |
+| DB+API | 1초+ | RadioGraph API 포함 |
 
 `!` 키로 토글
 
@@ -168,7 +171,7 @@ brew install chromaprint ffmpeg
 ### DJ 모드
 
 ```bash
-RADIOCLI_DJ=1 ./radio.py
+RADIOCLI_DJ=1 radio
 ```
 
 | 키 | 기능 |
@@ -180,8 +183,9 @@ RADIOCLI_DJ=1 ./radio.py
 ### DB 관리
 
 ```bash
-./radio.py --db-stats    # DB 통계
-./radio.py --cleanup     # 죽은 방송 정리
+radio --db-stats         # DB 통계
+radio --cleanup          # 죽은 방송 정리
+radiomcp update          # RadioGraph API에서 최신 방송국 동기화
 ```
 
 ## 다국어 검색
@@ -222,16 +226,16 @@ deutschland klassik
 
 ```bash
 # 로컬 Ollama (기본)
-./radio.py
+radio
 
 # Claude API
-ANTHROPIC_API_KEY=xxx ./radio.py
+ANTHROPIC_API_KEY=xxx radio
 
 # OpenAI API
-OPENAI_API_KEY=xxx ./radio.py
+OPENAI_API_KEY=xxx radio
 
 # LLM 없이 키워드만
-RADIOCLI_LLM=none ./radio.py
+RADIOCLI_LLM=none radio
 ```
 
 ## 환경변수
@@ -269,16 +273,16 @@ RADIOCLI_LLM=none ./radio.py
 ├── playlists.json        # 플레이리스트
 └── mpv.sock              # mpv 소켓
 
-~/RadioCli/
-└── radio_stations.db     # 방송국 DB (51k+)
 ```
+
+방송국 DB (`radio_stations.db`, 24,000+ 방송국)는 패키지에 포함되어 첫 실행 시 `~/.radiocli/`에 저장됩니다. `radiomcp update`로 최신 방송국을 동기화할 수 있습니다.
 
 ## 의존성
 
 - Python 3
 - mpv (필수)
 - ffmpeg (곡 녹음용)
-- chromaprint (AcoustID용)
+- openai-whisper (DJ 음성 인식용, 선택)
 - edge-tts (DJ 모드용)
 - ollama (LLM용, 선택)
 

@@ -1,8 +1,8 @@
-# RadioCli & Radio MCP Server - Complete Documentation
+# Airtune - Complete Documentation
 
 ## Overview
 
-RadioCli is a terminal-based internet radio player with 51,000+ verified stations. It consists of two components:
+Airtune is an internet radio platform with 55,000+ verified stations. It consists of two components:
 
 1. **RadioCli (CLI)** - Terminal application for direct radio playback
 2. **Radio MCP Server** - Model Context Protocol server for AI assistant integration
@@ -24,10 +24,10 @@ Both share the same SQLite database and support multilingual search, song recogn
 +-----------------------------------------------------------+
 |                     Core Components                        |
 +-----------------------------------------------------------+
-|  SQLite DB        |  Radio Browser API  |  mpv Player     |
-|  (51k+ stations)  |  (fallback search)  |  (IPC socket)   |
+|  SQLite DB        |  Airtune API        |  mpv Player     |
+|  (55k+ stations)  |  (fallback search)  |  (IPC socket)   |
 +-------------------+---------------------+-----------------+
-|  Favorites/History (JSON)  |  Song Recognition (AcoustID) |
+|  Favorites/History (JSON)  |  Song Recognition (Whisper) |
 +----------------------------+------------------------------+
 |  DJ Mode (edge-tts)        |  LLM Integration (optional)  |
 +----------------------------+------------------------------+
@@ -205,8 +205,7 @@ Metadata is parsed from stream's `icy-title` (format: "Artist - Title").
 Multiple recognition methods:
 
 1. **Stream Metadata** - Parse artist/title from `icy-title`
-2. **AcoustID** - Audio fingerprinting (requires chromaprint)
-3. **Whisper** - Speech-to-text for DJ mentions
+2. **Whisper** - Speech-to-text for DJ mentions (requires openai-whisper)
 
 ---
 
@@ -394,7 +393,7 @@ Use `resume()` to continue playback in next session.
 
 ### Optional
 
-- chromaprint (`brew install chromaprint`) - AcoustID recognition
+- openai-whisper (`pip install openai-whisper`) - DJ speech recognition
 - ffmpeg (`brew install ffmpeg`) - Audio recording
 - edge-tts (`pip install edge-tts`) - DJ mode TTS
 - ollama - Local LLM for advanced parsing

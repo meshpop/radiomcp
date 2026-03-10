@@ -1,10 +1,10 @@
 [project]
 name = "radiomcp"
 version = "1.0.0"
-description = "MCP server for internet radio - 24,000+ stations, multiple player backends (mpv/miniaudio/browser)"
+description = "Internet radio MCP server + TUI player - 55,000+ stations, Airtune API, mpv playback"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 authors = [
     {name = "dragonflydiy"}
 ]
@@ -58,16 +58,21 @@ include-package-data = true
 
 [tool.hatch.build.targets.wheel.force-include]
 "radio_stations.db" = "radiomcp/radio_stations.db"
-"blocklist.json" = "radiomcp/blocklist.json"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "radiomcp/",
     "radio_stations.db",
     "blocklist.json",
+    "languages.json",
     "pyproject.toml",
     "README.md",
+    "LICENSE",
+    "DATA_LICENSE.md",
+    "ATTRIBUTION.md",
+    "DISCLAIMER.md",
 ]
 
 [project.scripts]
 radiomcp = "radiomcp:main"
+radio = "radiomcp.tui:main"
