@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-RadioCli - Internet radio search and playback CLI
+RadioCli TUI - Interactive terminal radio player
+Part of the radiomcp package: pip install radiomcp
 """
 
 import subprocess
@@ -17,6 +18,9 @@ import threading
 from datetime import datetime
 from collections import Counter
 
+# Package directory (where this file lives)
+_PKG_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Data file paths
 DATA_DIR = os.path.expanduser("~/.radiocli")
 FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
@@ -25,11 +29,22 @@ SONGS_FILE = os.path.join(DATA_DIR, "songs.json")  # Song history
 LAST_STATION_FILE = os.path.join(DATA_DIR, "last_station.json")  # Last station
 PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 
-# SQLite DB
-DB_PATH = os.path.expanduser("~/RadioCli/radio_stations.db")
+# SQLite DB - search order: 1) package bundled, 2) ~/.radiocli/, 3) ~/RadioCli/
+def _find_db():
+    candidates = [
+        os.path.join(_PKG_DIR, "radio_stations.db"),          # pip install 패키지 내장
+        os.path.join(DATA_DIR, "radio_stations.db"),           # ~/.radiocli/
+        os.path.expanduser("~/RadioCli/radio_stations.db"),    # dev 환경
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return candidates[0]  # fallback to package path
+
+DB_PATH = _find_db()
 
 # API mode: True=DB+API, False=DB only (fast)
-USE_API = True  # Default: DB only (0.1s)
+USE_API = False  # Default: DB only (0.1s) — API is slow, DB has 24K+ stations
 
 # Create data directory
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -40,8 +55,11 @@ UI_LANG = os.environ.get("RADIOCLI_LANG", "en")
 # Load multilingual strings from languages.json (70+ languages)
 def load_languages():
     """Load UI strings from languages.json"""
-    script_dir = os.path.dirname(os.path.realpath(__file__))  # Resolve symlinks
-    lang_file = os.path.join(script_dir, "languages.json")
+    # Search: 1) package dir, 2) script dir (for symlink compat)
+    lang_file = os.path.join(_PKG_DIR, "languages.json")
+    if not os.path.exists(lang_file):
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        lang_file = os.path.join(script_dir, "languages.json")
 
     if os.path.exists(lang_file):
         try:
@@ -214,6 +232,12 @@ def change_language(code):
     code = code.lower().strip()
     if code in UI_STRINGS:
         UI_LANG = code
+        # Save preference
+        try:
+            with open(os.path.join(DATA_DIR, "lang.txt"), "w") as f:
+                f.write(code)
+        except:
+            pass
         print(f"  ✓ {LANG_NAMES.get(code, code)}\n")
         return True
     else:
@@ -243,20 +267,37 @@ def detect_language_by_ip():
     return None
 
 def init_language():
-    """Initialize language (env > IP > default)"""
+    """Initialize language (env > saved > IP > default)"""
     global UI_LANG
-    # Use environment variable if set
+    # 1) Use environment variable if set
     env_lang = os.environ.get("RADIOCLI_LANG", "")
     if env_lang and env_lang in UI_STRINGS:
         UI_LANG = env_lang
         return
 
-    # Auto-detect by IP
+    # 2) Use saved preference
+    try:
+        pref_file = os.path.join(DATA_DIR, "lang.txt")
+        if os.path.exists(pref_file):
+            saved = open(pref_file).read().strip()
+            if saved in UI_STRINGS:
+                UI_LANG = saved
+                return
+    except:
+        pass
+
+    # 3) Auto-detect by IP (slow, only first time)
     detected = detect_language_by_ip()
     if detected:
+        # Save for next time
+        try:
+            with open(os.path.join(DATA_DIR, "lang.txt"), "w") as f:
+                f.write(detected)
+        except:
+            pass
         return
 
-    # Default
+    # 4) Default
     UI_LANG = "en"
 
 # Song recognition settings
@@ -745,98 +786,38 @@ QUALITY_MAP = {
     "320k": {"min_bitrate": 320},
 }
 
-# Block list (load from local + GitHub)
-BLOCKLIST = {"station_ids": [], "urls": [], "domains": [], "patterns": []}
-BLOCKLIST_CACHE = os.path.join(DATA_DIR, "blocklist_cache.json")
-BLOCKLIST_URL = "https://raw.githubusercontent.com/anthropics/radiocli/main/blocklist.json"
-BLOCKLIST_TTL = 3600  # 1 hour
+# Block list (load from blocklist.json)
+BLOCK_LIST = []
 
 def load_blocklist():
-    """Load blocklist from local file and GitHub (cached)"""
-    global BLOCKLIST
-
-    # 1. Load local blocklist.json
-    local_paths = [
-        os.path.join(os.path.dirname(__file__), "blocklist.json"),
-        os.path.expanduser("~/RadioCli/blocklist.json"),
+    """blocklist.json에서 블록리스트 로드"""
+    global BLOCK_LIST
+    paths = [
+        os.path.join(_PKG_DIR, "blocklist.json"),               # pip install 패키지 내장
+        os.path.join(DATA_DIR, "blocklist.json"),                # ~/.radiocli/
+        os.path.expanduser("~/RadioCli/blocklist.json"),         # dev 환경
     ]
-    for path in local_paths:
+    for path in paths:
         if os.path.exists(path):
             try:
                 with open(path, "r", encoding="utf-8") as f:
-                    local = json.load(f)
-                    for key in ["station_ids", "urls", "domains", "patterns"]:
-                        BLOCKLIST[key].extend(local.get(key, []))
-            except:
+                    data = json.load(f)
+                BLOCK_LIST = [b["pattern"] for b in data.get("blocked", [])]
+                return
+            except Exception:
                 pass
-
-    # 2. Try GitHub (with cache)
-    try:
-        cached_at = 0
-        if os.path.exists(BLOCKLIST_CACHE):
-            with open(BLOCKLIST_CACHE, "r") as f:
-                cached = json.load(f)
-                cached_at = cached.get("_cached_at", 0)
-                if time.time() - cached_at < BLOCKLIST_TTL:
-                    for key in ["station_ids", "urls", "domains", "patterns"]:
-                        BLOCKLIST[key].extend(cached.get(key, []))
-                    return
-
-        # Fetch from GitHub (background, non-blocking)
-        def fetch_github():
-            try:
-                req = urllib.request.Request(BLOCKLIST_URL, headers={"User-Agent": "RadioCli/1.0"})
-                with urllib.request.urlopen(req, timeout=3) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    data["_cached_at"] = time.time()
-                    with open(BLOCKLIST_CACHE, "w") as f:
-                        json.dump(data, f)
-                    for key in ["station_ids", "urls", "domains", "patterns"]:
-                        BLOCKLIST[key].extend(data.get(key, []))
-            except:
-                pass
-
-        threading.Thread(target=fetch_github, daemon=True).start()
-    except:
-        pass
 
 # Load blocklist on startup
 load_blocklist()
 
-def is_blocked(station):
-    """Check if station is blocked by ID, URL, domain, or pattern"""
-    if isinstance(station, str):
-        # Legacy: just name string
-        name = station
-        station_id = ""
-        url = ""
-    else:
-        name = station.get("name", "")
-        station_id = station.get("stationuuid") or station.get("id", "")
-        url = station.get("url") or station.get("url_resolved", "")
-
-    # Check station ID
-    if station_id and station_id in BLOCKLIST.get("station_ids", []):
-        return True
-
-    # Check URL
-    if url and url in BLOCKLIST.get("urls", []):
-        return True
-
-    # Check domains
-    for domain in BLOCKLIST.get("domains", []):
-        if domain and domain in url:
+def is_blocked(name):
+    """차단 목록에 있는지 확인"""
+    if not name:
+        return False
+    name_lower = name.lower()
+    for blocked in BLOCK_LIST:
+        if blocked.lower() in name_lower:
             return True
-
-    # Check patterns (name or URL)
-    import re
-    for pattern in BLOCKLIST.get("patterns", []):
-        try:
-            if re.search(pattern, name, re.I) or re.search(pattern, url, re.I):
-                return True
-        except:
-            pass
-
     return False
 
 def get_player():
@@ -1284,7 +1265,7 @@ def save_station_to_db(station):
         return False
 
     # Check blocklist
-    if is_blocked(station):
+    if is_blocked(station.get("name", "")):
         return False
 
     url = station.get("url_resolved") or station.get("url", "")
@@ -1326,7 +1307,7 @@ def merge_results(db_results, api_results, limit=30):
 
     # DB first (verified)
     for s in db_results:
-        if is_blocked(s):
+        if is_blocked(s.get("name", "")):
             continue
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen:
@@ -1336,7 +1317,7 @@ def merge_results(db_results, api_results, limit=30):
 
     # Add API results
     for s in api_results:
-        if is_blocked(s):
+        if is_blocked(s.get("name", "")):
             continue
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen:
@@ -1357,10 +1338,9 @@ def search(query, limit=20):
         if isinstance(api_results, dict) and "data" in api_results:
             api_results = api_results.get("data", [])
     else:
-        # Use fast /search endpoint instead of slow /stations/byname
-        api_results = api_request("search", {"q": query, "limit": limit})
-        if isinstance(api_results, dict) and "data" in api_results:
-            api_results = api_results.get("data", [])
+        api_results = api_request("stations/byname/" + urllib.parse.quote(query), {
+            "limit": limit, 
+        })
     return merge_results(db_results, api_results, limit)
 
 def search_by_tag(tag, limit=20):
@@ -1368,10 +1348,9 @@ def search_by_tag(tag, limit=20):
     db_results = db_search(tag=tag, limit=limit)
     if not USE_API:
         return db_results[:limit]
-    # Use fast /search endpoint (tag as query, not filter)
-    api_results = api_request("search", {"q": tag, "limit": limit})
-    if isinstance(api_results, dict) and "data" in api_results:
-        api_results = api_results.get("data", [])
+    api_results = api_request("stations/bytag/" + urllib.parse.quote(tag), {
+        "limit": limit, 
+    })
     return merge_results(db_results, api_results, limit)
 
 def search_by_country(code, limit=20):
@@ -1379,10 +1358,9 @@ def search_by_country(code, limit=20):
     db_results = db_search(country=code, limit=limit)
     if not USE_API:
         return db_results[:limit]
-    # Use fast /stations?countrycode= endpoint
-    api_results = api_request("stations", {"countrycode": code.upper(), "limit": limit})
-    if isinstance(api_results, dict) and "data" in api_results:
-        api_results = api_results.get("data", [])
+    api_results = api_request("stations/bycountrycode/" + urllib.parse.quote(code.upper()), {
+        "limit": limit, 
+    })
     return merge_results(db_results, api_results, limit)
 
 def get_popular(limit=20):
@@ -1404,7 +1382,7 @@ def get_high_quality(limit=30):
         "limit": limit,
         "order": "votes",
         "reverse": "true",
-        "lastcheckok": 1
+        
     }
     return api_request("stations/search", params)
 
@@ -1415,7 +1393,7 @@ def get_premium(limit=30):
         "order": "votes",
         "reverse": "true",
         "limit": limit,
-        "lastcheckok": 1
+        
     }
     results = api_request("stations/search", params)
     # Filter high votes only
@@ -1577,7 +1555,7 @@ def search_advanced(query, limit=50):
                 "limit": limit,
                 "order": "clickcount",
                 "reverse": "true",
-                "lastcheckok": 1
+                
             }
             all_results = api_request("stations/search", params)
         else:
@@ -1597,7 +1575,7 @@ def search_advanced(query, limit=50):
     seen_urls = set()
     unique_results = []
     for s in all_results:
-        if is_blocked(s):
+        if is_blocked(s.get("name", "")):
             continue
         url = s.get("url_resolved") or s.get("url", "")
         if url and url not in seen_urls:
@@ -1647,9 +1625,9 @@ def get_fresh_url(name):
     """Get fresh URL from API by station name"""
     if not name:
         return None
-    # Use fast /search endpoint
-    resp = api_request("search", {"q": name, "limit": 5})
-    results = resp.get("data", []) if isinstance(resp, dict) else resp
+    results = api_request("stations/byname/" + urllib.parse.quote(name), {
+        "limit": 5, 
+    })
     for s in results:
         if s.get("name", "").lower() == name.lower():
             return s.get("url_resolved") or s.get("url")
@@ -1687,9 +1665,9 @@ def play(url, name="", use_fresh_url=True):
         print(f"  {t('no_player')}. brew install mpv")
         return False
 
-    # Get fresh URL from API (handles token-based streams)
+    # Get fresh URL from API (only if API mode enabled)
     play_url = url
-    if use_fresh_url and name:
+    if USE_API and use_fresh_url and name:
         fresh_url = get_fresh_url(name)
         if fresh_url:
             play_url = fresh_url

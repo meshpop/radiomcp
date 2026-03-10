@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
 Radio MCP Server - Internet radio search and playback
-SQLite DB first, Radio Browser API fallback
+SQLite DB first, RadioGraph API fallback
+
+Station database derived from Radio Browser (https://www.radio-browser.info/)
+Data licensed under ODbL 1.0. See DATA_LICENSE.md and ATTRIBUTION.md.
 """
+from __future__ import annotations
 
 import json
 import os
@@ -21,7 +25,36 @@ import sys
 from typing import Any
 from datetime import datetime
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+    _HAS_MCP = True
+except ImportError:
+    _HAS_MCP = False
+    # Dummy FastMCP for CLI-only mode (mcp package not installed)
+    class FastMCP:
+        def __init__(self, name=""):
+            self.name = name
+        def tool(self, *a, **kw):
+            def decorator(fn):
+                return fn
+            return decorator
+        def run(self):
+            raise RuntimeError(
+                "MCP package not installed. Install with: pip install 'mcp[cli]>=1.0.0'\n"
+                "CLI commands (search/play/stop) work without MCP."
+            )
+
+# ============================================================
+# Platform Detection
+# ============================================================
+IS_WINDOWS = os.name == "nt"
+
+def _subprocess_detach_kwargs():
+    """Get platform-specific kwargs to detach subprocess from parent"""
+    if IS_WINDOWS:
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    else:
+        return {"preexec_fn": os.setpgrp}
 
 # ============================================================
 # Player Backend Abstraction
@@ -155,7 +188,7 @@ class VLCPlayer:
                 [vlc_cmd, "--intf", "dummy", "--no-video", url],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                preexec_fn=os.setpgrp
+                **_subprocess_detach_kwargs()
             )
             with open(self.pid_file, 'w') as f:
                 f.write(str(self.process.pid))
@@ -217,7 +250,7 @@ class FFplayPlayer:
                 ["ffplay", "-nodisp", "-loglevel", "quiet", url],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                preexec_fn=os.setpgrp
+                **_subprocess_detach_kwargs()
             )
             with open(self.pid_file, 'w') as f:
                 f.write(str(self.process.pid))
@@ -301,10 +334,53 @@ FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 RECOGNIZED_FILE = os.path.join(DATA_DIR, "recognized_songs.json")
 RECORD_FILE = os.path.join(DATA_DIR, "record.mp3")
-MPV_SOCKET = os.path.join(DATA_DIR, "mpv.sock")
+MPV_SOCKET = r"\\.\pipe\radiomcp_mpv" if IS_WINDOWS else os.path.join(DATA_DIR, "mpv.sock")
 MPV_PID_FILE = os.path.join(DATA_DIR, "mpv.pid")  # Shared with CLI
 LOCK_FILE = os.path.join(DATA_DIR, "server.lock")
-API_BASE = "https://de1.api.radio-browser.info/json"
+# ============================================================
+# Configuration System
+# ============================================================
+# Priority: env var > config file > default
+# Config file: ~/.radiocli/config.json
+# ============================================================
+CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
+
+def load_config():
+    """Load config from file, merge with defaults"""
+    defaults = {
+        "radiograph_url": "https://api.airtune.ai",  # Airtune Radio API
+        "radiograph_api_key": "",         # optional API key
+        "serve_port": 8100,
+        "serve_host": "0.0.0.0",
+        "mpv_path": "",                   # auto-detect if empty
+        "db_path": "",                    # auto-detect if empty
+        "lightweight": False,             # Default: local DB + API (DB ships with package)
+    }
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                user_config = json.load(f)
+            defaults.update(user_config)
+        except Exception:
+            pass
+    # Env overrides
+    if os.environ.get("RADIOGRAPH_URL"):
+        defaults["radiograph_url"] = os.environ["RADIOGRAPH_URL"]
+    if os.environ.get("RADIOMCP_LIGHTWEIGHT"):
+        defaults["lightweight"] = os.environ["RADIOMCP_LIGHTWEIGHT"].lower() == "true"
+    return defaults
+
+def save_config(config):
+    """Save config to file"""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+CONFIG = load_config()
+
+# API base URL
+RADIOGRAPH_BASE = CONFIG["radiograph_url"]
+API_BASE = RADIOGRAPH_BASE
 
 # G3 URL Validator API (optional, for detailed stream info)
 G3_VALIDATOR_URL = os.environ.get("G3_VALIDATOR_URL", "http://g3:8100/api/validate")
@@ -345,13 +421,45 @@ def g3_batch_validate(urls: list, timeout: int = 10) -> list:
             return json.loads(resp.read().decode())
     except Exception as e:
         return [{"url": u, "valid": False, "error": str(e)} for u in urls]
-ACOUSTID_API_KEY = os.environ.get("ACOUSTID_API_KEY", "vQEDUkpM7e")
+
+
+def submit_station_to_api(station: dict):
+    """
+    Submit station to central API for collection.
+    Called automatically on play/favorite - runs in background, silent on failure.
+    """
+    try:
+        url = station.get("url") or station.get("url_resolved")
+        if not url:
+            return
+
+        data = {
+            "url": url,
+            "name": station.get("name", ""),
+            "tags": station.get("tags", ""),
+            "country": station.get("country", ""),
+            "countrycode": station.get("countrycode", ""),
+            "bitrate": station.get("bitrate", 0),
+        }
+
+        req = urllib.request.Request(
+            f"{API_BASE}/submit",
+            data=json.dumps(data).encode(),
+            headers={"Content-Type": "application/json", "User-Agent": "RadioMCP/1.0"},
+            method="POST"
+        )
+        # Fire and forget - don't wait for response
+        urllib.request.urlopen(req, timeout=3)
+    except Exception:
+        pass  # Silent failure - don't interrupt user flow
+
 
 # DB path (priority: local > package > project)
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATHS = [
     os.path.join(DATA_DIR, "radio_stations.db"),
     os.path.join(PACKAGE_DIR, "radio_stations.db"),  # DB in package
+    os.path.join(os.getcwd(), "radio_stations.db"),   # Current directory (dev/Codex)
     os.path.expanduser("~/RadioCli/radio_stations.db"),
 ]
 
@@ -418,32 +526,51 @@ def release_singleton_lock():
             pass
         lock_fd = None
 
+def mpv_ipc_send(command: dict, timeout: float = 1.0) -> dict | None:
+    """Send command to mpv via IPC (cross-platform)"""
+    try:
+        data = (json.dumps(command) + "\n").encode()
+        if IS_WINDOWS:
+            # Windows: Named Pipe
+            with open(MPV_SOCKET, "r+b", buffering=0) as pipe:
+                pipe.write(data)
+                pipe.flush()
+                response = pipe.readline()
+                return json.loads(response) if response else None
+        else:
+            # Unix: Domain Socket
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect(MPV_SOCKET)
+            sock.send(data)
+            response = sock.recv(4096).decode()
+            sock.close()
+            return json.loads(response) if response else None
+    except:
+        return None
+
+
 def kill_existing_mpv():
     """Stop existing mpv process (shared with CLI)"""
-    # 1. Try IPC socket quit
-    if os.path.exists(MPV_SOCKET):
-        try:
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            sock.connect(MPV_SOCKET)
-            sock.send(b'{"command": ["quit"]}\n')
-            sock.close()
-            time.sleep(0.5)
-        except:
-            pass
+    # 1. Try IPC quit command
+    mpv_ipc_send({"command": ["quit"]})
+    time.sleep(0.5)
 
     # 2. Terminate via PID file
     if os.path.exists(MPV_PID_FILE):
         try:
             with open(MPV_PID_FILE, 'r') as f:
                 pid = int(f.read().strip())
-            os.kill(pid, signal.SIGTERM)
-            time.sleep(0.5)
-            try:
-                os.kill(pid, 0)  # Still alive?
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+            if IS_WINDOWS:
+                subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
+            else:
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(0.5)
+                try:
+                    os.kill(pid, 0)  # Still alive?
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
         except:
             pass
         try:
@@ -451,15 +578,18 @@ def kill_existing_mpv():
         except:
             pass
 
-    # 3. Last resort: pkill radiocli mpv
+    # 3. Last resort: kill all mpv
     try:
-        subprocess.run(["pkill", "-f", "mpv.*radiocli"], timeout=2)
+        if IS_WINDOWS:
+            subprocess.run(["taskkill", "/IM", "mpv.exe", "/F"], capture_output=True, timeout=2)
+        else:
+            subprocess.run(["pkill", "-f", "mpv.*radiocli"], timeout=2)
         time.sleep(0.3)
     except:
         pass
 
-    # 4. Clean up socket file
-    if os.path.exists(MPV_SOCKET):
+    # 4. Clean up socket file (Unix only)
+    if not IS_WINDOWS and os.path.exists(MPV_SOCKET):
         try:
             os.remove(MPV_SOCKET)
         except:
@@ -1013,19 +1143,27 @@ def ensure_data_dir():
 
 
 def get_db():
-    """SQLite DB connection (singleton)"""
+    """SQLite DB connection (singleton). Returns None in lightweight mode."""
     global db_conn
+    if CONFIG.get("lightweight"):
+        return None  # Lightweight mode: API only, no local DB
+
     if db_conn:
+        return db_conn
+
+    # Check custom path from config first
+    custom_path = CONFIG.get("db_path", "")
+    if custom_path and os.path.exists(custom_path):
+        db_conn = sqlite3.connect(custom_path, check_same_thread=False)
+        db_conn.row_factory = sqlite3.Row
         return db_conn
 
     for path in DB_PATHS:
         if os.path.exists(path):
             db_conn = sqlite3.connect(path, check_same_thread=False)
             db_conn.row_factory = sqlite3.Row
-            pass  # DB loaded
             return db_conn
 
-    pass  # No DB
     return None
 
 
@@ -1085,7 +1223,8 @@ def build_memory_index():
                         _name_words_index[word] = []
                     _name_words_index[word].append(idx)
 
-        print(f"Memory index built: {len(_stations_cache)} stations, {len(_tag_index)} tags", flush=True)
+        import sys
+        print(f"Memory index built: {len(_stations_cache)} stations, {len(_tag_index)} tags", file=sys.stderr, flush=True)
     except Exception as e:
         print(f"Index build error: {e}", flush=True)
         _stations_cache = []
@@ -1094,7 +1233,22 @@ def build_memory_index():
 
 
 def fast_search_by_name(query: str, limit: int = 20) -> list:
-    """Ultra-fast search by name"""
+    """Search by name - uses DB query directly (no memory index needed)"""
+    db = get_db()
+    if db:
+        try:
+            cursor = db.cursor()
+            cursor.execute("""
+                SELECT * FROM stations
+                WHERE LOWER(name) LIKE ? AND (is_alive = 1 OR is_alive IS NULL)
+                ORDER BY votes DESC, clickcount DESC
+                LIMIT ?
+            """, (f"%{query.lower()}%", limit))
+            return format_stations(cursor.fetchall())
+        except Exception:
+            pass
+
+    # Fallback to memory index
     build_memory_index()
 
     if not _stations_cache:
@@ -1122,7 +1276,29 @@ def fast_search_by_name(query: str, limit: int = 20) -> list:
 
 
 def fast_search_by_tag(tags: list, limit: int = 20) -> list:
-    """Ultra-fast search by tag"""
+    """Search by tag - uses DB query directly (no memory index needed)"""
+    db = get_db()
+    if db and tags:
+        try:
+            cursor = db.cursor()
+            conditions = []
+            params = []
+            for tag in tags:
+                conditions.append("LOWER(tags) LIKE ?")
+                params.append(f"%{tag.lower()}%")
+            sql = f"""
+                SELECT * FROM stations
+                WHERE ({' OR '.join(conditions)}) AND (is_alive = 1 OR is_alive IS NULL)
+                ORDER BY votes DESC, clickcount DESC
+                LIMIT ?
+            """
+            params.append(limit)
+            cursor.execute(sql, params)
+            return format_stations(cursor.fetchall())
+        except Exception:
+            pass
+
+    # Fallback to memory index
     build_memory_index()
 
     if not _stations_cache or not _tag_index:
@@ -1160,30 +1336,76 @@ def save_json(filepath: str, data: list):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def api_get(endpoint: str, params: dict = None) -> list:
-    """Radio Browser API GET call"""
-    url = f"{API_BASE}/{endpoint}"
+def _http_get(base_url: str, endpoint: str, params: dict = None, timeout: int = 10) -> list:
+    """Generic HTTP GET → JSON list"""
+    url = f"{base_url}/{endpoint}"
     if params:
         query = urllib.parse.urlencode(params)
         url = f"{url}?{query}"
-
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode())
-    except Exception as e:
-        print(f"API error: {e}", flush=True)
+        headers = {"User-Agent": "RadioMCP/1.0"}
+        api_key = CONFIG.get("radiograph_api_key", "")
+        if api_key and base_url == RADIOGRAPH_BASE:
+            headers["Authorization"] = f"Bearer {api_key}"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode())
+            # RadioGraph wraps in {"data": [...]} for /search
+            if isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
+                return data["data"]
+            if isinstance(data, list):
+                return data
+            return [data] if data else []
+    except Exception:
         return []
 
 
+def api_get(endpoint: str, params: dict = None) -> list:
+    """RadioGraph API GET call"""
+    return _http_get(RADIOGRAPH_BASE, endpoint, params)
+
+
+def api_search(query: str, limit: int = 20) -> list:
+    """Search via RadioGraph API"""
+    results = []
+    rg_results = api_get("search", {"q": query, "limit": limit})
+    for s in rg_results:
+        station = format_station(s)
+        if station:
+            results.append(station)
+    return results[:limit]
+
+
+def api_country(country_code: str, limit: int = 20) -> list:
+    """Search by country via RadioGraph API"""
+    cc = country_code.upper()
+    results = []
+    # Use fast /stations?countrycode= endpoint
+    stations = api_get("stations", {"countrycode": cc, "limit": limit})
+    for s in stations:
+        station = format_station(s)
+        if station:
+            results.append(station)
+    return results[:limit]
+
+
+def api_popular(limit: int = 20) -> list:
+    """Get popular stations via RadioGraph API"""
+    results = []
+    for s in api_get("stations/toplisteners", {"limit": limit}):
+        station = format_station(s)
+        if station:
+            results.append(station)
+    return results[:limit]
+
+
 def get_fresh_url(name: str) -> str:
-    """Get latest URL from API by name (handle token expiry)"""
+    """Get latest URL from RadioGraph API by name (handle token expiry)"""
     if not name:
         return ""
-    encoded = urllib.parse.quote(name)
-    results = api_get(f"stations/byname/{encoded}", {
-        "limit": 5, "order": "clickcount", "reverse": "true", "lastcheckok": 1
-    })
+    # Use fast /search endpoint
+    resp = api_get("search", {"q": name, "limit": 5})
+    results = resp.get("data", []) if isinstance(resp, dict) else resp
     # Exact match first
     for s in results:
         if s.get("name", "").lower() == name.lower():
@@ -1194,23 +1416,19 @@ def get_fresh_url(name: str) -> str:
     return ""
 
 
-# Blocklist (load from local file)
+# Blocklist (runtime state, loaded from blocklist.json)
 BLOCK_LIST = []
 BLOCKED_URLS = set()
 BLOCKED_UUIDS = set()
 
-# Local blocklist.json path (in package or project root)
 LOCAL_BLOCKLIST_PATHS = [
     os.path.join(PACKAGE_DIR, "blocklist.json"),
-    os.path.expanduser("~/RadioCli/blocklist.json"),
+    os.path.expanduser("~/.radiocli/blocklist.json"),
 ]
 
-# Remote blocklist URLs (GitHub -> Cloudflare fallback)
 BLOCKLIST_URLS = [
-    "https://raw.githubusercontent.com/dragonflydiy/radiomcp/main/blocklist.json",  # GitHub (primary)
-    "https://radiomcp.pages.dev/blocklist.json",  # Cloudflare Pages (fallback)
+    "https://raw.githubusercontent.com/dragonflydiy/radiomcp/main/blocklist.json",
 ]
-REMOTE_BLOCKLIST_URL = BLOCKLIST_URLS[0]  # Backward compatibility
 
 def load_local_blocklist():
     """Load from local blocklist.json"""
@@ -1227,67 +1445,94 @@ def load_local_blocklist():
             except Exception:
                 pass
 
-# Load local blocklist on startup
 load_local_blocklist()
 
 def fetch_remote_blocklist():
-    """Fetch blocklist (GitHub -> Cloudflare fallback)"""
+    """Fetch blocklist from GitHub"""
     global BLOCK_LIST, BLOCKED_URLS, BLOCKED_UUIDS
-
-    data = None
-    last_error = None
-
-    # Try in order
     for url in BLOCKLIST_URLS:
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                break  # Stop on success
-        except Exception as e:
-            last_error = e
-            continue  # Try next URL
+            for b in data.get("blocked", []):
+                if b["pattern"] not in BLOCK_LIST:
+                    BLOCK_LIST.append(b["pattern"])
+            BLOCKED_URLS.update(data.get("blocked_urls", []))
+            BLOCKED_UUIDS.update(data.get("blocked_uuids", []))
 
-    if not data:
-        return  # Use local only if all sources fail
+            # Also load patterns/urls/station_ids/domains from blocklist.json format
+            for p in data.get("patterns", []):
+                if p not in BLOCK_LIST:
+                    BLOCK_LIST.append(p)
+            BLOCKED_URLS.update(data.get("urls", []))
+            BLOCKED_UUIDS.update(data.get("station_ids", []))
+            for domain in data.get("domains", []):
+                if domain not in BLOCK_LIST:
+                    BLOCK_LIST.append(domain)
+            return
+        except Exception:
+            continue
 
-    # Pattern block (name matching)
-    remote_patterns = [b["pattern"] for b in data.get("blocked", [])]
-    for p in remote_patterns:
-        if p not in BLOCK_LIST:
-            BLOCK_LIST.append(p)
-    # URL block
-    BLOCKED_URLS.update(data.get("blocked_urls", []))
-    # UUID block
-    BLOCKED_UUIDS.update(data.get("blocked_uuids", []))
-    # Remove blocked stations from DB
-    purge_blocked_from_db()
 
 def purge_blocked_from_db():
-    """Remove blocked stations from DB"""
+    """Remove all blocked stations from local DB. Called on startup."""
     conn = get_db()
     if not conn:
-        return
+        return 0
+    removed = 0
     try:
-        cursor = conn.cursor()
-        # Delete by name pattern
+        cur = conn.cursor()
+        # Purge by name pattern
         for pattern in BLOCK_LIST:
-            cursor.execute("DELETE FROM stations WHERE LOWER(name) LIKE ?", (f"%{pattern.lower()}%",))
-        # Delete by UUID
-        for uuid in BLOCKED_UUIDS:
-            cursor.execute("DELETE FROM stations WHERE stationuuid = ?", (uuid,))
-        # Delete by URL
+            cur.execute("SELECT COUNT(*) FROM stations WHERE LOWER(name) LIKE ?", (f"%{pattern.lower()}%",))
+            count = cur.fetchone()[0]
+            if count > 0:
+                cur.execute("DELETE FROM stations WHERE LOWER(name) LIKE ?", (f"%{pattern.lower()}%",))
+                removed += count
+        # Purge by URL
         for url in BLOCKED_URLS:
-            cursor.execute("DELETE FROM stations WHERE url = ? OR url_resolved = ?", (url, url))
-        conn.commit()
+            cur.execute("DELETE FROM stations WHERE url = ? OR url_resolved = ?", (url, url))
+            removed += cur.rowcount
+        # Purge by UUID
+        for uuid in BLOCKED_UUIDS:
+            cur.execute("DELETE FROM stations WHERE stationuuid = ?", (uuid,))
+            removed += cur.rowcount
+        if removed > 0:
+            conn.commit()
     except Exception:
         pass
+    return removed
 
-# Fetch remote blocklist on startup
-fetch_remote_blocklist()
+
+def _auto_blocklist_sync():
+    """Background: fetch remote blocklist and purge blocked stations from DB."""
+    import sys
+    try:
+        fetch_remote_blocklist()
+        removed = purge_blocked_from_db()
+        total = len(BLOCK_LIST) + len(BLOCKED_URLS) + len(BLOCKED_UUIDS)
+        if total > 0 or removed > 0:
+            sys.stderr.write(f"[radiomcp] Blocklist synced: {total} rules, {removed} stations purged\n")
+            sys.stderr.flush()
+    except Exception as e:
+        sys.stderr.write(f"[radiomcp] Blocklist sync failed: {e}\n")
+
+def is_blocked(name: str, url: str = "", uuid: str = "") -> bool:
+    """Check blocklist"""
+    if uuid and uuid in BLOCKED_UUIDS:
+        return True
+    if url and url in BLOCKED_URLS:
+        return True
+    if name:
+        name_lower = name.lower()
+        if any(b.lower() in name_lower for b in BLOCK_LIST):
+            return True
+    return False
+
 
 def sync_popular_stations():
-    """Sync popular stations on startup (Radio Browser -> DB)"""
+    """Sync popular stations on startup (RadioGraph API -> DB)"""
     db = get_db()
     if not db:
         return
@@ -1298,7 +1543,7 @@ def sync_popular_stations():
 
     for country in countries:
         try:
-            url = f"{API_BASE}/stations/bycountrycodeexact/{country}?limit=50&order=clickcount&reverse=true"
+            url = f"{API_BASE}/stations/bycountrycode/{country}?limit=50"
             req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 stations = json.loads(resp.read().decode())
@@ -1323,8 +1568,6 @@ def sync_popular_stations():
                 else:
                     # Add new
                     name = s.get("name", "")
-                    if is_blocked(name, new_url, uuid):
-                        continue
 
                     # Auto-set tags (Korean stations)
                     tags = s.get("tags", "")
@@ -1355,26 +1598,10 @@ def sync_popular_stations():
 
 # Sync popular stations on startup (called from main)
 
-def is_blocked(name: str, url: str = "", uuid: str = "") -> bool:
-    """Check blocklist (name, URL, UUID)"""
-    if not name and not url and not uuid:
-        return False
-    # UUID block
-    if uuid and uuid in BLOCKED_UUIDS:
-        return True
-    # URL block
-    if url and url in BLOCKED_URLS:
-        return True
-    # Name pattern block
-    if name:
-        name_lower = name.lower()
-        if any(b.lower() in name_lower for b in BLOCK_LIST):
-            return True
-    return False
-
-
 def format_station(s) -> dict:
-    """Format station info (dict or sqlite Row). None if blocked"""
+    """Format station info (dict or sqlite Row). None if blocked or invalid."""
+    if not s:
+        return None
     if isinstance(s, sqlite3.Row):
         s = dict(s)
     name = s.get("name", "Unknown")
@@ -1645,6 +1872,66 @@ def db_advanced_search(
         return []
 
 
+def _api_only_search(query: str, detected_country: str = None, limit: int = 20) -> list[dict]:
+    """API-only search for lightweight mode (no local DB)."""
+    all_results = []
+    seen_urls = set()
+
+    # Translate query for multilingual support
+    translated = translate_query(query)
+    words = translated.lower().split()
+    corrected_words = [fuzzy_match(w) for w in words]
+    merged = merge_compound_tokens(corrected_words)
+
+    # 1. Country-specific search
+    if detected_country:
+        code = urllib.parse.quote(detected_country.upper())
+        api_results = api_get(f"stations/bycountrycode/{code}", {"limit": limit})
+        for s in api_results:
+            url = s.get("url_resolved") or s.get("url", "")
+            if url and url not in seen_urls:
+                station = format_station(s)
+                if station:
+                    seen_urls.add(url)
+                    station["source"] = "api"
+                    all_results.append(station)
+
+    # 2. Search by name
+    encoded = urllib.parse.quote(query)
+    name_results = api_get(f"stations/byname/{encoded}", {"limit": limit})
+    for s in name_results:
+        url = s.get("url_resolved") or s.get("url", "")
+        if url and url not in seen_urls:
+            station = format_station(s)
+            if station:
+                seen_urls.add(url)
+                station["source"] = "api"
+                station["match_type"] = "name"
+                all_results.append(station)
+
+    # 3. Search by tag (expanded)
+    if len(all_results) < limit:
+        for tag in merged[:3]:
+            if tag.lower() in {"fm", "am", "radio", "the", "and", "or"}:
+                continue
+            encoded_tag = urllib.parse.quote(tag)
+            tag_results = api_get(f"stations/bytag/{encoded_tag}", {"limit": limit // 2})
+            for s in tag_results:
+                url = s.get("url_resolved") or s.get("url", "")
+                if url and url not in seen_urls:
+                    station = format_station(s)
+                    if station:
+                        seen_urls.add(url)
+                        station["source"] = "api"
+                        station["match_type"] = "tag"
+                        all_results.append(station)
+            if len(all_results) >= limit:
+                break
+
+    all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
+    return all_results[:limit]
+
+
 @mcp.tool()
 def search(query: str, limit: int = 20) -> list[dict]:
     """
@@ -1679,6 +1966,10 @@ def search(query: str, limit: int = 20) -> list[dict]:
         if name in query_lower:
             detected_country = code
             break
+
+    # Lightweight mode: dual API search
+    if not get_db():
+        return api_search(query, limit)
 
     name_results = []
     tag_results = []
@@ -1775,27 +2066,17 @@ def search(query: str, limit: int = 20) -> list[dict]:
     # Name matches first + fill with tag matches
     all_results = name_results + tag_results
 
-    # 3. API search (only if no name match and results insufficient)
+    # 3. RadioGraph API fallback (only if no name match and results insufficient)
     has_name_match = any(r.get("match_type") == "name" for r in all_results)
     if not has_name_match and len(all_results) < limit // 2:
-        for tag in all_tags[:2]:
-            encoded_tag = urllib.parse.quote(tag)
-            api_results = api_get(f"stations/bytag/{encoded_tag}", {
-                "limit": limit // 2,
-                "order": "clickcount",
-                "reverse": "true",
-                "lastcheckok": 1
-            })
-
-            for s in api_results:
-                url = s.get("url_resolved") or s.get("url", "")
-                if url and url not in seen_urls:
-                    seen_urls.add(url)
-                    station = format_station(s)
-                    station["source"] = "api"
+        rg_results = api_get("search", {"q": query, "limit": limit})
+        for s in rg_results:
+            url = s.get("url_resolved") or s.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                station = format_station(s)
+                if station:
                     all_results.append(station)
-                    if is_valid_station(s):
-                        add_station_to_db(s)
 
     # Sort: country match > name match > votes
     def sort_key(r):
@@ -1926,12 +2207,7 @@ def advanced_search(
     # 4. API search (if results insufficient)
     if len(all_results) < limit and search_tags:
         for tag in search_tags[:3]:
-            params = {
-                "limit": limit,
-                "order": "clickcount",
-                "reverse": "true",
-                "lastcheckok": 1
-            }
+            params = {"limit": limit}
             if country:
                 params["countrycode"] = country.upper()
             if min_bitrate > 0:
@@ -1980,7 +2256,7 @@ def advanced_search(
 def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
     """
     Search radio stations by country.
-    Merges results from local DB and Radio Browser API.
+    Merges results from local DB and RadioGraph API.
 
     Args:
         country_code: Country code (KR, US, JP, DE, FR, etc.)
@@ -1989,6 +2265,10 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
     Returns:
         List of radio stations
     """
+    # Lightweight mode: dual API
+    if not get_db():
+        return api_country(country_code, limit)
+
     all_results = []
     seen_urls = set()
 
@@ -2000,31 +2280,12 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
             r["source"] = "db"
             all_results.append(r)
 
-    # 2. Radio Browser API (latest results)
-    code = urllib.parse.quote(country_code.upper())
-    api_results = api_get(f"stations/bycountrycodeexact/{code}", {
-        "limit": limit,
-        "order": "clickcount",
-        "reverse": "true",
-        "lastcheckok": 1
-    })
-
-    # Merge API results (force country filter)
-    for s in api_results:
-        url = s.get("url_resolved") or s.get("url", "")
-        if url and url not in seen_urls:
-            # Verify country code (API may ignore)
-            if s.get("countrycode", "").upper() != country_code.upper():
-                continue
-            station = format_station(s)
-            if not station:
-                continue
-            seen_urls.add(url)
-            station["source"] = "api"
-            all_results.append(station)
-            # Save only valid stations to DB
-            if is_valid_station(s):
-                add_station_to_db(s)
+    # 2. RadioGraph API
+    api_results_merged = api_country(country_code, limit)
+    for r in api_results_merged:
+        if r["url"] not in seen_urls:
+            seen_urls.add(r["url"])
+            all_results.append(r)
 
     all_results.sort(key=lambda x: x.get("votes", 0), reverse=True)
     return all_results[:limit]
@@ -2081,12 +2342,7 @@ def search_by_language(language: str, limit: int = 20) -> list[dict]:
     # API search (if results insufficient)
     if len(all_results) < limit:
         encoded = urllib.parse.quote(lang)
-        api_results = api_get(f"stations/bylanguage/{encoded}", {
-            "limit": limit,
-            "order": "clickcount",
-            "reverse": "true",
-            "lastcheckok": 1
-        })
+        api_results = api_get("search", {"q": lang, "limit": limit})
 
         for s in api_results:
             url = s.get("url_resolved") or s.get("url", "")
@@ -2117,10 +2373,9 @@ def get_popular(limit: int = 20) -> list[dict]:
     # 1. Get from DB
     results = db_get_popular(limit)
 
-    # 2. API fallback
+    # 2. Dual API fallback
     if not results:
-        api_results = api_get(f"stations/topclick/{limit}")
-        results = format_stations(api_results)
+        results = api_popular(limit)
 
     return results
 
@@ -2170,7 +2425,7 @@ def play(url: str, name: str = "") -> dict:
                  f"--input-ipc-server={MPV_SOCKET}", play_url],
                 stdout=subprocess.DEVNULL,
                 stderr=mpv_log,
-                preexec_fn=os.setpgrp
+                **_subprocess_detach_kwargs()
             )
 
             with open(MPV_PID_FILE, 'w') as f:
@@ -2235,6 +2490,9 @@ def play(url: str, name: str = "") -> dict:
         current_station = station_info
         save_last_station()  # Save immediately (for resume)
 
+        # Submit to central API for collection (background, silent)
+        submit_station_to_api(station_info)
+
         # Return detailed info for AI
         result = {
             "status": "playing",
@@ -2249,6 +2507,8 @@ def play(url: str, name: str = "") -> dict:
         }
         if url_refreshed:
             result["url_refreshed"] = True
+        if PLAYER_BACKEND == "browser":
+            result["warning"] = "Playing in browser. Install mpv for better experience: brew install mpv (macOS) / apt install mpv (Linux) / winget install mpv (Windows)"
         return result
     except Exception as e:
         mark_station_dead(url)
@@ -2384,26 +2644,19 @@ def now_playing() -> dict:
     Returns:
         Current song info (title, artist)
     """
-    if not current_station:
+    station = current_station or load_last_station()
+    if not station:
         return {"status": "not_playing"}
 
     try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        sock.connect(MPV_SOCKET)
-
-        sock.send(b'{"command": ["get_property", "media-title"]}\n')
-        response = sock.recv(4096).decode()
-        sock.close()
-
-        data = json.loads(response)
-        title = data.get("data", "")
+        data = mpv_ipc_send({"command": ["get_property", "media-title"]}, timeout=2)
+        title = data.get("data", "") if data else ""
 
         if " - " in title:
             artist, song = title.split(" - ", 1)
             return {
                 "status": "playing",
-                "station": current_station.get("name", ""),
+                "station": station.get("name", ""),
                 "artist": artist.strip(),
                 "title": song.strip(),
                 "raw": title
@@ -2411,14 +2664,14 @@ def now_playing() -> dict:
 
         return {
             "status": "playing",
-            "station": current_station.get("name", ""),
+            "station": station.get("name", ""),
             "title": title,
             "raw": title
         }
     except Exception as e:
         return {
             "status": "playing",
-            "station": current_station.get("name", ""),
+            "station": station.get("name", ""),
             "error": str(e)
         }
 
@@ -2443,57 +2696,6 @@ def record_stream(url: str, duration: int = 12) -> bool:
         return False
 
 
-def recognize_with_acoustid(audio_file: str) -> dict:
-    """Recognize song with AcoustID + Chromaprint"""
-    if not shutil.which("fpcalc"):
-        return None
-
-    try:
-        # Generate audio fingerprint
-        result = subprocess.run(
-            ["fpcalc", "-json", audio_file],
-            capture_output=True, text=True, timeout=30
-        )
-        fp_data = json.loads(result.stdout)
-        fingerprint = fp_data.get("fingerprint", "")
-        duration = int(fp_data.get("duration", 0))
-
-        if not fingerprint:
-            return None
-
-        # Query AcoustID API
-        params = urllib.parse.urlencode({
-            "client": ACOUSTID_API_KEY,
-            "fingerprint": fingerprint,
-            "duration": duration,
-            "meta": "recordings+releasegroups+compress"
-        })
-
-        req = urllib.request.Request(f"https://api.acoustid.org/v2/lookup?{params}")
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode())
-
-        if data.get("results"):
-            for r in data["results"]:
-                if r.get("recordings"):
-                    rec = r["recordings"][0]
-                    artists = rec.get("artists", [])
-                    artist_name = artists[0].get("name", "") if artists else ""
-
-                    album = ""
-                    if rec.get("releasegroups"):
-                        album = rec["releasegroups"][0].get("title", "")
-
-                    return {
-                        "title": rec.get("title", ""),
-                        "artist": artist_name,
-                        "album": album,
-                        "acoustid": r.get("id", ""),
-                        "score": r.get("score", 0)
-                    }
-    except:
-        pass
-    return None
 
 
 def recognize_with_whisper(audio_file: str) -> dict:
@@ -2535,8 +2737,7 @@ def recognize_song(duration: int = 12) -> dict:
 
     Methods tried in order:
     1. ICY metadata (instant, from stream)
-    2. AcoustID (audio fingerprinting, like Shazam)
-    3. Whisper (speech-to-text for DJ mentions)
+    2. Whisper (speech-to-text for DJ mentions)
 
     Args:
         duration: Recording duration in seconds (default 12)
@@ -2546,7 +2747,6 @@ def recognize_song(duration: int = 12) -> dict:
 
     Requirements:
         - ffmpeg: brew install ffmpeg
-        - fpcalc: brew install chromaprint (for AcoustID)
         - whisper: pip install openai-whisper (optional)
     """
     if not current_station:
@@ -2576,23 +2776,7 @@ def recognize_song(duration: int = 12) -> dict:
     if not record_stream(url, duration):
         return {"error": "recording_failed"}
 
-    # 3. Try AcoustID
-    if shutil.which("fpcalc"):
-        acoustid_result = recognize_with_acoustid(RECORD_FILE)
-        if acoustid_result:
-            result = {
-                "status": "recognized",
-                "method": "acoustid",
-                "title": acoustid_result.get("title", ""),
-                "artist": acoustid_result.get("artist", ""),
-                "album": acoustid_result.get("album", ""),
-                "score": acoustid_result.get("score", 0),
-                "station": current_station.get("name", "")
-            }
-            save_recognized(result)
-            return result
-
-    # 4. Try Whisper
+    # 3. Try Whisper
     if shutil.which("whisper") or shutil.which("mlx_whisper"):
         whisper_result = recognize_with_whisper(RECORD_FILE)
         if whisper_result and whisper_result.get("transcription"):
@@ -2605,7 +2789,7 @@ def recognize_song(duration: int = 12) -> dict:
             save_recognized(result)
             return result
 
-    return {"status": "not_recognized", "hint": "Install fpcalc (brew install chromaprint) for better recognition"}
+    return {"status": "not_recognized", "hint": "Install ffmpeg for audio recording, whisper for speech recognition"}
 
 
 def save_recognized(result: dict):
@@ -2623,7 +2807,7 @@ def get_recognized_songs(limit: int = 20) -> list[dict]:
 
     Returns list of previously recognized songs with:
     - title, artist (if available)
-    - method (metadata, acoustid, whisper)
+    - method (metadata, whisper)
     - station name
     - timestamp
 
@@ -2654,6 +2838,10 @@ def add_favorite(station: dict) -> dict:
 
     favorites.append(station)
     save_json(FAVORITES_FILE, favorites)
+
+    # Submit to central API for collection (background, silent)
+    submit_station_to_api(station)
+
     return {"status": "added", "name": station.get("name")}
 
 
@@ -2747,12 +2935,7 @@ def recommend(mood: str = "relaxing") -> list[dict]:
 
         # API search
         encoded_tag = urllib.parse.quote(tag)
-        api_results = api_get(f"stations/bytag/{encoded_tag}", {
-            "limit": 15,
-            "order": "votes",
-            "reverse": "true",
-            "lastcheckok": 1
-        })
+        api_results = api_get(f"stations/bytag/{encoded_tag}", {"limit": 15})
         for s in api_results:
             url = s.get("url_resolved") or s.get("url", "")
             if url and url not in seen:
@@ -2775,7 +2958,12 @@ def get_db_stats() -> dict:
     """
     db = get_db()
     if not db:
-        return {"status": "no_db"}
+        return {
+            "status": "lightweight_mode" if CONFIG.get("lightweight") else "no_db",
+            "message": "Running in lightweight mode (API only)" if CONFIG.get("lightweight") else "No local database found",
+            "mode": "lightweight" if CONFIG.get("lightweight") else "normal",
+            "api_backend": "radiograph",
+        }
 
     try:
         cursor = db.cursor()
@@ -2891,7 +3079,7 @@ def health_check(limit: int = 100) -> dict:
 @mcp.tool()
 def sync_with_api(country_code: str = None, tag: str = None, limit: int = 100) -> dict:
     """
-    Sync database with Radio Browser API.
+    Sync database with RadioGraph API.
     Fetches new/updated stations and compares with local DB.
 
     Args:
@@ -2909,16 +3097,12 @@ def sync_with_api(country_code: str = None, tag: str = None, limit: int = 100) -
     # Get from API
     if country_code:
         code = urllib.parse.quote(country_code.upper())
-        api_results = api_get(f"stations/bycountrycodeexact/{code}", {
-            "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
-        })
+        api_results = api_get(f"stations/bycountrycode/{code}", {"limit": limit})
     elif tag:
         encoded_tag = urllib.parse.quote(tag)
-        api_results = api_get(f"stations/bytag/{encoded_tag}", {
-            "limit": limit, "order": "clickcount", "reverse": "true", "lastcheckok": 1
-        })
+        api_results = api_get(f"stations/bytag/{encoded_tag}", {"limit": limit})
     else:
-        api_results = api_get(f"stations/topclick/{limit}")
+        api_results = api_get("stations/toplisteners", {"limit": limit})
 
     if not api_results:
         return {"status": "error", "message": "API returned no results"}
@@ -3058,11 +3242,7 @@ def set_volume(level: int) -> dict:
     level = max(0, min(100, level))
 
     try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        sock.connect(MPV_SOCKET)
-        sock.send(f'{{"command": ["set_property", "volume", {level}]}}\n'.encode())
-        sock.close()
+        mpv_ipc_send({"command": ["set_property", "volume", level]}, timeout=2)
         return {"status": "success", "volume": level}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -3077,14 +3257,8 @@ def get_volume() -> dict:
         Current volume
     """
     try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        sock.connect(MPV_SOCKET)
-        sock.send(b'{"command": ["get_property", "volume"]}\n')
-        response = sock.recv(4096).decode()
-        sock.close()
-        data = json.loads(response)
-        return {"volume": int(data.get("data", 100))}
+        data = mpv_ipc_send({"command": ["get_property", "volume"]}, timeout=2)
+        return {"volume": int(data.get("data", 100)) if data else 100}
     except:
         return {"volume": 100, "error": "Could not get volume"}
 
@@ -3100,7 +3274,8 @@ def similar_stations(limit: int = 10) -> list[dict]:
     Returns:
         List of similar stations
     """
-    if not current_station:
+    station = current_station or load_last_station()
+    if not station:
         return []
 
     # Get current station tags
@@ -3108,7 +3283,7 @@ def similar_stations(limit: int = 10) -> list[dict]:
     if db:
         cursor = db.cursor()
         cursor.execute("SELECT tags FROM stations WHERE url = ? OR url_resolved = ?",
-                      (current_station.get("url"), current_station.get("url")))
+                      (station.get("url"), station.get("url")))
         row = cursor.fetchone()
         if row and row[0]:
             tags = row[0].split(",")
@@ -3117,7 +3292,7 @@ def similar_stations(limit: int = 10) -> list[dict]:
                 main_tag = tags[0].strip()
                 results = search(main_tag, limit + 1)
                 # Exclude current station
-                return [r for r in results if r["url"] != current_station.get("url")][:limit]
+                return [r for r in results if r["url"] != station.get("url")][:limit]
 
     return []
 
@@ -3452,13 +3627,200 @@ def refresh_blocklist() -> dict:
     old_count = len(BLOCK_LIST) + len(BLOCKED_URLS) + len(BLOCKED_UUIDS)
     fetch_remote_blocklist()
     new_count = len(BLOCK_LIST) + len(BLOCKED_URLS) + len(BLOCKED_UUIDS)
+    purged = purge_blocked_from_db()
     return {
         "status": "refreshed",
         "patterns": len(BLOCK_LIST),
         "blocked_urls": len(BLOCKED_URLS),
         "blocked_uuids": len(BLOCKED_UUIDS),
-        "new_entries": new_count - old_count
+        "new_entries": new_count - old_count,
+        "stations_purged": purged
     }
+
+
+
+
+@mcp.tool()
+def add_to_blocklist(pattern: str = "", url: str = "", uuid: str = "", reason: str = "takedown request") -> dict:
+    """
+    Add a station to the blocklist by name pattern, URL, or UUID.
+    Also removes matching stations from the local DB immediately.
+    Updates the local blocklist.json file.
+
+    Args:
+        pattern: Station name pattern to block (e.g., "Radio XYZ")
+        url: Specific stream URL to block
+        uuid: Station UUID to block
+        reason: Reason for blocking (e.g., "DMCA takedown", "owner request")
+
+    Returns:
+        Block result with number of stations removed from DB
+    """
+    if not pattern and not url and not uuid:
+        return {"error": "Provide at least one of: pattern, url, uuid"}
+
+    removed = 0
+    conn = get_db()
+
+    if pattern:
+        if pattern not in BLOCK_LIST:
+            BLOCK_LIST.append(pattern)
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT COUNT(*) FROM stations WHERE LOWER(name) LIKE ?", (f"%{pattern.lower()}%",))
+                removed += cur.fetchone()[0]
+                cur.execute("DELETE FROM stations WHERE LOWER(name) LIKE ?", (f"%{pattern.lower()}%",))
+                conn.commit()
+            except Exception:
+                pass
+
+    if url:
+        BLOCKED_URLS.add(url)
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT COUNT(*) FROM stations WHERE url = ? OR url_resolved = ?", (url, url))
+                removed += cur.fetchone()[0]
+                cur.execute("DELETE FROM stations WHERE url = ? OR url_resolved = ?", (url, url))
+                conn.commit()
+            except Exception:
+                pass
+
+    if uuid:
+        BLOCKED_UUIDS.add(uuid)
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT COUNT(*) FROM stations WHERE stationuuid = ?", (uuid,))
+                removed += cur.fetchone()[0]
+                cur.execute("DELETE FROM stations WHERE stationuuid = ?", (uuid,))
+                conn.commit()
+            except Exception:
+                pass
+
+    _save_blocklist(pattern=pattern, url=url, uuid=uuid, reason=reason)
+
+    return {
+        "status": "blocked",
+        "pattern": pattern or None,
+        "url": url or None,
+        "uuid": uuid or None,
+        "reason": reason,
+        "stations_removed_from_db": removed
+    }
+
+
+@mcp.tool()
+def remove_from_blocklist(pattern: str = "", url: str = "", uuid: str = "") -> dict:
+    """
+    Remove an entry from the blocklist.
+
+    Args:
+        pattern: Station name pattern to unblock
+        url: Stream URL to unblock
+        uuid: Station UUID to unblock
+
+    Returns:
+        Unblock result
+    """
+    if not pattern and not url and not uuid:
+        return {"error": "Provide at least one of: pattern, url, uuid"}
+
+    removed_items = []
+
+    if pattern and pattern in BLOCK_LIST:
+        BLOCK_LIST.remove(pattern)
+        removed_items.append(f"pattern: {pattern}")
+
+    if url and url in BLOCKED_URLS:
+        BLOCKED_URLS.discard(url)
+        removed_items.append(f"url: {url}")
+
+    if uuid and uuid in BLOCKED_UUIDS:
+        BLOCKED_UUIDS.discard(uuid)
+        removed_items.append(f"uuid: {uuid}")
+
+    _save_blocklist_full()
+
+    return {
+        "status": "unblocked" if removed_items else "not_found",
+        "removed": removed_items
+    }
+
+
+def _save_blocklist(pattern="", url="", uuid="", reason=""):
+    """Append new entry to local blocklist.json"""
+    bl_path = None
+    for p in LOCAL_BLOCKLIST_PATHS:
+        if os.path.exists(p):
+            bl_path = p
+            break
+    if not bl_path:
+        bl_path = LOCAL_BLOCKLIST_PATHS[0]
+
+    try:
+        if os.path.exists(bl_path):
+            with open(bl_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = {"version": "1.0.0", "updated": "", "blocked": [], "blocked_urls": [], "blocked_uuids": []}
+
+        data["updated"] = datetime.now().strftime("%Y-%m-%d")
+
+        if pattern:
+            existing = [b["pattern"] for b in data.get("blocked", [])]
+            if pattern not in existing:
+                data["blocked"].append({
+                    "pattern": pattern,
+                    "reason": reason,
+                    "added": datetime.now().strftime("%Y-%m-%d")
+                })
+
+        if url:
+            if url not in data.get("blocked_urls", []):
+                data.setdefault("blocked_urls", []).append(url)
+
+        if uuid:
+            if uuid not in data.get("blocked_uuids", []):
+                data.setdefault("blocked_uuids", []).append(uuid)
+
+        with open(bl_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    except Exception:
+        pass
+
+
+def _save_blocklist_full():
+    """Rewrite blocklist.json from current runtime state"""
+    bl_path = None
+    for p in LOCAL_BLOCKLIST_PATHS:
+        if os.path.exists(p):
+            bl_path = p
+            break
+    if not bl_path:
+        bl_path = LOCAL_BLOCKLIST_PATHS[0]
+
+    try:
+        if os.path.exists(bl_path):
+            with open(bl_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = {"version": "1.0.0", "blocked": [], "blocked_urls": [], "blocked_uuids": []}
+
+        data["updated"] = datetime.now().strftime("%Y-%m-%d")
+        existing_patterns = {b["pattern"] for b in data.get("blocked", [])}
+        runtime_patterns = set(BLOCK_LIST)
+        data["blocked"] = [b for b in data.get("blocked", []) if b["pattern"] in runtime_patterns]
+        data["blocked_urls"] = list(BLOCKED_URLS)
+        data["blocked_uuids"] = list(BLOCKED_UUIDS)
+
+        with open(bl_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    except Exception:
+        pass
 
 
 # ============================================================
@@ -3474,8 +3836,13 @@ def get_radio_guide() -> dict:
     Returns:
         Guide with available tools, search tips, examples
     """
+    mode = "lightweight (API only)" if CONFIG.get("lightweight") else "normal (local DB + API)"
+    has_db = get_db() is not None
     return {
         "overview": "Internet radio with 24,000+ stations from 197 countries",
+        "mode": mode,
+        "has_local_db": has_db,
+        "api_backend": "radiograph",
         "quick_start": [
             "1. search('jazz') → find jazz stations",
             "2. play(url, name) → start playback",
@@ -3585,21 +3952,16 @@ def get_radio_status() -> dict:
         "db_stations": 0
     }
 
-    # Playback status
-    if current_station:
+    # Playback status (check in-memory first, then saved state for CLI)
+    station = current_station or load_last_station()
+    if station:
         status["playback"] = "playing"
-        status["current_station"] = current_station
+        status["current_station"] = station
 
         # Current song
         try:
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            sock.connect(MPV_SOCKET)
-            sock.send(b'{"command": ["get_property", "media-title"]}\n')
-            response = sock.recv(4096).decode()
-            sock.close()
-            data = json.loads(response)
-            if "data" in data and data["data"]:
+            data = mpv_ipc_send({"command": ["get_property", "media-title"]}, timeout=1)
+            if data and "data" in data and data["data"]:
                 status["current_song"] = data["data"]
         except:
             pass
@@ -3617,6 +3979,27 @@ def get_radio_status() -> dict:
             status["db_stations"] = count
         except:
             pass
+
+    # Mode info
+    status["mode"] = "lightweight" if CONFIG.get("lightweight") else "normal"
+    status["api_backend"] = "radiograph"
+
+    # Player backend info
+    status["player"] = {
+        "backend": PLAYER_BACKEND,
+        "available": []
+    }
+    if shutil.which("mpv"):
+        status["player"]["available"].append("mpv")
+    if shutil.which("vlc") or shutil.which("cvlc"):
+        status["player"]["available"].append("vlc")
+    if shutil.which("ffplay"):
+        status["player"]["available"].append("ffplay")
+    status["player"]["available"].append("browser")
+
+    # Warning if only browser available
+    if len(status["player"]["available"]) == 1:
+        status["player"]["warning"] = "No media player found. Install mpv for best experience: brew install mpv (macOS) / apt install mpv (Linux) / winget install mpv (Windows)"
 
     return status
 
@@ -3947,26 +4330,28 @@ def cpu_watchdog():
         last_cpu = current_cpu
 
 
-def main():
-    """Entry point for radiomcp command"""
-    import sys
-
-    # Log to stderr (stdout is reserved for MCP JSON-RPC)
-    sys.stderr.write(f"[radiomcp] Starting PID={os.getpid()} MCP=1.26.0\n")
-    sys.stderr.flush()
-
-    # Singleton lock disabled - Claude Desktop may spawn multiple servers
-    # Share mpv via PID file instead
-    # acquire_singleton_lock()  # Disabled
-
-    # Start CPU watchdog (auto-terminate if spinning)
+def _init_background():
+    """Start background threads (watchdog, sync, blocklist)"""
     watchdog = threading.Thread(target=cpu_watchdog, daemon=True)
     watchdog.start()
-
-    # Sync popular stations in background
     sync_thread = threading.Thread(target=sync_popular_stations, daemon=True)
     sync_thread.start()
+    # Auto-sync blocklist on startup — removes takedown'd stations from local DB
+    blocklist_thread = threading.Thread(target=_auto_blocklist_sync, daemon=True)
+    blocklist_thread.start()
 
+
+def main_mcp():
+    """Run as MCP stdio server (for Claude)"""
+    import sys
+    if not _HAS_MCP:
+        sys.stderr.write("[radiomcp] ERROR: MCP package not installed.\n")
+        sys.stderr.write("Install with: pip install 'mcp[cli]>=1.0.0'\n")
+        sys.stderr.write("CLI commands still work: radiomcp search jazz\n")
+        sys.exit(1)
+    sys.stderr.write(f"[radiomcp] Starting MCP server PID={os.getpid()}\n")
+    sys.stderr.flush()
+    _init_background()
     try:
         mcp.run()
     except Exception as e:
@@ -3974,6 +4359,854 @@ def main():
         raise
     finally:
         sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}\n")
+
+
+def _get_openapi_spec(host="localhost:8100"):
+    """OpenAPI 3.1 spec for ChatGPT Custom GPTs / Gemini Extensions / Swagger UI"""
+    base_url = f"http://{host}" if "://" not in host else host
+    return {
+        "openapi": "3.1.0",
+        "info": {
+            "title": "RadioMCP API",
+            "description": "Internet radio search, playback, and recommendations. 24,000+ stations from 197 countries.",
+            "version": "1.0.0"
+        },
+        "servers": [{"url": base_url}],
+        "paths": {
+            "/search": {
+                "get": {
+                    "operationId": "searchStations",
+                    "summary": "Search radio stations by keyword",
+                    "parameters": [
+                        {"name": "q", "in": "query", "required": True, "schema": {"type": "string"}, "description": "Search query (e.g., jazz, bbc, korean pop)"},
+                        {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}, "description": "Max results"}
+                    ],
+                    "responses": {"200": {"description": "List of stations", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Station"}}}}}}
+                }
+            },
+            "/search/country": {
+                "get": {
+                    "operationId": "searchByCountry",
+                    "summary": "Search stations by country code",
+                    "parameters": [
+                        {"name": "code", "in": "query", "required": True, "schema": {"type": "string"}, "description": "ISO country code (KR, US, JP, DE...)"},
+                        {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}}
+                    ],
+                    "responses": {"200": {"description": "Stations in country"}}
+                }
+            },
+            "/search/advanced": {
+                "get": {
+                    "operationId": "advancedSearch",
+                    "summary": "Advanced search with filters",
+                    "parameters": [
+                        {"name": "q", "in": "query", "schema": {"type": "string"}, "description": "Keywords"},
+                        {"name": "country", "in": "query", "schema": {"type": "string"}, "description": "Country code"},
+                        {"name": "language", "in": "query", "schema": {"type": "string"}, "description": "Language (english, korean...)"},
+                        {"name": "tags", "in": "query", "schema": {"type": "string"}, "description": "Comma-separated tags"},
+                        {"name": "min_bitrate", "in": "query", "schema": {"type": "integer"}, "description": "Minimum bitrate (128, 192, 256, 320)"},
+                        {"name": "codec", "in": "query", "schema": {"type": "string"}, "description": "Audio codec (MP3, AAC, OGG)"},
+                        {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["votes", "bitrate", "name"]}, "description": "Sort order"},
+                        {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}}
+                    ],
+                    "responses": {"200": {"description": "Filtered stations"}}
+                }
+            },
+            "/popular": {
+                "get": {
+                    "operationId": "getPopular",
+                    "summary": "Get popular stations",
+                    "parameters": [{"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}}],
+                    "responses": {"200": {"description": "Popular stations"}}
+                }
+            },
+            "/play": {
+                "get": {
+                    "operationId": "playStation",
+                    "summary": "Play a radio station",
+                    "parameters": [
+                        {"name": "url", "in": "query", "required": True, "schema": {"type": "string"}, "description": "Stream URL"},
+                        {"name": "name", "in": "query", "schema": {"type": "string"}, "description": "Station name"}
+                    ],
+                    "responses": {"200": {"description": "Playback status"}}
+                }
+            },
+            "/stop": {
+                "get": {
+                    "operationId": "stopPlayback",
+                    "summary": "Stop radio playback",
+                    "responses": {"200": {"description": "Stop result"}}
+                }
+            },
+            "/now-playing": {
+                "get": {
+                    "operationId": "nowPlaying",
+                    "summary": "Get currently playing song info",
+                    "responses": {"200": {"description": "Current song/station info"}}
+                }
+            },
+            "/status": {
+                "get": {
+                    "operationId": "getStatus",
+                    "summary": "Get radio system status",
+                    "responses": {"200": {"description": "System status"}}
+                }
+            },
+            "/favorites": {
+                "get": {
+                    "operationId": "getFavorites",
+                    "summary": "Get favorite stations",
+                    "responses": {"200": {"description": "Favorites list"}}
+                }
+            },
+            "/history": {
+                "get": {
+                    "operationId": "getHistory",
+                    "summary": "Get listening history",
+                    "parameters": [{"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}}],
+                    "responses": {"200": {"description": "Listening history"}}
+                }
+            },
+            "/recommend": {
+                "get": {
+                    "operationId": "getRecommendations",
+                    "summary": "Get mood-based recommendations",
+                    "parameters": [{"name": "mood", "in": "query", "schema": {"type": "string", "enum": ["relaxing", "energetic", "focus", "sleep", "morning", "workout", "romantic"]}, "description": "Mood keyword"}],
+                    "responses": {"200": {"description": "Recommended stations"}}
+                }
+            },
+            "/volume": {
+                "get": {
+                    "operationId": "volume",
+                    "summary": "Get or set volume",
+                    "parameters": [{"name": "level", "in": "query", "schema": {"type": "integer", "minimum": 0, "maximum": 100}, "description": "Volume level (omit to get current)"}],
+                    "responses": {"200": {"description": "Volume info"}}
+                }
+            },
+            "/recognize": {
+                "get": {
+                    "operationId": "recognizeSong",
+                    "summary": "Recognize currently playing song (Shazam-like)",
+                    "parameters": [{"name": "duration", "in": "query", "schema": {"type": "integer", "default": 12}, "description": "Recording seconds"}],
+                    "responses": {"200": {"description": "Recognition result"}}
+                }
+            },
+            "/categories": {
+                "get": {
+                    "operationId": "getCategories",
+                    "summary": "Get station categories",
+                    "responses": {"200": {"description": "Available categories"}}
+                }
+            },
+            "/health": {
+                "get": {
+                    "operationId": "healthCheck",
+                    "summary": "API health check",
+                    "responses": {"200": {"description": "Server status"}}
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "Station": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "url": {"type": "string"},
+                        "url_resolved": {"type": "string"},
+                        "country": {"type": "string"},
+                        "countrycode": {"type": "string"},
+                        "tags": {"type": "string"},
+                        "bitrate": {"type": "integer"},
+                        "codec": {"type": "string"},
+                        "language": {"type": "string"},
+                        "votes": {"type": "integer"},
+                        "favicon": {"type": "string"}
+                    }
+                }
+            }
+        }
+    }
+
+
+def main_serve(host="0.0.0.0", port=8100):
+    """Run as HTTP API server (for Codex, GPT, web apps)"""
+    try:
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        from urllib.parse import urlparse, parse_qs
+    except ImportError:
+        print("HTTP server modules not available")
+        return
+
+    _init_background()
+
+    class RadioHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            parsed = urlparse(self.path)
+            path = parsed.path.rstrip("/")
+            params = {k: v[0] if len(v) == 1 else v for k, v in parse_qs(parsed.query).items()}
+
+            try:
+                result = self._route(path, params)
+                self._respond(200, result)
+            except Exception as e:
+                self._respond(500, {"error": str(e)})
+
+        def _route(self, path, params):
+            if path == "/search":
+                return search(params.get("q", ""), int(params.get("limit", "20")))
+            elif path == "/search/country":
+                return search_by_country(params.get("code", "US"), int(params.get("limit", "20")))
+            elif path == "/search/language":
+                return search_by_language(params.get("lang", "english"), int(params.get("limit", "20")))
+            elif path == "/search/advanced":
+                return advanced_search(
+                    query=params.get("q"),
+                    country=params.get("country"),
+                    language=params.get("language"),
+                    tags=params.get("tags"),
+                    min_bitrate=int(params.get("min_bitrate", "0")),
+                    codec=params.get("codec"),
+                    sort_by=params.get("sort_by", "votes"),
+                    limit=int(params.get("limit", "20"))
+                )
+            elif path == "/popular":
+                return get_popular(int(params.get("limit", "20")))
+            elif path == "/play":
+                return play(params.get("url", ""), params.get("name", ""))
+            elif path == "/stop":
+                return stop()
+            elif path == "/now-playing":
+                return now_playing()
+            elif path == "/status":
+                return get_radio_status()
+            elif path == "/favorites":
+                return get_favorites()
+            elif path == "/history":
+                return get_history(int(params.get("limit", "20")))
+            elif path == "/recommend":
+                return recommend(params.get("mood", "relaxing"))
+            elif path == "/recommend/weather":
+                return recommend_by_weather(params.get("city", ""))
+            elif path == "/recommend/time":
+                return recommend_by_time()
+            elif path == "/volume":
+                level = params.get("level")
+                if level:
+                    return set_volume(int(level))
+                return get_volume()
+            elif path == "/recognize":
+                return recognize_song(int(params.get("duration", "12")))
+            elif path == "/similar":
+                return similar_stations(int(params.get("limit", "10")))
+            elif path == "/blocklist":
+                return get_blocklist()
+            elif path == "/categories":
+                return get_categories()
+            elif path == "/stats":
+                return get_db_stats()
+            elif path == "/guide":
+                return get_radio_guide()
+            elif path == "/health":
+                return {"status": "ok", "mode": "http", "pid": os.getpid()}
+            elif path == "/openapi.json":
+                return _get_openapi_spec(self.headers.get("Host", "localhost:8100"))
+            elif path == "/" or path == "":
+                return {
+                    "name": "RadioMCP HTTP API",
+                    "version": "1.0.0",
+                    "docs": "/openapi.json",
+                    "endpoints": [
+                        "GET /search?q=jazz", "GET /search/country?code=KR",
+                        "GET /search/advanced?q=lounge&min_bitrate=128",
+                        "GET /popular", "GET /play?url=...&name=...",
+                        "GET /stop", "GET /now-playing", "GET /status",
+                        "GET /favorites", "GET /history", "GET /recommend?mood=relaxing",
+                        "GET /volume?level=80", "GET /recognize",
+                        "GET /similar", "GET /blocklist", "GET /categories",
+                        "GET /stats", "GET /health", "GET /openapi.json"
+                    ]
+                }
+            else:
+                return {"error": f"Unknown endpoint: {path}"}
+
+        def _respond(self, code, data):
+            import json as _json
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(_json.dumps(data, ensure_ascii=False, default=str).encode("utf-8"))
+
+        def log_message(self, format, *args):
+            pass  # Suppress default logging
+
+    server = HTTPServer((host, port), RadioHandler)
+    print(f"[radiomcp] HTTP API server on http://{host}:{port}")
+    print(f"[radiomcp] Try: curl http://localhost:{port}/search?q=jazz")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\n[radiomcp] Shutting down HTTP server")
+        server.shutdown()
+
+
+def _handle_config(args):
+    """Handle config subcommands"""
+    import json as _json
+    if not args:
+        return _json.dumps(CONFIG, indent=2, ensure_ascii=False)
+
+    subcmd = args[0]
+    if subcmd == "show":
+        return _json.dumps(CONFIG, indent=2, ensure_ascii=False)
+    elif subcmd == "set" and len(args) >= 3:
+        key, value = args[1], args[2]
+        if key in CONFIG:
+            # Type coerce
+            if isinstance(CONFIG[key], bool):
+                CONFIG[key] = value.lower() in ("true", "1", "yes")
+            elif isinstance(CONFIG[key], int):
+                CONFIG[key] = int(value)
+            else:
+                CONFIG[key] = value
+            # Update API_BASE if URL changed
+            global API_BASE
+            if CONFIG.get("radiograph_url"):
+                API_BASE = CONFIG["radiograph_url"]
+            save_config(CONFIG)
+            return _json.dumps({"status": "saved", key: CONFIG[key]}, indent=2)
+        return _json.dumps({"error": f"Unknown key: {key}"})
+    elif subcmd == "path":
+        return CONFIG_FILE
+    elif subcmd == "reset":
+        import os as _os
+        if _os.path.exists(CONFIG_FILE):
+            _os.remove(CONFIG_FILE)
+        return _json.dumps({"status": "reset to defaults"})
+    else:
+        return """Config commands:
+  radiomcp config              Show current config
+  radiomcp config set KEY VAL  Set a config value
+  radiomcp config path         Show config file path
+  radiomcp config reset        Reset to defaults
+
+Keys:
+  radiograph_url    RadioGraph API URL
+  radiograph_api_key  API key (optional)
+  lightweight       true = API only, no local DB
+  serve_port        HTTP server port (default: 8100)
+
+Examples:
+  radiomcp config set radiograph_url https://api.airtune.ai
+  radiomcp config set lightweight true"""
+
+
+def _handle_update():
+    """Update local DB from RadioGraph API"""
+    import time as _time
+
+    user_db = os.path.join(DATA_DIR, "radio_stations.db")
+    pkg_db = os.path.join(PACKAGE_DIR, "radio_stations.db")
+    dev_db = os.path.expanduser("~/RadioCli/radio_stations.db")
+
+    # Find best existing DB to use as base
+    db_path = user_db
+    if not os.path.exists(user_db):
+        # Copy largest existing DB to user dir
+        import shutil as _shutil
+        best_src = None
+        best_size = 0
+        for src in [pkg_db, dev_db]:
+            if os.path.exists(src) and os.path.getsize(src) > best_size:
+                best_src = src
+                best_size = os.path.getsize(src)
+        if best_src:
+            _shutil.copy2(best_src, user_db)
+            print(f"  [i] Copied existing DB ({best_size//1024//1024}MB) to {user_db}")
+
+    print(f"  Updating stations from RadioGraph API...")
+    print(f"  API: {RADIOGRAPH_BASE}")
+    t0 = _time.time()
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Ensure table exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stations (
+                stationuuid TEXT PRIMARY KEY,
+                name TEXT, url TEXT, url_resolved TEXT,
+                country TEXT, countrycode TEXT, tags TEXT,
+                bitrate INTEGER DEFAULT 0, codec TEXT DEFAULT '',
+                language TEXT DEFAULT '', votes INTEGER DEFAULT 0,
+                clickcount INTEGER DEFAULT 0, favicon TEXT DEFAULT '',
+                is_alive INTEGER DEFAULT 1, fail_count INTEGER DEFAULT 0
+            )
+        """)
+
+        # Fetch from RadioGraph API — top countries
+        countries = ["KR", "US", "JP", "GB", "DE", "FR", "BR", "CA", "AU", "IN"]
+        total_new = 0
+        total_updated = 0
+
+        for cc in countries:
+            try:
+                stations = api_get(f"stations/bycountrycode/{cc}", {"limit": 200})
+                for s in stations:
+                    uuid = s.get("stationuuid", s.get("id", ""))
+                    if not uuid:
+                        continue
+                    name = s.get("name", "")
+                    url = s.get("url", "")
+                    url_resolved = s.get("url_resolved", url)
+
+                    existing = cursor.execute(
+                        "SELECT url_resolved FROM stations WHERE stationuuid = ?", (uuid,)
+                    ).fetchone()
+
+                    if existing:
+                        if existing[0] != url_resolved:
+                            cursor.execute(
+                                "UPDATE stations SET url_resolved=?, is_alive=1 WHERE stationuuid=?",
+                                (url_resolved, uuid)
+                            )
+                            total_updated += 1
+                    else:
+                        cursor.execute("""
+                            INSERT OR IGNORE INTO stations
+                            (stationuuid, name, url, url_resolved, country, countrycode,
+                             tags, bitrate, codec, language, votes, clickcount, favicon, is_alive)
+                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1)
+                        """, (
+                            uuid, name, url, url_resolved,
+                            s.get("country", ""), s.get("countrycode", cc),
+                            s.get("tags", ""), s.get("bitrate", 0),
+                            s.get("codec", ""), s.get("language", ""),
+                            s.get("votes", 0), s.get("clickcount", 0),
+                            s.get("favicon", "")
+                        ))
+                        total_new += 1
+            except Exception:
+                pass
+
+        # Also fetch popular stations globally
+        try:
+            popular = api_get("stations/toplisteners", {"limit": 200})
+            for s in popular:
+                uuid = s.get("stationuuid", s.get("id", ""))
+                if not uuid:
+                    continue
+                existing = cursor.execute(
+                    "SELECT 1 FROM stations WHERE stationuuid = ?", (uuid,)
+                ).fetchone()
+                if not existing:
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO stations
+                        (stationuuid, name, url, url_resolved, country, countrycode,
+                         tags, bitrate, codec, language, votes, clickcount, favicon, is_alive)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1)
+                    """, (
+                        uuid, s.get("name", ""), s.get("url", ""),
+                        s.get("url_resolved", s.get("url", "")),
+                        s.get("country", ""), s.get("countrycode", ""),
+                        s.get("tags", ""), s.get("bitrate", 0),
+                        s.get("codec", ""), s.get("language", ""),
+                        s.get("votes", 0), s.get("clickcount", 0),
+                        s.get("favicon", "")
+                    ))
+                    total_new += 1
+        except Exception:
+            pass
+
+        conn.commit()
+        total = cursor.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
+        conn.close()
+
+        elapsed = _time.time() - t0
+        print(f"\n  ✓ Update complete ({elapsed:.1f}s)")
+        print(f"    New: {total_new}, Updated: {total_updated}")
+        print(f"    Total stations: {total:,}")
+        print(f"    DB: {db_path}")
+
+    except Exception as e:
+        print(f"\n  ✗ Update failed: {e}")
+
+
+def _handle_setup(args):
+    """Setup radiomcp for different AI platforms"""
+    import json as _json
+
+    target = args[0] if args else "auto"
+
+    # Find radiomcp binary path
+    radiomcp_bin = shutil.which("radiomcp")
+    if not radiomcp_bin:
+        # Try venv path
+        venv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".venv_radiomcp", "bin", "radiomcp")
+        if os.path.exists(venv_path):
+            radiomcp_bin = venv_path
+
+    python_bin = sys.executable
+
+    results = []
+
+    if target in ("auto", "claude"):
+        # Claude Desktop MCP setup
+        claude_config_paths = [
+            os.path.expanduser("~/.claude/settings.json"),                          # Claude Code global
+            os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json"),  # Claude Desktop macOS
+            os.path.expanduser("~/.config/Claude/claude_desktop_config.json"),      # Claude Desktop Linux
+        ]
+
+        for config_path in claude_config_paths:
+            config_dir = os.path.dirname(config_path)
+            if not os.path.exists(config_dir):
+                continue
+
+            try:
+                existing = {}
+                if os.path.exists(config_path):
+                    with open(config_path, "r") as f:
+                        existing = json.load(f)
+
+                if "mcpServers" not in existing:
+                    existing["mcpServers"] = {}
+
+                # Use python -m radiomcp for reliability
+                existing["mcpServers"]["radio"] = {
+                    "command": python_bin,
+                    "args": ["-m", "radiomcp"],
+                }
+
+                with open(config_path, "w") as f:
+                    json.dump(existing, f, indent=2, ensure_ascii=False)
+
+                results.append(f"[ok] Claude config: {config_path}")
+            except Exception as e:
+                results.append(f"[!] Claude config failed ({config_path}): {e}")
+
+        if not any("[ok]" in r and "Claude" in r for r in results):
+            results.append("[i] Claude Desktop not found. Manual setup:")
+            results.append(f'    Add to claude_desktop_config.json:')
+            results.append(f'    {{"mcpServers": {{"radio": {{"command": "{python_bin}", "args": ["-m", "radiomcp"]}}}}}}')
+
+    if target in ("auto", "codex", "http"):
+        # Codex / GPT / HTTP API setup
+        port = CONFIG.get("serve_port", 8100)
+        results.append("")
+        results.append(f"[i] For Codex/GPT/other AI tools:")
+        results.append(f"    Start HTTP API server:")
+        results.append(f"      radiomcp serve --port {port}")
+        results.append(f"    Then use: http://localhost:{port}/search?q=jazz")
+        results.append("")
+
+        # Create launchd plist for macOS auto-start
+        import platform
+        if platform.system() == "Darwin":
+            plist_path = os.path.expanduser("~/Library/LaunchAgents/com.radiomcp.serve.plist")
+            bin_path = radiomcp_bin or f"{python_bin} -m radiomcp"
+            results.append(f"    Auto-start on login (macOS):")
+            results.append(f"      radiomcp setup service")
+
+            if len(args) > 1 and args[1] == "service":
+                plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.radiomcp.serve</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{python_bin}</string>
+        <string>-m</string>
+        <string>radiomcp</string>
+        <string>serve</string>
+        <string>--port</string>
+        <string>{port}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{os.path.expanduser("~/.radiocli/serve.log")}</string>
+    <key>StandardErrorPath</key>
+    <string>{os.path.expanduser("~/.radiocli/serve.err")}</string>
+</dict>
+</plist>"""
+                os.makedirs(os.path.dirname(plist_path), exist_ok=True)
+                with open(plist_path, "w") as f:
+                    f.write(plist_content)
+                results.append(f"    [ok] Created: {plist_path}")
+                results.append(f"    Run: launchctl load {plist_path}")
+
+        elif platform.system() == "Linux":
+            results.append(f"    Auto-start (Linux systemd):")
+            results.append(f"      radiomcp setup service")
+
+            if len(args) > 1 and args[1] == "service":
+                service_path = os.path.expanduser("~/.config/systemd/user/radiomcp.service")
+                service_content = f"""[Unit]
+Description=RadioMCP HTTP API Server
+After=network.target
+
+[Service]
+ExecStart={python_bin} -m radiomcp serve --port {port}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+"""
+                os.makedirs(os.path.dirname(service_path), exist_ok=True)
+                with open(service_path, "w") as f:
+                    f.write(service_content)
+                results.append(f"    [ok] Created: {service_path}")
+                results.append(f"    Run: systemctl --user enable --now radiomcp")
+
+    if target in ("auto",):
+        # Check mpv
+        if shutil.which("mpv"):
+            results.append("[ok] mpv found")
+        else:
+            results.append("[!] mpv not found - needed for playback")
+            import platform
+            if platform.system() == "Darwin":
+                results.append("    Install: brew install mpv")
+            else:
+                results.append("    Install: sudo apt install mpv")
+
+        # DB status
+        db = get_db()
+        if db:
+            results.append("[ok] Local database ready")
+        else:
+            results.append("[i] No local DB - using API mode (lightweight)")
+
+    if not results:
+        results.append("""Usage:
+  radiomcp setup              Auto-detect and configure everything
+  radiomcp setup claude       Setup for Claude Desktop/Code
+  radiomcp setup codex        Setup for Codex/GPT (HTTP API)
+  radiomcp setup service      Install as background service""")
+
+    return "\n".join(results)
+
+
+def _check_first_run():
+    """Silently initialize data directory on first run"""
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def _run_doctor():
+    """Diagnose system setup and show install guidance"""
+    import platform
+    results = []
+    results.append("RadioMCP System Diagnostics")
+    results.append("=" * 40)
+
+    # Player status
+    results.append("\n[Player Backends]")
+    players_found = 0
+
+    system = platform.system()
+
+    if shutil.which("mpv"):
+        results.append("  mpv: INSTALLED (recommended)")
+        players_found += 1
+    else:
+        results.append("  mpv: NOT FOUND")
+        if system == "Darwin":
+            results.append("       Install: brew install mpv")
+        elif system == "Windows":
+            results.append("       Install: winget install mpv OR choco install mpv")
+        else:
+            results.append("       Install: sudo apt install mpv")
+
+    if shutil.which("vlc") or shutil.which("cvlc"):
+        results.append("  vlc: INSTALLED")
+        players_found += 1
+    else:
+        results.append("  vlc: NOT FOUND")
+        if system == "Darwin":
+            results.append("       Install: brew install vlc")
+        elif system == "Windows":
+            results.append("       Install: winget install VideoLAN.VLC OR https://videolan.org")
+        else:
+            results.append("       Install: sudo apt install vlc")
+
+    if shutil.which("ffplay"):
+        results.append("  ffplay: INSTALLED")
+        players_found += 1
+    else:
+        results.append("  ffplay: NOT FOUND")
+        if system == "Darwin":
+            results.append("       Install: brew install ffmpeg")
+        elif system == "Windows":
+            results.append("       Install: winget install ffmpeg OR choco install ffmpeg")
+        else:
+            results.append("       Install: sudo apt install ffmpeg")
+
+    results.append("  browser: ALWAYS AVAILABLE (fallback)")
+
+    if players_found == 0:
+        results.append("\n  WARNING: No media player installed!")
+        results.append("  Playback will open streams in browser.")
+        results.append("  For best experience, install mpv.")
+    else:
+        results.append(f"\n  Current backend: {PLAYER_BACKEND}")
+
+    # Database status
+    results.append("\n[Database]")
+    db = get_db()
+    if db:
+        try:
+            count = db.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 1").fetchone()[0]
+            results.append(f"  Stations: {count:,}")
+        except:
+            results.append("  Stations: ERROR reading database")
+    else:
+        results.append("  Database: NOT FOUND")
+        results.append("  Run: radiomcp update")
+
+    # Data directory
+    results.append("\n[Data Directory]")
+    results.append(f"  Path: {DATA_DIR}")
+    if os.path.exists(DATA_DIR):
+        results.append("  Status: EXISTS")
+    else:
+        results.append("  Status: WILL BE CREATED ON FIRST USE")
+
+    # Optional tools
+    results.append("\n[Optional Tools]")
+    if shutil.which("ffmpeg"):
+        results.append("  ffmpeg: INSTALLED (for song recognition)")
+    else:
+        results.append("  ffmpeg: NOT FOUND (needed for song recognition)")
+
+    results.append("\n" + "=" * 40)
+    if players_found > 0:
+        results.append("System OK - Ready to play radio!")
+    else:
+        results.append("Install a media player for the best experience.")
+
+    return "\n".join(results)
+
+
+def main_cli(args):
+    """Run as CLI tool"""
+    import json as _json
+
+    cmd = args[0] if args else "help"
+    rest = args[1:]
+
+    # Ensure data directory exists
+    _check_first_run()
+
+    commands = {
+        "setup": lambda: _handle_setup(rest),
+        "config": lambda: _handle_config(rest),
+        "search": lambda: _json.dumps(search(" ".join(rest) if rest else "jazz", 10), indent=2, ensure_ascii=False),
+        "play": lambda: _json.dumps(play(rest[0], rest[1] if len(rest) > 1 else ""), indent=2, ensure_ascii=False) if rest else '{"error": "Usage: radiomcp play <url> [name]"}',
+        "stop": lambda: _json.dumps(stop(), indent=2, ensure_ascii=False),
+        "now": lambda: _json.dumps(now_playing(), indent=2, ensure_ascii=False),
+        "status": lambda: _json.dumps(get_radio_status(), indent=2, ensure_ascii=False),
+        "favorites": lambda: _json.dumps(get_favorites(), indent=2, ensure_ascii=False),
+        "history": lambda: _json.dumps(get_history(int(rest[0]) if rest else 10), indent=2, ensure_ascii=False),
+        "popular": lambda: _json.dumps(get_popular(int(rest[0]) if rest else 10), indent=2, ensure_ascii=False),
+        "recommend": lambda: _json.dumps(recommend(rest[0] if rest else "relaxing"), indent=2, ensure_ascii=False),
+        "recognize": lambda: _json.dumps(recognize_song(), indent=2, ensure_ascii=False),
+        "similar": lambda: _json.dumps(similar_stations(), indent=2, ensure_ascii=False),
+        "volume": lambda: _json.dumps(set_volume(int(rest[0])) if rest else get_volume(), indent=2, ensure_ascii=False),
+        "country": lambda: _json.dumps(search_by_country(rest[0] if rest else "US", 10), indent=2, ensure_ascii=False),
+        "blocklist": lambda: _json.dumps(get_blocklist(), indent=2, ensure_ascii=False),
+        "resume": lambda: _json.dumps(resume(), indent=2, ensure_ascii=False),
+        "stats": lambda: _json.dumps(get_db_stats(), indent=2, ensure_ascii=False),
+        "doctor": lambda: _run_doctor(),
+    }
+
+    if cmd == "help" or cmd == "--help" or cmd == "-h":
+        print("""radiomcp - Internet Radio for AI and Humans
+
+MODES:
+  radiomcp              MCP server (for Claude)
+  radiomcp serve        HTTP API server (for Codex/GPT/web)
+  radiomcp <command>    CLI mode
+
+SETUP:
+  setup                 Auto-detect and configure for Claude/Codex
+  setup claude          Setup for Claude Desktop/Code (MCP)
+  setup codex           Setup for Codex/GPT (HTTP API)
+  setup service         Install as background service (macOS/Linux)
+
+COMMANDS:
+  search <query>        Search stations (e.g., radiomcp search jazz)
+  play <url> [name]     Play a station
+  stop                  Stop playback
+  resume                Resume last station
+  now                   Show current song
+  status                Player status
+  favorites             List favorites
+  history [n]           Listening history
+  popular [n]           Popular stations
+  recommend [mood]      Get recommendations (relaxing/energetic/focus/sleep)
+  recognize             Identify current song
+  similar               Find similar stations
+  volume [0-100]        Get/set volume
+  country <code>        Search by country (KR/US/JP...)
+  blocklist             Show blocklist
+  stats                 Database statistics
+  doctor                System diagnostics and install guidance
+  config [show|set|reset]  Manage configuration
+  update                Update station database from RadioGraph API
+  serve [--port N]      Start HTTP API server
+
+EXAMPLES:
+  radiomcp search "smooth jazz"
+  radiomcp play "https://stream.example.com/jazz" "Jazz FM"
+  radiomcp now
+  radiomcp recommend focus
+  radiomcp serve --port 8100
+  radiomcp update
+  radiomcp config set radiograph_url https://api.airtune.ai
+""")
+        return
+
+    if cmd == "update":
+        _handle_update()
+        return
+
+    if cmd == "serve":
+        port = 8100
+        for i, a in enumerate(rest):
+            if a in ("--port", "-p") and i + 1 < len(rest):
+                port = int(rest[i + 1])
+        main_serve(port=port)
+        return
+
+    if cmd in commands:
+        try:
+            result = commands[cmd]()
+            print(result)
+        except Exception as e:
+            print(_json.dumps({"error": str(e)}, indent=2))
+    else:
+        print(f"Unknown command: {cmd}")
+        print("Run 'radiomcp help' for usage")
+
+
+def main():
+    """Entry point — detects mode from arguments"""
+    import sys
+
+    if len(sys.argv) > 1:
+        # CLI or serve mode
+        main_cli(sys.argv[1:])
+    else:
+        # Default: MCP stdio server
+        main_mcp()
 
 
 if __name__ == "__main__":
