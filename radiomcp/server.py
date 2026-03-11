@@ -404,6 +404,21 @@ def g3_validate_url(url: str, timeout: int = 5) -> dict:
         return {"valid": False, "error": str(e)}
 
 
+
+
+# SVD Recommendation API
+SVD_API_BASE = CONFIG.get("radiograph_url", "https://api.airtune.ai") + "/svd"
+
+def _svd_api_get(endpoint: str, timeout: int = 10) -> dict:
+    """Call SVD API endpoint and return JSON response."""
+    try:
+        url = f"{SVD_API_BASE}{endpoint}"
+        req = urllib.request.Request(url, headers={"User-Agent": "RadioMCP/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:
+        return {"error": str(e)}
+
 def g3_batch_validate(urls: list, timeout: int = 10) -> list:
     """
     Batch validate URLs using G3 API.
@@ -1427,7 +1442,7 @@ LOCAL_BLOCKLIST_PATHS = [
 ]
 
 BLOCKLIST_URLS = [
-    "https://raw.githubusercontent.com/dragonflydiy/radiomcp/main/blocklist.json",
+    "https://raw.githubusercontent.com/tokmorlab/radiomcp/main/blocklist.json",
 ]
 
 def load_local_blocklist():
@@ -3267,6 +3282,8 @@ def get_volume() -> dict:
 def similar_stations(limit: int = 10) -> list[dict]:
     """
     Find similar stations based on currently playing station's tags.
+    Uses SVD embeddings API for high-quality recommendations when available,
+    falls back to tag-based search.
 
     Args:
         limit: Number of results
@@ -3278,7 +3295,29 @@ def similar_stations(limit: int = 10) -> list[dict]:
     if not station:
         return []
 
-    # Get current station tags
+    # Try SVD API first (uses collaborative filtering embeddings)
+    station_id = station.get("stationuuid") or station.get("id")
+    if station_id:
+        result = _svd_api_get(f"/similar/station/{station_id}?top={limit}")
+        if "similar" in result and result["similar"]:
+            # SVD returns station IDs with scores, look up details from local DB
+            db = get_db()
+            if db:
+                cursor = db.cursor()
+                enriched = []
+                for item in result["similar"][:limit]:
+                    sid = item.get("station_id") or item.get("id")
+                    if sid:
+                        cursor.execute("SELECT * FROM stations WHERE stationuuid = ?", (sid,))
+                        row = cursor.fetchone()
+                        if row:
+                            s = format_stations([row])[0]
+                            s["svd_score"] = item.get("score", 0)
+                            enriched.append(s)
+                if enriched:
+                    return enriched
+
+    # Fallback: tag-based search
     db = get_db()
     if db:
         cursor = db.cursor()
@@ -3288,13 +3327,52 @@ def similar_stations(limit: int = 10) -> list[dict]:
         if row and row[0]:
             tags = row[0].split(",")
             if tags:
-                # Search by first tag
                 main_tag = tags[0].strip()
                 results = search(main_tag, limit + 1)
-                # Exclude current station
                 return [r for r in results if r["url"] != station.get("url")][:limit]
 
     return []
+
+
+@mcp.tool()
+def similar_artists(artist: str, limit: int = 10) -> dict:
+    """
+    Find artists with similar radio programming patterns using SVD embeddings.
+    Based on collaborative filtering: artists that appear together on similar stations.
+
+    Args:
+        artist: Artist name (e.g., "BTS", "Taylor Swift", "Miles Davis")
+        limit: Number of similar artists to return
+
+    Returns:
+        Dict with artist name and list of similar artists with scores
+    """
+    result = _svd_api_get(f"/similar/artist/{urllib.parse.quote(artist)}?top={limit}")
+    if "error" in result and "not found" in result.get("error", "").lower():
+        # Try fuzzy search
+        search_result = _svd_api_get(f"/search/artist?q={urllib.parse.quote(artist)}&limit=1")
+        if search_result.get("artists"):
+            best = search_result["artists"][0]
+            result = _svd_api_get(f"/similar/artist/{urllib.parse.quote(best)}?top={limit}")
+            if "similar" in result:
+                result["note"] = f"Exact match not found. Showing results for \"{best}\""
+    return result
+
+
+@mcp.tool()
+def search_artist(query: str, limit: int = 20) -> dict:
+    """
+    Search for artists in the SVD embeddings database.
+    Useful to find exact artist names before using similar_artists().
+
+    Args:
+        query: Search query (partial name match)
+        limit: Max results
+
+    Returns:
+        Dict with matching artist names
+    """
+    return _svd_api_get(f"/search/artist?q={urllib.parse.quote(query)}&limit={limit}")
 
 
 @mcp.tool()

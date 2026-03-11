@@ -68,7 +68,7 @@ Usage statistics (searches, countries, popular queries).
 
 ## SVD API (Recommendations)
 
-**Base URL:** `http://141.164.37.98:8093`
+**Base URL:** `https://api.airtune.ai/svd`
 
 ### Similar Artist
 ```
@@ -78,7 +78,7 @@ Returns artists with similar radio programming patterns.
 
 **Example:**
 ```bash
-curl "http://141.164.37.98:8093/similar/artist/BTS"
+curl "https://api.airtune.ai/svd/similar/artist/BTS"
 ```
 
 ### Similar Station

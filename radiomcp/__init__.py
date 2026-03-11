@@ -1,12 +1,16 @@
 """
-radiomcp - MCP server for internet radio
+radiomcp - Internet radio MCP server + TUI player
+
+pip install radiomcp
+  radiomcp       → MCP server (Claude Desktop / HTTP API / CLI)
+  radio          → Interactive TUI player (terminal)
 
 24,000+ stations from 197 countries
-Song recognition, AI recommendations, multilingual search
+Powered by RadioGraph API
 """
 
 __version__ = "1.0.0"
-__author__ = "dragonflydiy"
+__author__ = "tokmorlab"
 
 from .server import main, mcp
 

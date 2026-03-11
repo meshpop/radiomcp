@@ -8,7 +8,7 @@
 - **24,671개 방송국** DB 포함 (197개국)
 - **검색**: 키워드, 국가, 장르, 분위기 기반
 - **재생**: mpv 기반, URL 자동 갱신 (토큰 만료 대응)
-- **곡 인식**: ICY 메타데이터 + AcoustID
+- **곡 인식**: ICY 메타데이터 + Whisper
 - **AI 추천**: 시간대, 날씨, 청취 패턴 기반
 
 #### AI Helper Tools
@@ -89,7 +89,7 @@ RadioCli/
 | KBS, MBC, SBS | 토큰 기반 URL 만료 |
 
 ### 블록 요청 방법
-GitHub Issues: https://github.com/dragonflydiy/radiomcp/issues
+GitHub Issues: https://github.com/tokmorlab/radiomcp/issues
 
 ---
 
@@ -141,6 +141,6 @@ twine upload dist/*
 
 - [ ] PyPI 계정 생성/로그인
 - [ ] PyPI 업로드
-- [ ] GitHub 레포 생성 (dragonflydiy/radiomcp)
+- [ ] GitHub 레포 생성 (tokmorlab/radiomcp)
 - [ ] Cloudflare Pages 설정 (blocklist 미러)
 - [ ] MCP Registry 등록

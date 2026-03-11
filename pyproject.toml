@@ -6,7 +6,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
 authors = [
-    {name = "dragonflydiy"}
+    {name = "tokmorlab"}
 ]
 keywords = [
     "mcp",
@@ -36,9 +36,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dragonflydiy/radiomcp"
-Repository = "https://github.com/dragonflydiy/radiomcp"
-Issues = "https://github.com/dragonflydiy/radiomcp/issues"
+Homepage = "https://github.com/tokmorlab/radiomcp"
+Repository = "https://github.com/tokmorlab/radiomcp"
+Issues = "https://github.com/tokmorlab/radiomcp/issues"
 
 [project.optional-dependencies]
 # audio = ["miniaudio>=1.60"]  # TODO: 스트리밍 지원 후 활성화
@@ -54,10 +54,14 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["radiomcp"]
-include-package-data = true
+exclude = [
+    "radiomcp/cron_maintenance.sh",
+    "radiomcp/sync_from_unified.py",
+    "radiomcp/daily_maintenance.py",
+]
 
-[tool.hatch.build.targets.wheel.force-include]
-"radio_stations.db" = "radiomcp/radio_stations.db"
+# force-include removed: radio_stations.db already in radiomcp/ package dir
+# duplicate zip entry was breaking non-editable pip install
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -71,6 +75,13 @@ include = [
     "DATA_LICENSE.md",
     "ATTRIBUTION.md",
     "DISCLAIMER.md",
+]
+exclude = [
+    "radiomcp/cron_maintenance.sh",
+    "radiomcp/sync_from_unified.py",
+    "radiomcp/daily_maintenance.py",
+    "**/__pycache__",
+    "**/*.pyc",
 ]
 
 [project.scripts]

@@ -145,6 +145,23 @@
 
 ## Future Improvements
 
+### Station Blocklist (Takedown Compliance)
+- [x] GitHub blocklist.json (public, raw URL)
+- [x] API: instant block on request
+- [x] CLI: check blocklist on startup (local + GitHub cached)
+- [x] MCP: full blocklist system (add/remove/refresh tools)
+- [x] Local DB stations also blocked via blocklist
+- [ ] g3 server: blocklist sync
+- [x] Block by: station_id, URL, domain, pattern
+- [ ] Takedown request: GitHub Issues → auto-add to blocklist
+
+### API Documentation (for AI/developers)
+- [x] API reference doc (API.md - Markdown)
+- [x] Endpoint list with examples
+- [x] Response format documentation
+- [x] Rate limits and usage guidelines
+- [ ] Host on GitHub Pages or API endpoint
+
 ### Search & API
 - [ ] Hybrid search: Local SQLite + API supplementary
 - [ ] Periodic DB download for clients
