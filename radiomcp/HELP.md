@@ -188,7 +188,7 @@ Supports 50+ languages:
 
 | Language | Example | Translated |
 |----------|---------|------------|
-| Korean | "재즈", "클래식", "뉴스" | jazz, classical, news |
+| Korean | "jazz", "classical", "news" | jazz, classical, news |
 | Japanese | "ジャズ", "クラシック" | jazz, classical |
 | Chinese | "爵士乐", "古典音乐" | jazz, classical |
 | Russian | "джаз", "классика" | jazz, classical |

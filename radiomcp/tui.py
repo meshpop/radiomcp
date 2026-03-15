@@ -32,9 +32,9 @@ PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 # SQLite DB - search order: 1) package bundled, 2) ~/.radiocli/, 3) ~/RadioCli/
 def _find_db():
     candidates = [
-        os.path.join(_PKG_DIR, "radio_stations.db"),          # pip install 패키지 내장
+        os.path.join(_PKG_DIR, "radio_stations.db"),          # pip install package 내장
         os.path.join(DATA_DIR, "radio_stations.db"),           # ~/.radiocli/
-        os.path.expanduser("~/RadioCli/radio_stations.db"),    # dev 환경
+        os.path.expanduser("~/RadioCli/radio_stations.db"),    # dev environment
     ]
     for p in candidates:
         if os.path.exists(p):
@@ -483,55 +483,55 @@ COUNTRIES = {
 LANG_MAP = {
     # === Countries (multilingual: ko, en, ja, zh, de, fr, es) ===
     # Korea
-    "한국": "KR", "korea": "KR", "korean": "KR", "south korea": "KR",
+    "korea": "KR", "korea": "KR", "korean": "KR", "south korea": "KR",
     "韓国": "KR", "かんこく": "KR", "韩国": "KR", "corea": "KR", "corée": "KR",
     # USA
-    "미국": "US", "america": "US", "american": "US", "usa": "US", "united states": "US",
+    "usa": "US", "america": "US", "american": "US", "usa": "US", "united states": "US",
     "アメリカ": "US", "美国": "US", "amerika": "US", "états-unis": "US", "estados unidos": "US",
     # Japan
-    "일본": "JP", "japan": "JP", "japanese": "JP",
+    "japan": "JP", "japan": "JP", "japanese": "JP",
     "日本": "JP", "にほん": "JP", "japón": "JP", "japon": "JP",
     # UK
-    "영국": "GB", "uk": "GB", "britain": "GB", "british": "GB", "england": "GB",
+    "uk": "GB", "uk": "GB", "britain": "GB", "british": "GB", "england": "GB",
     "イギリス": "GB", "英国": "GB", "reino unido": "GB", "royaume-uni": "GB",
     # Germany
-    "독일": "DE", "germany": "DE", "german": "DE", "deutschland": "DE",
+    "germany": "DE", "germany": "DE", "german": "DE", "deutschland": "DE",
     "ドイツ": "DE", "德国": "DE", "alemania": "DE", "allemagne": "DE",
     # France
-    "프랑스": "FR", "france": "FR", "french": "FR", "frankreich": "FR",
+    "france": "FR", "france": "FR", "french": "FR", "frankreich": "FR",
     "フランス": "FR", "法国": "FR", "francia": "FR",
     # China
-    "중국": "CN", "china": "CN", "chinese": "CN",
+    "china": "CN", "china": "CN", "chinese": "CN",
     "中国": "CN", "ちゅうごく": "CN", "chine": "CN",
     # Brazil
-    "브라질": "BR", "brazil": "BR", "brasil": "BR", "brasilien": "BR",
+    "brazil": "BR", "brazil": "BR", "brasil": "BR", "brasilien": "BR",
     "ブラジル": "BR", "巴西": "BR", "brésil": "BR",
     # Australia
-    "호주": "AU", "australia": "AU", "australian": "AU", "australien": "AU",
+    "australia": "AU", "australia": "AU", "australian": "AU", "australien": "AU",
     "オーストラリア": "AU", "澳大利亚": "AU", "australie": "AU",
     # Canada
-    "캐나다": "CA", "canada": "CA", "canadian": "CA", "kanada": "CA",
+    "canada": "CA", "canada": "CA", "canadian": "CA", "kanada": "CA",
     "カナダ": "CA", "加拿大": "CA",
     # Italy
-    "이탈리아": "IT", "italy": "IT", "italian": "IT", "italien": "IT", "italia": "IT",
+    "italy": "IT", "italy": "IT", "italian": "IT", "italien": "IT", "italia": "IT",
     "イタリア": "IT", "意大利": "IT", "italie": "IT",
     # Spain
-    "스페인": "ES", "spain": "ES", "spanish": "ES", "spanien": "ES", "españa": "ES",
+    "spain": "ES", "spain": "ES", "spanish": "ES", "spanien": "ES", "españa": "ES",
     "スペイン": "ES", "西班牙": "ES", "espagne": "ES",
     # Russia
-    "러시아": "RU", "russia": "RU", "russian": "RU", "russland": "RU",
+    "russia": "RU", "russia": "RU", "russian": "RU", "russland": "RU",
     "ロシア": "RU", "俄罗斯": "RU", "russie": "RU", "rusia": "RU",
     # India
-    "인도": "IN", "india": "IN", "indian": "IN", "indien": "IN",
+    "india": "IN", "india": "IN", "indian": "IN", "indien": "IN",
     "インド": "IN", "印度": "IN", "inde": "IN",
     # Mexico
-    "멕시코": "MX", "mexico": "MX", "mexican": "MX", "mexiko": "MX",
+    "mexico": "MX", "mexico": "MX", "mexican": "MX", "mexiko": "MX",
     "メキシコ": "MX", "墨西哥": "MX", "mexique": "MX", "méxico": "MX",
     # Netherlands
-    "네덜란드": "NL", "netherlands": "NL", "dutch": "NL", "holland": "NL",
+    "netherlands": "NL", "netherlands": "NL", "dutch": "NL", "holland": "NL",
     "オランダ": "NL", "荷兰": "NL", "pays-bas": "NL", "países bajos": "NL",
     # Switzerland
-    "스위스": "CH", "switzerland": "CH", "swiss": "CH", "schweiz": "CH",
+    "switzerland": "CH", "switzerland": "CH", "swiss": "CH", "schweiz": "CH",
     "スイス": "CH", "瑞士": "CH", "suisse": "CH", "suiza": "CH",
 
     # === Additional languages: Hindi, Arabic, Russian, Portuguese, Italian, Turkish, Thai, Vietnamese, Indonesian ===
@@ -663,58 +663,58 @@ LANG_MAP = {
 
     # === Genres (multilingual: ko, en, ja, zh, de, fr, es) ===
     # Jazz
-    "재즈": "jazz", "jazz": "jazz", "ジャズ": "jazz", "爵士": "jazz", "爵士乐": "jazz",
+    "jazz": "jazz", "jazz": "jazz", "ジャズ": "jazz", "爵士": "jazz", "爵士乐": "jazz",
     # Classical
-    "클래식": "classical", "classical": "classical", "classic": "classical",
+    "classical": "classical", "classical": "classical", "classic": "classical",
     "クラシック": "classical", "古典": "classical", "古典音乐": "classical",
     "klassik": "classical", "classique": "classical", "clásica": "classical",
     # Pop
-    "팝": "pop", "pop": "pop", "pops": "pop", "ポップ": "pop", "流行": "pop",
+    "pop": "pop", "pop": "pop", "pops": "pop", "ポップ": "pop", "流行": "pop",
     # Rock
-    "록": "rock", "rock": "rock", "ロック": "rock", "摇滚": "rock",
+    "rock": "rock", "rock": "rock", "ロック": "rock", "摇滚": "rock",
     # Hip-hop
-    "힙합": "hiphop", "hiphop": "hiphop", "hip-hop": "hiphop", "hip hop": "hiphop",
+    "hip hop": "hiphop", "hiphop": "hiphop", "hip-hop": "hiphop", "hip hop": "hiphop",
     "ヒップホップ": "hiphop", "嘻哈": "hiphop", "rap": "hiphop", "랩": "hiphop",
     # K-pop
-    "케이팝": "kpop", "kpop": "kpop", "k-pop": "kpop", "케이-팝": "kpop",
+    "kpop": "kpop", "kpop": "kpop", "k-pop": "kpop", "케이-pop": "kpop",
     "韓国ポップ": "kpop", "韩流": "kpop",
     # News (expanded)
-    "뉴스": "news", "news": "news", "ニュース": "news", "新闻": "news",
+    "news": "news", "news": "news", "ニュース": "news", "新闻": "news",
     "nachrichten": "news", "nouvelles": "news", "noticias": "news",
     "시사": "news", "교양": "news", "정보": "news", "보도": "news",
     "information": "news", "current affairs": "news",
     # Talk (expanded)
     "토크": "talk", "talk": "talk", "トーク": "talk", "谈话": "talk",
-    "라디오쇼": "talk", "radio show": "talk", "talkshow": "talk", "토크쇼": "talk",
+    "radio쇼": "talk", "radio show": "talk", "talkshow": "talk", "토크쇼": "talk",
     # Lounge
-    "라운지": "lounge", "lounge": "lounge", "ラウンジ": "lounge",
+    "lounge": "lounge", "lounge": "lounge", "ラウンジ": "lounge",
     "chillout": "lounge", "chill": "lounge", "칠아웃": "lounge",
     # Blues
-    "블루스": "blues", "blues": "blues", "ブルース": "blues", "蓝调": "blues",
+    "blues": "blues", "blues": "blues", "ブルース": "blues", "蓝调": "blues",
     # Country
-    "컨트리": "country", "country": "country", "カントリー": "country", "乡村": "country",
+    "country": "country", "country": "country", "カントリー": "country", "乡村": "country",
     # Electronic
     "일렉": "electronic", "electronic": "electronic", "electro": "electronic",
     "エレクトロ": "electronic", "电子": "electronic", "électronique": "electronic",
     "electronica": "electronic", "테크노": "electronic", "techno": "electronic",
     # Dance
-    "댄스": "dance", "dance": "dance", "ダンス": "dance", "舞曲": "dance",
+    "dance": "dance", "dance": "dance", "ダンス": "dance", "舞曲": "dance",
     # Ballad
-    "발라드": "ballad", "ballad": "ballad", "バラード": "ballad",
+    "ballad": "ballad", "ballad": "ballad", "バラード": "ballad",
     # R&B
-    "알앤비": "rnb", "rnb": "rnb", "r&b": "rnb", "r and b": "rnb",
+    "r&b": "rnb", "rnb": "rnb", "r&b": "rnb", "r and b": "rnb",
     # Reggae
-    "레게": "reggae", "reggae": "reggae", "レゲエ": "reggae",
+    "reggae": "reggae", "reggae": "reggae", "レゲエ": "reggae",
     # Soul
-    "소울": "soul", "soul": "soul", "ソウル": "soul",
+    "soul": "soul", "soul": "soul", "ソウル": "soul",
     # Funk
-    "펑크": "funk", "funk": "funk", "ファンク": "funk",
+    "funk": "funk", "funk": "funk", "ファンク": "funk",
     # Metal
-    "메탈": "metal", "metal": "metal", "メタル": "metal", "heavy metal": "metal",
+    "metal": "metal", "metal": "metal", "メタル": "metal", "heavy metal": "metal",
     # Ambient
-    "앰비언트": "ambient", "ambient": "ambient", "アンビエント": "ambient",
+    "ambient": "ambient", "ambient": "ambient", "アンビエント": "ambient",
     # Trot
-    "트로트": "trot", "trot": "trot", "トロット": "trot", "연가": "trot",
+    "trot": "trot", "trot": "trot", "トロット": "trot", "연가": "trot",
     # Religious
     "종교": "religious", "religious": "religious", "christian": "religious",
     "gospel": "religious", "기독교": "religious", "찬송": "religious",
@@ -770,9 +770,9 @@ TAG_EXPAND = {
 # Quality filters
 QUALITY_MAP = {
     # Korean
-    "고음질": {"min_bitrate": 192},
+    "high quality": {"min_bitrate": 192},
     "저음질": {"max_bitrate": 96},
-    "최고음질": {"min_bitrate": 256},
+    "최high quality": {"min_bitrate": 256},
     "hd": {"min_bitrate": 256},
     # English
     "high quality": {"min_bitrate": 192},
@@ -790,12 +790,12 @@ QUALITY_MAP = {
 BLOCK_LIST = []
 
 def load_blocklist():
-    """blocklist.json에서 블록리스트 로드"""
+    """blocklist.json에서 블rock리스트 로드"""
     global BLOCK_LIST
     paths = [
-        os.path.join(_PKG_DIR, "blocklist.json"),               # pip install 패키지 내장
+        os.path.join(_PKG_DIR, "blocklist.json"),               # pip install package 내장
         os.path.join(DATA_DIR, "blocklist.json"),                # ~/.radiocli/
-        os.path.expanduser("~/RadioCli/blocklist.json"),         # dev 환경
+        os.path.expanduser("~/RadioCli/blocklist.json"),         # dev environment
     ]
     for path in paths:
         if os.path.exists(path):
@@ -811,7 +811,7 @@ def load_blocklist():
 load_blocklist()
 
 def is_blocked(name):
-    """차단 목록에 있는지 확인"""
+    """차단 목rock에 있는지 확인"""
     if not name:
         return False
     name_lower = name.lower()
@@ -1030,7 +1030,7 @@ def save_history(history):
         json.dump(history[-500:], f, ensure_ascii=False, indent=2)  # Keep last 500
 
 def add_history(station, duration_sec):
-    """청취 기록 추가"""
+    """청취 기rock 추가"""
     if duration_sec < 10:  # Ignore if less than 10 seconds
         return
     history = load_history()
@@ -1047,7 +1047,7 @@ def add_history(station, duration_sec):
     save_history(history)
 
 def show_listening_history(limit=20):
-    """청취 기록 표시"""
+    """청취 기rock 표시"""
     history = load_history()
     if not history:
         print(f"  {t('no_history')}\n")
@@ -1065,7 +1065,7 @@ def show_listening_history(limit=20):
 
 # === Taste Analysis ===
 def analyze_preferences():
-    """청취 기록 분석해서 취향 파악"""
+    """청취 기rock 분석해서 취향 파악"""
     history = load_history()
     if not history:
         return None
@@ -1101,14 +1101,14 @@ def analyze_preferences():
     }
 
 def get_mood_recommendations(limit=20):
-    """시간대/분위기 기반 추천"""
+    """시간대/mood based 추천"""
     hour = datetime.now().hour
     weekday = datetime.now().weekday()  # 0=Mon, 6=Sun
 
     # Mood by time of day
     if 5 <= hour < 9:  # Early morning
         tags = ["classical", "ambient", "lofi"]
-        mood = "아침 기상"
+        mood = "morning 기상"
     elif 9 <= hour < 12:  # Morning
         tags = ["pop", "jazz", "acoustic"]
         mood = "활기찬 오전"
@@ -1117,13 +1117,13 @@ def get_mood_recommendations(limit=20):
         mood = "점심 휴식"
     elif 14 <= hour < 18:  # Afternoon
         tags = ["pop", "rock", "electronic"]
-        mood = "집중 오후"
+        mood = "focus 오후"
     elif 18 <= hour < 21:  # Evening
         tags = ["jazz", "soul", "lounge"]
-        mood = "퇴근 저녁"
+        mood = "퇴근 evening"
     elif 21 <= hour < 24:  # Night
         tags = ["ambient", "lounge", "classical"]
-        mood = "편안한 밤"
+        mood = "편안한 night"
     else:  # Late night
         tags = ["ambient", "sleep", "classical"]
         mood = "고요한 새벽"
@@ -1153,7 +1153,7 @@ def get_mood_recommendations(limit=20):
     return all_results[:limit]
 
 def get_personalized_recommendations(limit=20):
-    """취향 기반 개인화 추천"""
+    """취향 based items인화 추천"""
     prefs = analyze_preferences()
     if not prefs or not prefs["top_tags"]:
         return get_popular(limit)
@@ -1372,7 +1372,7 @@ def get_popular(limit=20):
     return api_request("stations/toplisteners?limit=" + str(limit))
 
 def get_top_voted(limit=20):
-    """인기 투표 상위"""
+    """popular 투표 상위"""
     return api_request("stations/topvote/" + str(limit))
 
 def get_high_quality(limit=30):
@@ -1387,7 +1387,7 @@ def get_high_quality(limit=30):
     return api_request("stations/search", params)
 
 def get_premium(limit=30):
-    """Premium stations (고음질 + 인기) - 메타데이터 풍부할 가능성 높음"""
+    """Premium stations (high quality + popular) - metadata 풍부할 가능성 높음"""
     params = {
         "bitrateMin": 192,
         "order": "votes",
@@ -1416,25 +1416,25 @@ MOOD_MAP = {
     "우울": ["blues", "ambient"], "멜랑꼴리": ["blues", "classical"],
     "sad": ["blues", "ballad"], "emotional": ["soul", "ballad"],
     # Focus/study
-    "집중": ["classical", "ambient", "lofi"], "공부": ["classical", "lofi", "ambient"],
+    "focus": ["classical", "ambient", "lofi"], "study": ["classical", "lofi", "ambient"],
     "focus": ["classical", "ambient"], "study": ["lofi", "classical"],
     "work": ["lofi", "ambient"], "concentration": ["classical", "ambient"],
     # Sleep
-    "수면": ["ambient", "classical", "nature"], "잠": ["ambient", "sleep"],
+    "sleep": ["ambient", "classical", "nature"], "잠": ["ambient", "sleep"],
     "sleep": ["ambient", "sleep", "nature"], "잠들": ["ambient", "sleep"],
     # Workout
-    "운동": ["electronic", "dance", "rock"], "workout": ["electronic", "dance"],
+    "workout": ["electronic", "dance", "rock"], "workout": ["electronic", "dance"],
     "gym": ["electronic", "rock"], "exercise": ["dance", "electronic"],
     "달리기": ["electronic", "dance"], "running": ["electronic", "dance"],
     # Morning/commute
-    "아침": ["pop", "classical", "jazz"], "출근": ["pop", "news", "jazz"],
+    "morning": ["pop", "classical", "jazz"], "출근": ["pop", "news", "jazz"],
     "morning": ["pop", "classical"], "commute": ["news", "pop"],
     # Evening/night
-    "저녁": ["jazz", "lounge", "classical"], "밤": ["lounge", "ambient", "jazz"],
+    "evening": ["jazz", "lounge", "classical"], "night": ["lounge", "ambient", "jazz"],
     "evening": ["jazz", "lounge"], "night": ["lounge", "ambient"],
     # Party
     "파티": ["dance", "electronic", "pop"], "party": ["dance", "electronic"],
-    "클럽": ["electronic", "dance"], "club": ["electronic", "dance"],
+    "club": ["electronic", "dance"], "club": ["electronic", "dance"],
     # Romantic
     "로맨틱": ["jazz", "ballad", "classical"], "romantic": ["jazz", "ballad"],
     "사랑": ["ballad", "pop"], "love": ["ballad", "pop"],
@@ -1492,7 +1492,7 @@ def natural_language_search(query, limit=30):
     return None
 
 def search_advanced(query, limit=50):
-    """Smart search: 국가 + 장르 + 품질 복합 지원"""
+    """Smart search: country + genre + 품질 복합 지원"""
     query_lower = query.lower().strip()
 
     country = None
@@ -1657,7 +1657,7 @@ def update_station_url(old_url, new_url):
 def play(url, name="", use_fresh_url=True):
     """
     Play radio
-    use_fresh_url=True: API에서 최신 URL 먼저 가져옴 (토큰 만료 대응)
+    use_fresh_url=True: API에서 최신 URL 먼저 가져옴 (token expiration handling)
     """
     global PLAYER_PROC
     stop()
@@ -1732,11 +1732,11 @@ AD_KEYWORDS = [
     "advertisement", "advertising", "commercial", "werbung", "publicité",
     "광고", "公告", "広告", "reklam", "anuncio", "pubblicità",
     "ad break", "spot", "promo", "jingle", "station id", "station identification",
-    "news", "뉴스", "weather", "날씨", "traffic", "교통",
+    "news", "news", "weather", "날씨", "traffic", "교통",
 ]
 
 def is_advertisement(title):
-    """광고/비음악 콘텐츠 여부 확인"""
+    """광고/rain음악 콘텐츠 여부 확인"""
     if not title:
         return False
     title_lower = title.lower()
@@ -1775,7 +1775,7 @@ def get_current_song():
     return None
 
 def show_current_song():
-    """현재 곡 표시"""
+    """현재 song 표시"""
     if not PLAYER_PROC:
         print(f"  {t('no_playing')}\n")
         return
@@ -1793,7 +1793,7 @@ def show_current_song():
 _last_song_title = None
 
 def load_songs():
-    """곡 기록 로드"""
+    """song 기rock 로드"""
     if os.path.exists(SONGS_FILE):
         try:
             with open(SONGS_FILE, "r", encoding="utf-8") as f:
@@ -1803,7 +1803,7 @@ def load_songs():
     return []
 
 def save_songs(songs):
-    """곡 기록 저장"""
+    """song 기rock storage"""
     with open(SONGS_FILE, "w", encoding="utf-8") as f:
         json.dump(songs[-1000:], f, ensure_ascii=False, indent=2)  # Max 1000 songs
 
@@ -1817,7 +1817,7 @@ def parse_song_info(raw_title):
     return None, raw_title.strip()
 
 def add_song_to_history(raw_title, station_name):
-    """곡 기록 추가"""
+    """song 기rock 추가"""
     global _last_song_title
     if not raw_title or raw_title == _last_song_title:
         return
@@ -1835,18 +1835,18 @@ def add_song_to_history(raw_title, station_name):
     save_songs(songs)
 
 def check_song_change(station_name):
-    """곡 변경 감지하고 기록"""
+    """song 변경 감지하고 기rock"""
     song = get_current_song()
     if song and song.get("title") and not song.get("is_ad"):
         add_song_to_history(song["title"], station_name)
 
 def show_song_history(limit=20):
-    """곡 기록 표시"""
+    """song 기rock 표시"""
     songs = load_songs()
     if not songs:
-        print(f"\n  곡 기록 없음\n")
+        print(f"\n  song 기rock 없음\n")
         return
-    print(f"\n  최근 들은 곡 ({len(songs)}개 중 {min(limit, len(songs))}개)")
+    print(f"\n  최근 들은 song ({len(songs)}items 중 {min(limit, len(songs))}items)")
     print(f"  {'Time':<6} {'Station':<20} {'Artist':<20} {'Song':<25}")
     print("  " + "-" * 75)
     for s in reversed(songs[-limit:]):
@@ -1864,7 +1864,7 @@ _song_monitor_running = False
 SONG_MONITOR_ENABLED = True  # Song record on/off
 
 def start_song_monitor(station_name):
-    """곡 변경 모니터링 시작 (백그라운드)"""
+    """song 변경 모니터링 시작 (백그라운드)"""
     global _song_monitor_thread, _song_monitor_running
     if not SONG_MONITOR_ENABLED:
         return
@@ -1879,17 +1879,17 @@ def start_song_monitor(station_name):
     _song_monitor_thread.start()
 
 def stop_song_monitor():
-    """곡 모니터링 중지"""
+    """song 모니터링 중지"""
     global _song_monitor_running
     _song_monitor_running = False
 
 def clear_song_history():
-    """곡 기록 전체 삭제"""
+    """song 기rock 전체 삭제"""
     if os.path.exists(SONGS_FILE):
         os.remove(SONGS_FILE)
     global _last_song_title
     _last_song_title = None
-    print("  곡 기록 삭제됨\n")
+    print("  song 기rock 삭제됨\n")
 
 # === DJ Feature (TTS) ===
 DJ_ENABLED = os.environ.get("RADIOCLI_DJ", "0") == "1"
@@ -1906,12 +1906,12 @@ DJ_LANGUAGES = {
             "{tags} 음악 가득한 {name}입니다.",
         ],
         "song_intros": [
-            "지금 나오는 곡은 {artist}의 {song}입니다.",
+            "지금 나오는 song은 {artist}의 {song}입니다.",
             "{artist}, {song} 듣고 계십니다.",
             "{song}, {artist}입니다.",
         ],
         "song_intros_no_artist": [
-            "지금 나오는 곡은 {title}입니다.",
+            "지금 나오는 song은 {title}입니다.",
             "{title} 듣고 계십니다.",
         ],
     },
@@ -2111,7 +2111,7 @@ def save_recognized_songs(songs):
         json.dump(songs[-100:], f, ensure_ascii=False, indent=2)  # Last 100 songs
 
 def record_stream(url, duration=10):
-    """스트림에서 오디오 녹음 (ffmpeg 사용)"""
+    """stream에서 오디오 녹음 (ffmpeg 사용)"""
     if not shutil.which("ffmpeg"):
         print(f"  {t('ffmpeg_needed')}: brew install ffmpeg")
         return False
@@ -2134,7 +2134,7 @@ def record_stream(url, duration=10):
         return False
 
 def recognize_with_whisper(audio_file):
-    """Whisper로 DJ 음성 인식 (로컬, 완전 무료)"""
+    """Whisper로 DJ 음성 recognition (로컬, 완전 무료)"""
     # Requires whisper or mlx-whisper
     try:
         # Try mlx-whisper (Apple Silicon optimized)
@@ -2169,16 +2169,16 @@ def recognize_with_whisper(audio_file):
     return None
 
 def parse_song_from_text(text):
-    """텍스트에서 곡 정보 추출 (LLM 사용)"""
+    """텍스트에서 song 정보 추출 (LLM 사용)"""
     if not text:
         return None
 
     # Try parsing with LLM
-    prompt = f"""다음 라디오 DJ 멘트에서 곡 정보를 추출하세요.
+    prompt = f"""다음 radio DJ 멘트에서 song 정보를 추출하세요.
 텍스트: "{text}"
 
 JSON 형식으로만 답하세요:
-{{"title": "곡제목", "artist": "아티스트"}}
+{{"title": "song제목", "artist": "아티스트"}}
 정보가 없으면: {{"title": null, "artist": null}}"""
 
     parsed = llm_parse_query(prompt)  # Reuse existing LLM function
@@ -2243,7 +2243,7 @@ def recognize_song(station=None):
     return None
 
 def save_song_result(result, station):
-    """인식 결과 저장 (광고 제외)"""
+    """recognition 결과 storage (광고 제외)"""
     # Do not save if ad
     title = result.get("title", "")
     if is_advertisement(title):
@@ -2298,7 +2298,7 @@ def recognize_song_whisper(station=None):
     return None
 
 def show_recognized_songs():
-    """인식된 곡 목록 표시"""
+    """recognition된 song 목rock 표시"""
     songs = load_recognized_songs()
     if not songs:
         print(f"\n  {t('no_recognized')} (i)\n")
@@ -2531,11 +2531,11 @@ def cancel_alarm():
         print(f"  {t('alarm_not_set')}\n")
 
 def pause_radio():
-    """라디오 일시정지"""
+    """radio 일시정지"""
     mpv_command(["set_property", "pause", True])
 
 def resume_radio():
-    """라디오 재개"""
+    """radio 재items"""
     mpv_command(["set_property", "pause", False])
 
 def speak(text, voice=None, pause_radio_playback=True):
@@ -2578,7 +2578,7 @@ def speak(text, voice=None, pause_radio_playback=True):
         return False
 
 def dj_announce_station(station):
-    """방송국 소개 - 다국어 DJ"""
+    """broadcast countries 소items - 다country어 DJ"""
     if not DJ_ENABLED:
         return
 
@@ -2598,7 +2598,7 @@ def dj_announce_station(station):
     speak(text, voice=lang_data["voice"])
 
 def dj_announce_song(title, station=None):
-    """현재 곡 소개 - 다국어 DJ"""
+    """현재 song 소items - 다country어 DJ"""
     if not DJ_ENABLED or not title:
         return
 
@@ -2692,7 +2692,7 @@ def create_smart_playlist(name, criteria):
     return 0
 
 def show_playlists():
-    """플레이리스트 목록"""
+    """플레이리스트 목rock"""
     playlists = load_playlists()
     if not playlists:
         print(f"\n  {t('no_playlist')}")
@@ -2710,7 +2710,7 @@ def show_playlists():
     return list(playlists.keys())
 
 def get_playlist_stations(name):
-    """플레이리스트의 방송국 목록"""
+    """플레이리스트의 broadcast countries 목rock"""
     playlists = load_playlists()
     if name in playlists:
         return playlists[name].get("stations", [])
@@ -2768,7 +2768,7 @@ def get_llm_status():
     return "keyword"
 
 def display_width(s):
-    """문자열의 표시 너비 계산 (CJK/이모지는 2칸)"""
+    """문자열의 표시 너rain 계산 (CJK/이모지는 2칸)"""
     import unicodedata
     width = 0
     for c in s:
@@ -2782,13 +2782,13 @@ def display_width(s):
     return width
 
 def pad_right(s, total_width):
-    """오른쪽 패딩 (표시 너비 기준)"""
+    """오른쪽 패딩 (표시 너rain 기준)"""
     current = display_width(s)
     padding = max(0, total_width - current)
     return s + ' ' * padding
 
 def truncate(s, max_width):
-    """최대 너비로 자르기"""
+    """최대 너rain로 자르기"""
     width = 0
     result = []
     for c in s:
@@ -2903,7 +2903,7 @@ def main():
             global USE_API
             USE_API = not USE_API
             mode_str = "DB+API" if USE_API else "DB만 (fast)"
-            print(f"  검색 모드: {mode_str}\n")
+            print(f"  search 모드: {mode_str}\n")
             continue
 
         # Resume (last station)
@@ -2922,7 +2922,7 @@ def main():
                 play_start_time = time.time()
                 print(f"  {t('help_after_play')}")
             else:
-                print("  마지막 재생 방송이 없습니다.\n")
+                print("  마지막 playback broadcast이 없습니다.\n")
             continue
 
         # Stop
@@ -2999,7 +2999,7 @@ def main():
             global SONG_MONITOR_ENABLED
             SONG_MONITOR_ENABLED = not SONG_MONITOR_ENABLED
             status = "ON" if SONG_MONITOR_ENABLED else "OFF"
-            print(f"  곡 기록: {status}\n")
+            print(f"  song 기rock: {status}\n")
             continue
 
         # Delete song records
@@ -3203,7 +3203,7 @@ def main():
         if cmd == "<" or cmd == ",":
             favs = load_favorites()
             if not favs:
-                print("  즐겨찾기가 비어있습니다.\n")
+                print("  즐겨찾기가 rain어있습니다.\n")
                 continue
             if PLAYER_PROC and current_station and play_start_time:
                 duration = int(time.time() - play_start_time)
@@ -3223,7 +3223,7 @@ def main():
         if cmd == ">" or cmd == ".":
             favs = load_favorites()
             if not favs:
-                print("  즐겨찾기가 비어있습니다.\n")
+                print("  즐겨찾기가 rain어있습니다.\n")
                 continue
             if PLAYER_PROC and current_station and play_start_time:
                 duration = int(time.time() - play_start_time)
@@ -3343,7 +3343,7 @@ if __name__ == "__main__":
     # --cleanup: Remove dead stations
     if len(sys.argv) > 1 and sys.argv[1] == "--cleanup":
         count = cleanup_dead_stations()
-        print(f"죽은 방송 {count}개 삭제됨")
+        print(f"죽은 broadcast {count}items 삭제됨")
         sys.exit(0)
 
     # --db-stats: DB statistics
@@ -3358,7 +3358,7 @@ if __name__ == "__main__":
             cursor.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 0")
             dead = cursor.fetchone()[0]
             conn.close()
-            print(f"DB 통계: 전체 {total}개, 활성 {alive}개, 죽음 {dead}개")
+            print(f"DB 통계: 전체 {total}items, 활성 {alive}items, 죽음 {dead}items")
         else:
             print("DB 파일 없음")
         sys.exit(0)
@@ -3367,7 +3367,7 @@ if __name__ == "__main__":
 
 # === Click tracking (our API) ===
 def record_click(station):
-    """재생 시 클릭 기록"""
+    """playback 시 click 기rock"""
     if not station:
         return
     station_id = station.get("stationuuid") or station.get("id")

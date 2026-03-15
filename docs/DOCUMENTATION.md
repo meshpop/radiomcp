@@ -119,7 +119,7 @@ Toggle with `!` key in CLI.
 ### Search Flow
 
 ```
-User Query: "korea jazz HQ" (or "한국 재즈 고음질" in Korean)
+User Query: "korea jazz HQ" (or "korea jazz high quality" in Korean)
          │
          ▼
 ┌─────────────────────────────┐
@@ -148,7 +148,7 @@ User Query: "korea jazz HQ" (or "한국 재즈 고음질" in Korean)
 
 | Language | Country Examples | Genre Examples |
 |----------|------------------|----------------|
-| Korean | 한국, 미국, 일본, 영국 | 재즈, 클래식, 뉴스, 팝 |
+| Korean | korea, usa, japan, uk | jazz, classical, news, pop |
 | Japanese | 日本, アメリカ, 韓国 | ジャズ, クラシック |
 | Chinese | 中国, 美国, 韩国 | 爵士乐, 古典音乐 |
 | German | Deutschland, Amerika | Jazz, Klassik |
@@ -214,7 +214,7 @@ Multiple recognition methods:
 Permanently blocked stations:
 
 ```python
-BLOCK_LIST = ["평양", "pyongyang", "north korea", "dprk", "조선중앙"]
+BLOCK_LIST = ["Pyongyang", "pyongyang", "north korea", "dprk", "Korean Central"]
 ```
 
 Blocked stations are:
@@ -277,7 +277,7 @@ q Quit     ! Mode   d DJ
 > usa news HQ
 ```
 
-Multilingual also works: `재즈`, `クラシック`, `джаз`
+Multilingual also works: `jazz`, `クラシック`, `джаз`
 
 ---
 

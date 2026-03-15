@@ -114,7 +114,7 @@ radio_unified.db ──▶ radio_revalidate_v2.py ──▶ radio_unified.db
 
 ### 3. Korean Broadcaster Resolution
 ```
-Client Request: "KBS 1라디오"
+Client Request: "KBS Radio 1"
         │
         ▼
 ┌───────────────────────────────────────┐
@@ -206,10 +206,10 @@ def calc_health(station):
 ```
 User Input          → Keyword Lookup    → DB Search
 ─────────────────────────────────────────────────────
-"재즈"              → "jazz"            → tags LIKE '%jazz%'
+"jazz"              → "jazz"            → tags LIKE '%jazz%'
 "クラシック"        → "classical"       → tags LIKE '%classical%'
 "новости"           → "news"            → tags LIKE '%news%'
-"한국"              → "korea"           → country LIKE '%korea%'
+"korea"              → "korea"           → country LIKE '%korea%'
 ```
 
 **Supported Languages:** Korean, Japanese, Chinese, Russian, French, German, Spanish, Italian, Portuguese, Vietnamese, Thai

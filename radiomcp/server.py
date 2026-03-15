@@ -761,19 +761,19 @@ TAG_SYNONYMS = {
 # Multilingual -> English tag mapping
 LANG_MAP = {
     # Korean
-    "재즈": "jazz", "클래식": "classical", "록": "rock", "팝": "pop",
-    "뉴스": "news", "힙합": "hip hop", "발라드": "ballad", "국악": "korean traditional",
-    "트로트": "trot", "인디": "indie", "라운지": "lounge", "앰비언트": "ambient",
-    "일렉트로닉": "electronic", "보사노바": "bossa nova", "케이팝": "kpop",
-    "가요": "kpop", "한국": "korean", "클럽": "club", "댄스": "dance",
-    "알앤비": "r&b", "소울": "soul", "블루스": "blues", "컨트리": "country",
-    "메탈": "metal", "펑크": "punk", "레게": "reggae", "포크": "folk",
-    "어쿠스틱": "acoustic", "피아노": "piano", "수면": "sleep", "명상": "meditation",
-    "집중": "focus", "공부": "study", "운동": "workout", "카페": "cafe",
-    "아침": "morning", "저녁": "evening", "밤": "night", "크리스마스": "christmas",
-    "여름": "summer", "겨울": "winter", "비": "rain", "자연": "nature",
-    "클래시컬": "classical", "오케스트라": "orchestra", "교향곡": "symphony",
-    "오페라": "opera", "뮤지컬": "musical", "영화음악": "soundtrack",
+    "jazz": "jazz", "classical": "classical", "rock": "rock", "pop": "pop",
+    "news": "news", "hip hop": "hip hop", "ballad": "ballad", "korean traditional music": "korean traditional",
+    "trot": "trot", "indie": "indie", "lounge": "lounge", "ambient": "ambient",
+    "electronic": "electronic", "bossa nova": "bossa nova", "kpop": "kpop",
+    "kpop": "kpop", "korea": "korean", "club": "club", "dance": "dance",
+    "r&b": "r&b", "soul": "soul", "blues": "blues", "country": "country",
+    "metal": "metal", "funk": "punk", "reggae": "reggae", "folk": "folk",
+    "acoustic": "acoustic", "piano": "piano", "sleep": "sleep", "meditation": "meditation",
+    "focus": "focus", "study": "study", "workout": "workout", "cafe": "cafe",
+    "morning": "morning", "evening": "evening", "night": "night", "christmas": "christmas",
+    "summer": "summer", "winter": "winter", "rain": "rain", "nature": "nature",
+    "classical": "classical", "orchestra": "orchestra", "symphony": "symphony",
+    "오페라": "opera", "musical": "musical", "soundtrack": "soundtrack",
     "게임음악": "game", "애니메이션": "anime", "동요": "children",
     "종교": "religious", "찬송가": "gospel", "불교": "buddhist",
 
@@ -878,11 +878,11 @@ COMPOUND_GENRES = {
 # Country name -> code mapping (for country-first sorting)
 COUNTRY_NAMES = {
     # Korean
-    "한국": "KR", "대한민국": "KR", "미국": "US", "일본": "JP", "중국": "CN",
-    "영국": "GB", "프랑스": "FR", "독일": "DE", "이탈리아": "IT", "스페인": "ES",
-    "캐나다": "CA", "호주": "AU", "브라질": "BR", "멕시코": "MX", "러시아": "RU",
-    "인도": "IN", "태국": "TH", "베트남": "VN", "인도네시아": "ID", "필리핀": "PH",
-    "대만": "TW", "홍콩": "HK", "싱가포르": "SG", "말레이시아": "MY",
+    "korea": "KR", "대한민country": "KR", "usa": "US", "japan": "JP", "china": "CN",
+    "uk": "GB", "france": "FR", "germany": "DE", "italy": "IT", "spain": "ES",
+    "canada": "CA", "australia": "AU", "brazil": "BR", "mexico": "MX", "russia": "RU",
+    "india": "IN", "thailand": "TH", "vietnam": "VN", "indonesia": "ID", "philippines": "PH",
+    "taiwan": "TW", "hong kong": "HK", "singapore": "SG", "malaysia": "MY",
     # English
     "korea": "KR", "korean": "KR", "usa": "US", "america": "US", "american": "US",
     "japan": "JP", "japanese": "JP", "china": "CN", "chinese": "CN",
@@ -1587,10 +1587,10 @@ def sync_popular_stations():
                     # Auto-set tags (Korean stations)
                     tags = s.get("tags", "")
                     if not tags and country == "KR":
-                        if any(x in name for x in ["Classic", "클래식"]):
-                            tags = "classical,클래식"
-                        elif any(x in name for x in ["1R", "1Radio", "표준", "뉴스", "News"]):
-                            tags = "news,talk,뉴스"
+                        if any(x in name for x in ["Classic", "classical"]):
+                            tags = "classical,classical"
+                        elif any(x in name for x in ["1R", "1Radio", "표준", "news", "News"]):
+                            tags = "news,talk,news"
                         elif any(x in name for x in ["Cool", "FM4U", "Power", "Love"]):
                             tags = "music,pop,kpop"
                         elif "FM" in name:
@@ -1965,7 +1965,7 @@ def search(query: str, limit: int = 20) -> list[dict]:
     - news → talk, information
     - relaxing → lounge, ambient, chillout
 
-    Multilingual supported: 재즈, ジャズ, 爵士 all work.
+    Multilingual supported: jazz, ジャズ, 爵士 all work.
 
     Args:
         query: Search term (genre, station name, keyword)
@@ -2138,7 +2138,7 @@ def advanced_search(
         List of matching radio stations
 
     Examples:
-        - advanced_search(query="재즈")  # Korean → jazz
+        - advanced_search(query="jazz")  # Korean → jazz
         - advanced_search(query="lounge -vocal", min_bitrate=256)
         - advanced_search(country="KR", tags="pop,kpop")
         - advanced_search(query='"smooth jazz"', sort_by="bitrate")
@@ -3950,7 +3950,7 @@ def get_radio_guide() -> dict:
             "genres": ["jazz", "rock", "classical", "electronic", "pop", "lounge", "ambient", "news", "talk"],
             "moods": ["relaxing", "energetic", "focus", "sleep", "romantic", "workout"],
             "quality": "Use advanced_search(min_bitrate=192) for HQ",
-            "multilingual": "Korean(재즈), Japanese(ジャズ), Chinese(爵士) supported"
+            "multilingual": "Korean(jazz), Japanese(ジャズ), Chinese(爵士) supported"
         }
     }
 
@@ -3985,7 +3985,7 @@ def expand_search(query: str) -> dict:
         "sleep": ["ambient", "nature", "meditation", "classical"],
 
         # Languages
-        "korean": ["kpop", "한국", "korea"],
+        "korean": ["kpop", "korea", "korea"],
         "japanese": ["jpop", "日本", "japan"],
         "chinese": ["cpop", "中国", "china"],
     }

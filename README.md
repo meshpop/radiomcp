@@ -2,7 +2,7 @@
 
 Search and play 55,000+ internet radio stations from 200+ countries.
 
-Powered by [Airtune API](https://api.airtune.ai) | [한국어](README.ko.md)
+Powered by [Airtune API](https://api.airtune.ai) | [korean](README.ko.md)
 
 ## Components
 
@@ -216,7 +216,7 @@ Supports 50+ languages including:
 | Language | Example | Converts to |
 |----------|---------|-------------|
 | English | jazz, classical, news | jazz, classical, news |
-| Korean | 재즈, 클래식, 뉴스 | jazz, classical, news |
+| Korean | jazz, classical, news | jazz, classical, news |
 | Japanese | ジャズ, クラシック | jazz, classical |
 | Chinese | 爵士乐, 古典音乐 | jazz, classical |
 | Russian | джаз, классика | jazz, classical |

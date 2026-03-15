@@ -15,12 +15,12 @@ HEADERS = {'User-Agent': UA}
 
 # === KBS ===
 KBS_CHANNELS = {
-    'kbs1-radio': {'name': 'KBS 1라디오', 'code': '21'},
-    'kbs2-radio': {'name': 'KBS 2라디오 해피FM', 'code': '22'},
-    'kbs3-radio': {'name': 'KBS 3라디오', 'code': '23'},
-    'kbs-classic': {'name': 'KBS 클래식FM', 'code': '24'},
+    'kbs1-radio': {'name': 'KBS Radio 1', 'code': '21'},
+    'kbs2-radio': {'name': 'KBS Radio 2 Happy FM', 'code': '22'},
+    'kbs3-radio': {'name': 'KBS Radio 3', 'code': '23'},
+    'kbs-classic': {'name': 'KBS classicalFM', 'code': '24'},
     'kbs-cool': {'name': 'KBS Cool FM', 'code': '25'},
-    'kbs-world': {'name': 'KBS 한민족방송', 'code': '26'},
+    'kbs-world': {'name': 'KBS Korean Broadcasting System', 'code': '26'},
 }
 
 
@@ -55,8 +55,8 @@ def resolve_kbs(channel_id: str) -> Optional[str]:
 # === MBC ===
 MBC_CHANNELS = {
     'mbc-fm4u': {'name': 'MBC FM4U', 'id': 'mfm'},
-    'mbc-sfm': {'name': 'MBC 표준FM', 'id': 'sfm'},
-    'mbc-allthat': {'name': 'MBC 올댓뮤직', 'id': 'chm'},
+    'mbc-sfm': {'name': 'MBC Standard FM', 'id': 'sfm'},
+    'mbc-allthat': {'name': 'MBC All That Music', 'id': 'chm'},
 }
 
 
@@ -84,8 +84,8 @@ def resolve_mbc(channel_id: str) -> Optional[str]:
 
 # === SBS === (TODO: find working API)
 SBS_CHANNELS = {
-    'sbs-power': {'name': 'SBS 파워FM', 'id': 'powerfm'},
-    'sbs-love': {'name': 'SBS 러브FM', 'id': 'lovefm'},
+    'sbs-power': {'name': 'SBS Power FM', 'id': 'powerfm'},
+    'sbs-love': {'name': 'SBS Love FM', 'id': 'lovefm'},
 }
 
 
@@ -100,8 +100,8 @@ def resolve_sbs(channel_id: str) -> Optional[str]:
 
 # === YTN ===
 YTN_CHANNELS = {
-    'ytn-radio': {'name': 'YTN 라디오', 'url': 'https://ytnlive.ytndj.co.kr/live/ytnradio.m3u8'},
-    'ytn-science': {'name': 'YTN 사이언스', 'url': 'https://ytnlive.ytndj.co.kr/live/ytnscience.m3u8'},
+    'ytn-radio': {'name': 'YTN radio', 'url': 'https://ytnlive.ytndj.co.kr/live/ytnradio.m3u8'},
+    'ytn-science': {'name': 'YTN science', 'url': 'https://ytnlive.ytndj.co.kr/live/ytnscience.m3u8'},
 }
 
 
@@ -131,22 +131,22 @@ def resolve_url(resolver_type: str, channel_id: str) -> Optional[str]:
 # === Korean stations metadata ===
 KOREAN_STATIONS = [
     # KBS
-    {'id': 'kbs1-radio', 'name': 'KBS 1라디오', 'resolver': 'kbs', 'tags': 'news,talk', 'country': 'KR'},
-    {'id': 'kbs2-radio', 'name': 'KBS 2라디오 해피FM', 'resolver': 'kbs', 'tags': 'entertainment,music', 'country': 'KR'},
-    {'id': 'kbs3-radio', 'name': 'KBS 3라디오', 'resolver': 'kbs', 'tags': 'education,talk', 'country': 'KR'},
-    {'id': 'kbs-classic', 'name': 'KBS 클래식FM', 'resolver': 'kbs', 'tags': 'classical', 'country': 'KR'},
+    {'id': 'kbs1-radio', 'name': 'KBS Radio 1', 'resolver': 'kbs', 'tags': 'news,talk', 'country': 'KR'},
+    {'id': 'kbs2-radio', 'name': 'KBS Radio 2 Happy FM', 'resolver': 'kbs', 'tags': 'entertainment,music', 'country': 'KR'},
+    {'id': 'kbs3-radio', 'name': 'KBS Radio 3', 'resolver': 'kbs', 'tags': 'education,talk', 'country': 'KR'},
+    {'id': 'kbs-classic', 'name': 'KBS classicalFM', 'resolver': 'kbs', 'tags': 'classical', 'country': 'KR'},
     {'id': 'kbs-cool', 'name': 'KBS Cool FM', 'resolver': 'kbs', 'tags': 'pop,music', 'country': 'KR'},
-    {'id': 'kbs-world', 'name': 'KBS 한민족방송', 'resolver': 'kbs', 'tags': 'korean,world', 'country': 'KR'},
+    {'id': 'kbs-world', 'name': 'KBS Korean Broadcasting System', 'resolver': 'kbs', 'tags': 'korean,world', 'country': 'KR'},
     # MBC
     {'id': 'mbc-fm4u', 'name': 'MBC FM4U', 'resolver': 'mbc', 'tags': 'pop,music', 'country': 'KR'},
-    {'id': 'mbc-sfm', 'name': 'MBC 표준FM', 'resolver': 'mbc', 'tags': 'news,talk', 'country': 'KR'},
-    {'id': 'mbc-allthat', 'name': 'MBC 올댓뮤직', 'resolver': 'mbc', 'tags': 'music', 'country': 'KR'},
+    {'id': 'mbc-sfm', 'name': 'MBC Standard FM', 'resolver': 'mbc', 'tags': 'news,talk', 'country': 'KR'},
+    {'id': 'mbc-allthat', 'name': 'MBC All That Music', 'resolver': 'mbc', 'tags': 'music', 'country': 'KR'},
     # SBS (TODO: find API)
-    {'id': 'sbs-power', 'name': 'SBS 파워FM', 'resolver': 'sbs', 'tags': 'pop,music', 'country': 'KR'},
-    {'id': 'sbs-love', 'name': 'SBS 러브FM', 'resolver': 'sbs', 'tags': 'talk,music', 'country': 'KR'},
+    {'id': 'sbs-power', 'name': 'SBS Power FM', 'resolver': 'sbs', 'tags': 'pop,music', 'country': 'KR'},
+    {'id': 'sbs-love', 'name': 'SBS Love FM', 'resolver': 'sbs', 'tags': 'talk,music', 'country': 'KR'},
     # YTN
-    {'id': 'ytn-radio', 'name': 'YTN 라디오', 'resolver': 'ytn', 'tags': 'news', 'country': 'KR'},
-    {'id': 'ytn-science', 'name': 'YTN 사이언스', 'resolver': 'ytn', 'tags': 'science,education', 'country': 'KR'},
+    {'id': 'ytn-radio', 'name': 'YTN radio', 'resolver': 'ytn', 'tags': 'news', 'country': 'KR'},
+    {'id': 'ytn-science', 'name': 'YTN science', 'resolver': 'ytn', 'tags': 'science,education', 'country': 'KR'},
 ]
 
 

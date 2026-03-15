@@ -198,10 +198,10 @@ CREATE TABLE stations (
 
 | Resolver | Channels | API Endpoint |
 |----------|----------|--------------|
-| `kbs` | 1라디오, 2라디오, 3라디오, 클래식FM, Cool FM, 한민족방송 | cfpwwwapi.kbs.co.kr |
-| `mbc` | FM4U, 표준FM, 올댓뮤직 | sminiplay.imbc.com |
-| `ytn` | 라디오, 사이언스 | Static URLs |
-| `sbs` | 파워FM, 러브FM | TODO |
+| `kbs` | Radio 1, Radio 2, Radio 3, classicalFM, Cool FM, Korean Broadcasting System | cfpwwwapi.kbs.co.kr |
+| `mbc` | FM4U, Standard FM, All That Music | sminiplay.imbc.com |
+| `ytn` | radio, science | Static URLs |
+| `sbs` | Power FM, Love FM | TODO |
 
 ### How Resolvers Work
 
