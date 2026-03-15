@@ -10,7 +10,7 @@ Powered by RadioGraph API
 """
 
 __version__ = "1.0.0"
-__author__ = "tokmorlab"
+__author__ = "meshpop"
 
 from .server import main, mcp
 

@@ -1442,7 +1442,7 @@ LOCAL_BLOCKLIST_PATHS = [
 ]
 
 BLOCKLIST_URLS = [
-    "https://raw.githubusercontent.com/tokmorlab/radiomcp/main/blocklist.json",
+    "https://raw.githubusercontent.com/meshpop/radiomcp/main/blocklist.json",
 ]
 
 def load_local_blocklist():

@@ -9,7 +9,7 @@ Stream URLs are provided by third-party radio stations and public directories.
 
 ### Step 1: Submit Request
 Copyright holders can submit takedown requests via:
-- GitHub Issues: https://github.com/tokmorlab/radiomcp/issues
+- GitHub Issues: https://github.com/meshpop/radiomcp/issues
 - Email: copyright@airtune.ai
 
 Required information:
@@ -59,7 +59,7 @@ Upon receiving a valid takedown request:
 | Client propagation | Next app launch |
 
 ## Contact
-- GitHub: https://github.com/tokmorlab/radiomcp/issues
+- GitHub: https://github.com/meshpop/radiomcp/issues
 - Email: copyright@airtune.ai
 
 ## Data Sources

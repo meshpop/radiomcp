@@ -89,7 +89,7 @@ RadioCli/
 | KBS, MBC, SBS | 토큰 기반 URL 만료 |
 
 ### 블록 요청 방법
-GitHub Issues: https://github.com/tokmorlab/radiomcp/issues
+GitHub Issues: https://github.com/meshpop/radiomcp/issues
 
 ---
 
@@ -141,6 +141,6 @@ twine upload dist/*
 
 - [ ] PyPI 계정 생성/로그인
 - [ ] PyPI 업로드
-- [ ] GitHub 레포 생성 (tokmorlab/radiomcp)
+- [ ] GitHub 레포 생성 (meshpop/radiomcp)
 - [ ] Cloudflare Pages 설정 (blocklist 미러)
 - [ ] MCP Registry 등록
