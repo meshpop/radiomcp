@@ -63,6 +63,4 @@ Upon receiving a valid takedown request:
 - Email: mpop@mpop.dev
 
 ## Data Sources
-- [Radio Browser](https://www.radio-browser.info/) — ODbL 1.0 License
-- [Icecast Directory](https://dir.xiph.org/) — Open Source
-- Stream metadata verified independently from station streams
+- [Radio Browser](https://www.radio-browser.info/) — ODbL 1.0 License- Stream metadata verified independently from station streams

@@ -77,15 +77,15 @@
 │  │  [A] 07:00  auto_broadcaster.py                                    │     │
 │  │             └─ Refresh major broadcaster URLs (KBS, MBC, BBC)      │     │
 │  │                                                                     │     │
-│  │  [S] 08:00  shoutcast_crawler.py (Sunday only)                     │     │
-│  │             └─ Crawl Shoutcast directory                           │     │
+
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
 │                              DATA SOURCES                                    │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
-│  │Radio Browser│ │   Icecast   │ │   TuneIn    │ │  Shoutcast  │           │
-│  │  27,468     │ │   14,253    │ │   10,042    │ │   (Weekly)  │           │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘           │
+│  ┌─────────────┐
+│  │Radio Browser│
+│  │  27,468     │
+│  └─────────────┘
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -93,10 +93,7 @@
 
 ### 1. New Station Discovery
 ```
-Radio Browser API ──┐
-Icecast Directory ──┼──▶ sync_radiobrowser.py ──▶ radio_unified.db
-TuneIn Scraper ─────┤                              (INSERT OR REPLACE)
-Shoutcast Crawler ──┘
+Radio Browser API ──▶ sync_radiobrowser.py ──▶ radio_unified.db
 ```
 
 ### 2. Station Validation
@@ -165,7 +162,7 @@ CREATE TABLE stations (
     verified_at TEXT,
 
     -- Source tracking
-    source TEXT,             -- radiobrowser, icecast, tunein, etc.
+    source TEXT,             -- radiobrowser
     resolver TEXT,           -- kbs, mbc, ytn (for Korean)
     broadcaster TEXT,        -- Broadcaster registry ID
 
@@ -272,5 +269,4 @@ nohup python3 /opt/radiomcp/radio_api_v4.py > /tmp/radio_api.log 2>&1 &
 0 2 * * * /usr/bin/python3 /opt/radiomcp/radio_revalidate_v2.py
 0 5 * * * /usr/bin/python3 /opt/radiomcp/sync_radiobrowser.py
 0 7 * * * /usr/bin/python3 /opt/radiomcp/auto_broadcaster.py
-0 8 * * 0 /usr/bin/python3 /opt/radiomcp/shoutcast_crawler.py
 ```

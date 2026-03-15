@@ -290,7 +290,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system architecture.
 **Data Pipeline (g3 server):**
 - Daily URL validation & new station sync
 - Korean broadcaster URL resolvers (KBS, MBC, YTN)
-- 40,000+ stations from Radio Browser + Icecast
+- 40,000+ stations from Radio Browser
 
 ## License
 

@@ -6,14 +6,10 @@
 ```
 04:00 radio_revalidate.py    - Existing station revalidation
 05:00 sync_radiobrowser.py   - Radio Browser new/updated stations
-06:00 shoutcast_crawler.py   - Shoutcast crawling (Sunday)
 ```
 
 ### Data Sources
 - Radio Browser API: 27K stations
-- Icecast directory: 14K stations
-- TuneIn: 10K stations
-- Shoutcast: weekly crawl
 
 ---
 
