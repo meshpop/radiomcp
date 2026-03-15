@@ -773,9 +773,9 @@ LANG_MAP = {
     "morning": "morning", "evening": "evening", "night": "night", "christmas": "christmas",
     "summer": "summer", "winter": "winter", "rain": "rain", "nature": "nature",
     "classical": "classical", "orchestra": "orchestra", "symphony": "symphony",
-    "오페라": "opera", "musical": "musical", "soundtrack": "soundtrack",
+    "": "opera", "musical": "musical", "soundtrack": "soundtrack",
     "game music": "game", "animation": "anime", "children song": "children",
-    "종교": "religious", "찬송가": "gospel", "buddhist": "buddhist",
+    "": "religious", "": "gospel", "buddhist": "buddhist",
 
     # Japanese
     "ジャズ": "jazz", "クラシック": "classical", "ロック": "rock", "ポップ": "pop",
@@ -878,7 +878,7 @@ COMPOUND_GENRES = {
 # Country name -> code mapping (for country-first sorting)
 COUNTRY_NAMES = {
     # Korean
-    "korea": "KR", "대한민country": "KR", "usa": "US", "japan": "JP", "china": "CN",
+    "korea": "KR", "country": "KR", "usa": "US", "japan": "JP", "china": "CN",
     "uk": "GB", "france": "FR", "germany": "DE", "italy": "IT", "spain": "ES",
     "canada": "CA", "australia": "AU", "brazil": "BR", "mexico": "MX", "russia": "RU",
     "india": "IN", "thailand": "TH", "vietnam": "VN", "indonesia": "ID", "philippines": "PH",
@@ -1589,7 +1589,7 @@ def sync_popular_stations():
                     if not tags and country == "KR":
                         if any(x in name for x in ["Classic", "classical"]):
                             tags = "classical,classical"
-                        elif any(x in name for x in ["1R", "1Radio", "표준", "news", "News"]):
+                        elif any(x in name for x in ["1R", "1Radio", "", "news", "News"]):
                             tags = "news,talk,news"
                         elif any(x in name for x in ["Cool", "FM4U", "Power", "Love"]):
                             tags = "music,pop,kpop"

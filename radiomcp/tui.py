@@ -32,7 +32,7 @@ PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 # SQLite DB - search order: 1) package bundled, 2) ~/.radiocli/, 3) ~/RadioCli/
 def _find_db():
     candidates = [
-        os.path.join(_PKG_DIR, "radio_stations.db"),          # pip install package 내장
+        os.path.join(_PKG_DIR, "radio_stations.db"),          # pip install package embedded
         os.path.join(DATA_DIR, "radio_stations.db"),           # ~/.radiocli/
         os.path.expanduser("~/RadioCli/radio_stations.db"),    # dev environment
     ]
@@ -674,29 +674,29 @@ LANG_MAP = {
     "rock": "rock", "rock": "rock", "ロック": "rock", "摇滚": "rock",
     # Hip-hop
     "hip hop": "hiphop", "hiphop": "hiphop", "hip-hop": "hiphop", "hip hop": "hiphop",
-    "ヒップホップ": "hiphop", "嘻哈": "hiphop", "rap": "hiphop", "랩": "hiphop",
+    "ヒップホップ": "hiphop", "嘻哈": "hiphop", "rap": "hiphop", "": "hiphop",
     # K-pop
-    "kpop": "kpop", "kpop": "kpop", "k-pop": "kpop", "케이-pop": "kpop",
+    "kpop": "kpop", "kpop": "kpop", "k-pop": "kpop", "-pop": "kpop",
     "韓国ポップ": "kpop", "韩流": "kpop",
     # News (expanded)
     "news": "news", "news": "news", "ニュース": "news", "新闻": "news",
     "nachrichten": "news", "nouvelles": "news", "noticias": "news",
-    "시사": "news", "교양": "news", "정보": "news", "보도": "news",
+    "": "news", "": "news", "": "news", "": "news",
     "information": "news", "current affairs": "news",
     # Talk (expanded)
-    "토크": "talk", "talk": "talk", "トーク": "talk", "谈话": "talk",
-    "radio쇼": "talk", "radio show": "talk", "talkshow": "talk", "토크쇼": "talk",
+    "": "talk", "talk": "talk", "トーク": "talk", "谈话": "talk",
+    "radio": "talk", "radio show": "talk", "talkshow": "talk", "": "talk",
     # Lounge
     "lounge": "lounge", "lounge": "lounge", "ラウンジ": "lounge",
-    "chillout": "lounge", "chill": "lounge", "칠아웃": "lounge",
+    "chillout": "lounge", "chill": "lounge", "": "lounge",
     # Blues
     "blues": "blues", "blues": "blues", "ブルース": "blues", "蓝调": "blues",
     # Country
     "country": "country", "country": "country", "カントリー": "country", "乡村": "country",
     # Electronic
-    "일렉": "electronic", "electronic": "electronic", "electro": "electronic",
+    "": "electronic", "electronic": "electronic", "electro": "electronic",
     "エレクトロ": "electronic", "电子": "electronic", "électronique": "electronic",
-    "electronica": "electronic", "테크노": "electronic", "techno": "electronic",
+    "electronica": "electronic", "": "electronic", "techno": "electronic",
     # Dance
     "dance": "dance", "dance": "dance", "ダンス": "dance", "舞曲": "dance",
     # Ballad
@@ -714,17 +714,17 @@ LANG_MAP = {
     # Ambient
     "ambient": "ambient", "ambient": "ambient", "アンビエント": "ambient",
     # Trot
-    "trot": "trot", "trot": "trot", "トロット": "trot", "연가": "trot",
+    "trot": "trot", "trot": "trot", "トロット": "trot", "": "trot",
     # Religious
-    "종교": "religious", "religious": "religious", "christian": "religious",
-    "gospel": "religious", "christian": "religious", "찬송": "religious",
+    "": "religious", "religious": "religious", "christian": "religious",
+    "gospel": "religious", "christian": "religious", "": "religious",
     # Kids
-    "어린이": "children", "children": "children", "kids": "children",
-    "子供": "children", "儿童": "children", "키즈": "children",
+    "": "children", "children": "children", "kids": "children",
+    "子供": "children", "儿童": "children", "": "children",
     # Oldies
     "oldies": "oldies", "oldies": "oldies", "オールディーズ": "oldies",
-    "80년대": "80s", "80s": "80s", "90년대": "90s", "90s": "90s",
-    "70년대": "70s", "70s": "70s", "60년대": "60s", "60s": "60s",
+    "80": "80s", "80s": "80s", "90": "90s", "90s": "90s",
+    "70": "70s", "70s": "70s", "60": "60s", "60s": "60s",
 
     # === Additional language genres ===
     # Hindi (Hindi)
@@ -771,8 +771,8 @@ TAG_EXPAND = {
 QUALITY_MAP = {
     # Korean
     "high quality": {"min_bitrate": 192},
-    "저음질": {"max_bitrate": 96},
-    "최high quality": {"min_bitrate": 256},
+    "": {"max_bitrate": 96},
+    "high quality": {"min_bitrate": 256},
     "hd": {"min_bitrate": 256},
     # English
     "high quality": {"min_bitrate": 192},
@@ -790,10 +790,10 @@ QUALITY_MAP = {
 BLOCK_LIST = []
 
 def load_blocklist():
-    """blocklist.json에서 블rock리스트 로드"""
+    """blocklist.json rock """
     global BLOCK_LIST
     paths = [
-        os.path.join(_PKG_DIR, "blocklist.json"),               # pip install package 내장
+        os.path.join(_PKG_DIR, "blocklist.json"),               # pip install package embedded
         os.path.join(DATA_DIR, "blocklist.json"),                # ~/.radiocli/
         os.path.expanduser("~/RadioCli/blocklist.json"),         # dev environment
     ]
@@ -811,7 +811,7 @@ def load_blocklist():
 load_blocklist()
 
 def is_blocked(name):
-    """차단 목rock에 있는지 확인"""
+    """ rock  """
     if not name:
         return False
     name_lower = name.lower()
@@ -866,7 +866,7 @@ JSON response:"""
     return None
 
 def call_ollama(prompt):
-    """Ollama 로컬 LLM 호출"""
+    """Ollama  LLM """
     try:
         data = json.dumps({
             "model": OLLAMA_MODEL,
@@ -890,7 +890,7 @@ def call_ollama(prompt):
         return None
 
 def call_claude(prompt):
-    """Claude API 호출"""
+    """Claude API """
     try:
         data = json.dumps({
             "model": "claude-sonnet-4-20250514",
@@ -916,7 +916,7 @@ def call_claude(prompt):
         return None
 
 def call_openai(prompt):
-    """OpenAI API 호출"""
+    """OpenAI API """
     try:
         data = json.dumps({
             "model": "gpt-4o-mini",
@@ -942,7 +942,7 @@ def call_openai(prompt):
         return None
 
 def extract_json(text):
-    """텍스트에서 JSON 추출"""
+    """ JSON """
     try:
         # Find JSON block
         text = text.strip()
@@ -1030,7 +1030,7 @@ def save_history(history):
         json.dump(history[-500:], f, ensure_ascii=False, indent=2)  # Keep last 500
 
 def add_history(station, duration_sec):
-    """청취 기rock 추가"""
+    """ rock """
     if duration_sec < 10:  # Ignore if less than 10 seconds
         return
     history = load_history()
@@ -1047,7 +1047,7 @@ def add_history(station, duration_sec):
     save_history(history)
 
 def show_listening_history(limit=20):
-    """청취 기rock 표시"""
+    """ rock """
     history = load_history()
     if not history:
         print(f"  {t('no_history')}\n")
@@ -1060,12 +1060,12 @@ def show_listening_history(limit=20):
         duration = h.get("duration", 0)
         mins = duration // 60
         timestamp = h.get("timestamp", "")[:10]
-        print(f"  {i:2}. {name:<30} {country:>3} {mins:>3}분 ({timestamp})")
+        print(f"  {i:2}. {name:<30} {country:>3} {mins:>3} ({timestamp})")
     print()
 
 # === Taste Analysis ===
 def analyze_preferences():
-    """청취 기rock 분석해서 취향 파악"""
+    """ rock   """
     history = load_history()
     if not history:
         return None
@@ -1101,37 +1101,37 @@ def analyze_preferences():
     }
 
 def get_mood_recommendations(limit=20):
-    """시간대/mood based 추천"""
+    """/mood based """
     hour = datetime.now().hour
     weekday = datetime.now().weekday()  # 0=Mon, 6=Sun
 
     # Mood by time of day
     if 5 <= hour < 9:  # Early morning
         tags = ["classical", "ambient", "lofi"]
-        mood = "morning 기상"
+        mood = "morning "
     elif 9 <= hour < 12:  # Morning
         tags = ["pop", "jazz", "acoustic"]
-        mood = "활기찬 오전"
+        mood = " "
     elif 12 <= hour < 14:  # Lunch
         tags = ["lounge", "pop", "jazz"]
-        mood = "점심 휴식"
+        mood = " "
     elif 14 <= hour < 18:  # Afternoon
         tags = ["pop", "rock", "electronic"]
-        mood = "focus 오후"
+        mood = "focus "
     elif 18 <= hour < 21:  # Evening
         tags = ["jazz", "soul", "lounge"]
-        mood = "퇴근 evening"
+        mood = " evening"
     elif 21 <= hour < 24:  # Night
         tags = ["ambient", "lounge", "classical"]
-        mood = "편안한 night"
+        mood = " night"
     else:  # Late night
         tags = ["ambient", "sleep", "classical"]
-        mood = "고요한 새벽"
+        mood = " "
 
     # More energetic on weekends
     if weekday >= 5:  # Sat/Sun
         tags = ["pop", "dance", "rock"] + tags
-        mood += " (주말)"
+        mood += " ()"
 
     print(f"  {t('mood')}: {mood}")
 
@@ -1153,7 +1153,7 @@ def get_mood_recommendations(limit=20):
     return all_results[:limit]
 
 def get_personalized_recommendations(limit=20):
-    """취향 based items인화 추천"""
+    """ based items """
     prefs = analyze_preferences()
     if not prefs or not prefs["top_tags"]:
         return get_popular(limit)
@@ -1186,7 +1186,7 @@ def get_personalized_recommendations(limit=20):
     return get_popular(limit)
 
 def show_my_taste():
-    """내 취향 보기"""
+    """  """
     prefs = analyze_preferences()
     if not prefs:
         print(f"\n  {t('no_history')}. {t('listen_first')}!\n")
@@ -1301,7 +1301,7 @@ def save_station_to_db(station):
         return False
 
 def merge_results(db_results, api_results, limit=30):
-    """DB + API 결과 병합 (중복 제거, 차단 필터링)"""
+    """DB + API   ( ,  )"""
     seen = set()
     merged = []
 
@@ -1328,7 +1328,7 @@ def merge_results(db_results, api_results, limit=30):
     return merged[:limit]
 
 def search(query, limit=20):
-    """DB + API search (USE_API=False면 DB만)"""
+    """DB + API search (USE_API=False DB)"""
     db_results = db_search(query=query, limit=limit)
     if not USE_API:
         return db_results[:limit]
@@ -1364,7 +1364,7 @@ def search_by_country(code, limit=20):
     return merge_results(db_results, api_results, limit)
 
 def get_popular(limit=20):
-    """Popular stations (DB 우선)"""
+    """Popular stations (DB )"""
     if not USE_API:
         # DB by clickcount
         db_results = db_search(limit=limit)
@@ -1372,11 +1372,11 @@ def get_popular(limit=20):
     return api_request("stations/toplisteners?limit=" + str(limit))
 
 def get_top_voted(limit=20):
-    """popular 투표 상위"""
+    """popular  """
     return api_request("stations/topvote/" + str(limit))
 
 def get_high_quality(limit=30):
-    """High quality stations (256kbps 이상)"""
+    """High quality stations (256kbps )"""
     params = {
         "bitrateMin": 256,
         "limit": limit,
@@ -1387,7 +1387,7 @@ def get_high_quality(limit=30):
     return api_request("stations/search", params)
 
 def get_premium(limit=30):
-    """Premium stations (high quality + popular) - metadata rich possibility 높음"""
+    """Premium stations (high quality + popular) - metadata rich possibility """
     params = {
         "bitrateMin": 192,
         "order": "votes",
@@ -1402,45 +1402,45 @@ def get_premium(limit=30):
 # Natural language -> tag mapping (mood, situation)
 MOOD_MAP = {
     # Energetic/upbeat
-    "신나는": ["dance", "electronic", "pop"], "신나": ["dance", "electronic"],
-    "활기": ["dance", "pop", "rock"], "에너지": ["electronic", "dance"],
+    "": ["dance", "electronic", "pop"], "": ["dance", "electronic"],
+    "": ["dance", "pop", "rock"], "": ["electronic", "dance"],
     "upbeat": ["dance", "pop"], "energetic": ["electronic", "rock"],
     "exciting": ["dance", "electronic"], "lively": ["pop", "dance"],
     # Relaxing/calm
-    "편안": ["lounge", "ambient", "classical"], "잔잔": ["ambient", "classical", "piano"],
+    "": ["lounge", "ambient", "classical"], "": ["ambient", "classical", "piano"],
     "relaxing": ["lounge", "ambient"], "calm": ["classical", "ambient"],
     "peaceful": ["classical", "ambient"], "soothing": ["lounge", "piano"],
-    "차분": ["classical", "ambient"], "힐링": ["ambient", "nature", "classical"],
+    "": ["classical", "ambient"], "": ["ambient", "nature", "classical"],
     # Sad/emotional
-    "슬픈": ["ballad", "blues"], "감성": ["ballad", "soul", "jazz"],
-    "우울": ["blues", "ambient"], "멜랑꼴리": ["blues", "classical"],
+    "": ["ballad", "blues"], "": ["ballad", "soul", "jazz"],
+    "": ["blues", "ambient"], "": ["blues", "classical"],
     "sad": ["blues", "ballad"], "emotional": ["soul", "ballad"],
     # Focus/study
     "focus": ["classical", "ambient", "lofi"], "study": ["classical", "lofi", "ambient"],
     "focus": ["classical", "ambient"], "study": ["lofi", "classical"],
     "work": ["lofi", "ambient"], "concentration": ["classical", "ambient"],
     # Sleep
-    "sleep": ["ambient", "classical", "nature"], "잠": ["ambient", "sleep"],
-    "sleep": ["ambient", "sleep", "nature"], "잠들": ["ambient", "sleep"],
+    "sleep": ["ambient", "classical", "nature"], "": ["ambient", "sleep"],
+    "sleep": ["ambient", "sleep", "nature"], "": ["ambient", "sleep"],
     # Workout
     "workout": ["electronic", "dance", "rock"], "workout": ["electronic", "dance"],
     "gym": ["electronic", "rock"], "exercise": ["dance", "electronic"],
-    "달리기": ["electronic", "dance"], "running": ["electronic", "dance"],
+    "": ["electronic", "dance"], "running": ["electronic", "dance"],
     # Morning/commute
-    "morning": ["pop", "classical", "jazz"], "출근": ["pop", "news", "jazz"],
+    "morning": ["pop", "classical", "jazz"], "": ["pop", "news", "jazz"],
     "morning": ["pop", "classical"], "commute": ["news", "pop"],
     # Evening/night
     "evening": ["jazz", "lounge", "classical"], "night": ["lounge", "ambient", "jazz"],
     "evening": ["jazz", "lounge"], "night": ["lounge", "ambient"],
     # Party
-    "파티": ["dance", "electronic", "pop"], "party": ["dance", "electronic"],
+    "": ["dance", "electronic", "pop"], "party": ["dance", "electronic"],
     "club": ["electronic", "dance"], "club": ["electronic", "dance"],
     # Romantic
-    "로맨틱": ["jazz", "ballad", "classical"], "romantic": ["jazz", "ballad"],
-    "사랑": ["ballad", "pop"], "love": ["ballad", "pop"],
+    "": ["jazz", "ballad", "classical"], "romantic": ["jazz", "ballad"],
+    "": ["ballad", "pop"], "love": ["ballad", "pop"],
     # Fast/slow
-    "빠른": ["electronic", "dance", "rock"], "fast": ["electronic", "dance"],
-    "느린": ["ambient", "classical", "lounge"], "slow": ["ambient", "lounge"],
+    "": ["electronic", "dance", "rock"], "fast": ["electronic", "dance"],
+    "": ["ambient", "classical", "lounge"], "slow": ["ambient", "lounge"],
 }
 
 def natural_language_search(query, limit=30):
@@ -1492,7 +1492,7 @@ def natural_language_search(query, limit=30):
     return None
 
 def search_advanced(query, limit=50):
-    """Smart search: country + genre + 품질 복합 지원"""
+    """Smart search: country + genre +   """
     query_lower = query.lower().strip()
 
     country = None
@@ -1657,7 +1657,7 @@ def update_station_url(old_url, new_url):
 def play(url, name="", use_fresh_url=True):
     """
     Play radio
-    use_fresh_url=True: API에서 최신 URL 먼저 fetched (token expiration handling)
+    use_fresh_url=True: API  URL  fetched (token expiration handling)
     """
     global PLAYER_PROC
     stop()
@@ -1672,7 +1672,7 @@ def play(url, name="", use_fresh_url=True):
         if fresh_url:
             play_url = fresh_url
             if fresh_url != url:
-                print(f"  ↻ 최신 URL 사용")
+                print(f"  ↻  URL ")
                 update_station_url(url, fresh_url)
 
     print(f"\n  ▶ {t('playing')}: {name}")
@@ -1730,13 +1730,13 @@ def play(url, name="", use_fresh_url=True):
 # Ad/filter keywords
 AD_KEYWORDS = [
     "advertisement", "advertising", "commercial", "werbung", "publicité",
-    "광고", "公告", "広告", "reklam", "anuncio", "pubblicità",
+    "", "公告", "広告", "reklam", "anuncio", "pubblicità",
     "ad break", "spot", "promo", "jingle", "station id", "station identification",
-    "news", "news", "weather", "날씨", "traffic", "교통",
+    "news", "news", "weather", "", "traffic", "",
 ]
 
 def is_advertisement(title):
-    """광고/rain음악 콘텐츠 여부 확인"""
+    """/rain   """
     if not title:
         return False
     title_lower = title.lower()
@@ -1775,7 +1775,7 @@ def get_current_song():
     return None
 
 def show_current_song():
-    """현재 song 표시"""
+    """ song """
     if not PLAYER_PROC:
         print(f"  {t('no_playing')}\n")
         return
@@ -1793,7 +1793,7 @@ def show_current_song():
 _last_song_title = None
 
 def load_songs():
-    """song 기rock 로드"""
+    """song rock """
     if os.path.exists(SONGS_FILE):
         try:
             with open(SONGS_FILE, "r", encoding="utf-8") as f:
@@ -1803,12 +1803,12 @@ def load_songs():
     return []
 
 def save_songs(songs):
-    """song 기rock storage"""
+    """song rock storage"""
     with open(SONGS_FILE, "w", encoding="utf-8") as f:
         json.dump(songs[-1000:], f, ensure_ascii=False, indent=2)  # Max 1000 songs
 
 def parse_song_info(raw_title):
-    """'Artist - Title' 형식 파싱"""
+    """'Artist - Title'  """
     if not raw_title:
         return None, None
     if " - " in raw_title:
@@ -1817,7 +1817,7 @@ def parse_song_info(raw_title):
     return None, raw_title.strip()
 
 def add_song_to_history(raw_title, station_name):
-    """song 기rock 추가"""
+    """song rock """
     global _last_song_title
     if not raw_title or raw_title == _last_song_title:
         return
@@ -1835,18 +1835,18 @@ def add_song_to_history(raw_title, station_name):
     save_songs(songs)
 
 def check_song_change(station_name):
-    """song 변경 detect하고 기rock"""
+    """song  detect rock"""
     song = get_current_song()
     if song and song.get("title") and not song.get("is_ad"):
         add_song_to_history(song["title"], station_name)
 
 def show_song_history(limit=20):
-    """song 기rock 표시"""
+    """song rock """
     songs = load_songs()
     if not songs:
-        print(f"\n  song 기rock 없음\n")
+        print(f"\n  song rock \n")
         return
-    print(f"\n  최근 들은 song ({len(songs)}items 중 {min(limit, len(songs))}items)")
+    print(f"\n    song ({len(songs)}items  {min(limit, len(songs))}items)")
     print(f"  {'Time':<6} {'Station':<20} {'Artist':<20} {'Song':<25}")
     print("  " + "-" * 75)
     for s in reversed(songs[-limit:]):
@@ -1864,7 +1864,7 @@ _song_monitor_running = False
 SONG_MONITOR_ENABLED = True  # Song record on/off
 
 def start_song_monitor(station_name):
-    """song 변경 모니터링 시작 (백그라운드)"""
+    """song    ()"""
     global _song_monitor_thread, _song_monitor_running
     if not SONG_MONITOR_ENABLED:
         return
@@ -1879,17 +1879,17 @@ def start_song_monitor(station_name):
     _song_monitor_thread.start()
 
 def stop_song_monitor():
-    """song 모니터링 중지"""
+    """song  """
     global _song_monitor_running
     _song_monitor_running = False
 
 def clear_song_history():
-    """song 기rock 전체 삭제"""
+    """song rock  """
     if os.path.exists(SONGS_FILE):
         os.remove(SONGS_FILE)
     global _last_song_title
     _last_song_title = None
-    print("  song 기rock 삭제됨\n")
+    print("  song rock \n")
 
 # === DJ Feature (TTS) ===
 DJ_ENABLED = os.environ.get("RADIOCLI_DJ", "0") == "1"
@@ -1900,19 +1900,19 @@ DJ_LANGUAGES = {
     "ko": {
         "voice": "ko-KR-SunHiNeural",
         "station_intros": [
-            "자, 이제 {name}으로 가볼까요?",
-            "{name}입니다. 좋은 음악 함께해요.",
-            "다음은 {name}! 즐겨주세요.",
-            "{tags} 음악 가득한 {name}입니다.",
+            ",  {name} ?",
+            "{name}.   .",
+            " {name}! .",
+            "{tags}   {name}.",
         ],
         "song_intros": [
-            "지금 나오는 song은 {artist}의 {song}입니다.",
-            "{artist}, {song} 듣고 계십니다.",
-            "{song}, {artist}입니다.",
+            "  song {artist} {song}.",
+            "{artist}, {song}  .",
+            "{song}, {artist}.",
         ],
         "song_intros_no_artist": [
-            "지금 나오는 song은 {title}입니다.",
-            "{title} 듣고 계십니다.",
+            "  song {title}.",
+            "{title}  .",
         ],
     },
     "en": {
@@ -2111,7 +2111,7 @@ def save_recognized_songs(songs):
         json.dump(songs[-100:], f, ensure_ascii=False, indent=2)  # Last 100 songs
 
 def record_stream(url, duration=10):
-    """stream에서 오디오 녹음 (ffmpeg 사용)"""
+    """stream   (ffmpeg )"""
     if not shutil.which("ffmpeg"):
         print(f"  {t('ffmpeg_needed')}: brew install ffmpeg")
         return False
@@ -2134,7 +2134,7 @@ def record_stream(url, duration=10):
         return False
 
 def recognize_with_whisper(audio_file):
-    """Whisper로 DJ 음성 recognition (로컬, 완전 무료)"""
+    """Whisper DJ  recognition (,  )"""
     # Requires whisper or mlx-whisper
     try:
         # Try mlx-whisper (Apple Silicon optimized)
@@ -2169,17 +2169,17 @@ def recognize_with_whisper(audio_file):
     return None
 
 def parse_song_from_text(text):
-    """텍스트에서 song 정보 추출 (LLM 사용)"""
+    """ song   (LLM )"""
     if not text:
         return None
 
     # Try parsing with LLM
-    prompt = f"""다음 radio DJ 멘트에서 song 정보를 추출하세요.
-텍스트: "{text}"
+    prompt = f""" radio DJ  song  .
+: "{text}"
 
-JSON 형식으로만 답하세요:
-{{"title": "song제목", "artist": "아티스트"}}
-정보가 없으면: {{"title": null, "artist": null}}"""
+JSON  :
+{{"title": "song", "artist": ""}}
+ : {{"title": null, "artist": null}}"""
 
     parsed = llm_parse_query(prompt)  # Reuse existing LLM function
     if parsed and parsed.get("title"):
@@ -2187,7 +2187,7 @@ JSON 형식으로만 답하세요:
     return None
 
 def recognize_song(station=None):
-    """Recognize current playing song (무료 방식들)"""
+    """Recognize current playing song ( )"""
     if not PLAYER_PROC:
         print(f"  {t('no_playing')}\n")
         return None
@@ -2243,7 +2243,7 @@ def recognize_song(station=None):
     return None
 
 def save_song_result(result, station):
-    """recognition 결과 storage (광고 제외)"""
+    """recognition  storage ( )"""
     # Do not save if ad
     title = result.get("title", "")
     if is_advertisement(title):
@@ -2256,7 +2256,7 @@ def save_song_result(result, station):
     save_recognized_songs(songs)
 
 def recognize_song_whisper(station=None):
-    """Whisper만 강제 테스트"""
+    """Whisper  """
     if not PLAYER_PROC:
         print(f"  {t('no_playing')}\n")
         return None
@@ -2298,7 +2298,7 @@ def recognize_song_whisper(station=None):
     return None
 
 def show_recognized_songs():
-    """recognition된 song 목rock 표시"""
+    """recognition song rock """
     songs = load_recognized_songs()
     if not songs:
         print(f"\n  {t('no_recognized')} (i)\n")
@@ -2313,7 +2313,7 @@ def show_recognized_songs():
     print()
 
 def mpv_command(cmd):
-    """mpv IPC 명령 전송"""
+    """mpv IPC  """
     if not os.path.exists(MPV_SOCKET):
         return False
     try:
@@ -2328,7 +2328,7 @@ def mpv_command(cmd):
         return False
 
 def mpv_get_property(prop):
-    """mpv IPC로 속성 fetch"""
+    """mpv IPC  fetch"""
     if not os.path.exists(MPV_SOCKET):
         return None
     try:
@@ -2381,7 +2381,7 @@ def volume_down(step=10):
         set_volume(new_vol)
 
 def show_volume():
-    """Get current volume 표시"""
+    """Get current volume """
     vol = get_volume()
     if vol is not None:
         print(f"  🔊 {t('volume_label')}: {int(vol)}%\n")
@@ -2392,7 +2392,7 @@ def show_volume():
 # Station status check
 # ============================================================
 def check_station_url(url):
-    """스테이션 URL 상태 체크"""
+    """ URL  """
     try:
         req = urllib.request.Request(url, method='HEAD', headers={
             'User-Agent': 'RadioCli/1.0'
@@ -2531,15 +2531,15 @@ def cancel_alarm():
         print(f"  {t('alarm_not_set')}\n")
 
 def pause_radio():
-    """radio 일시정지"""
+    """radio """
     mpv_command(["set_property", "pause", True])
 
 def resume_radio():
-    """radio 재items"""
+    """radio items"""
     mpv_command(["set_property", "pause", False])
 
 def speak(text, voice=None, pause_radio_playback=True):
-    """TTS로 말하기 (Edge TTS)"""
+    """TTS  (Edge TTS)"""
     voice = voice or TTS_VOICE
     try:
         # 1. Pause if playing radio
@@ -2578,7 +2578,7 @@ def speak(text, voice=None, pause_radio_playback=True):
         return False
 
 def dj_announce_station(station):
-    """broadcast countries 소items - 다country어 DJ"""
+    """broadcast countries items - country DJ"""
     if not DJ_ENABLED:
         return
 
@@ -2598,7 +2598,7 @@ def dj_announce_station(station):
     speak(text, voice=lang_data["voice"])
 
 def dj_announce_song(title, station=None):
-    """현재 song 소items - 다country어 DJ"""
+    """ song items - country DJ"""
     if not DJ_ENABLED or not title:
         return
 
@@ -2623,7 +2623,7 @@ def dj_announce_song(title, station=None):
     speak(text, voice=lang_data["voice"])
 
 def toggle_dj():
-    """DJ 모드 토글"""
+    """DJ  """
     global DJ_ENABLED
     DJ_ENABLED = not DJ_ENABLED
     if DJ_ENABLED:
@@ -2648,7 +2648,7 @@ def save_playlists(playlists):
         json.dump(playlists, f, ensure_ascii=False, indent=2)
 
 def create_smart_playlist(name, criteria):
-    """스마트 플레이리스트 생성"""
+    """  """
     stations = []
 
     if criteria == "favorites":
@@ -2692,7 +2692,7 @@ def create_smart_playlist(name, criteria):
     return 0
 
 def show_playlists():
-    """플레이리스트 목rock"""
+    """ rock"""
     playlists = load_playlists()
     if not playlists:
         print(f"\n  {t('no_playlist')}")
@@ -2710,7 +2710,7 @@ def show_playlists():
     return list(playlists.keys())
 
 def get_playlist_stations(name):
-    """플레이리스트의 broadcast countries 목rock"""
+    """ broadcast countries rock"""
     playlists = load_playlists()
     if name in playlists:
         return playlists[name].get("stations", [])
@@ -2725,7 +2725,7 @@ def get_playlist_stations(name):
     return []
 
 def delete_playlist(name):
-    """플레이리스트 삭제"""
+    """ """
     playlists = load_playlists()
     # Delete by number
     try:
@@ -2751,7 +2751,7 @@ def stop():
     return True
 
 def get_llm_status():
-    """LLM 상태 확인"""
+    """LLM  """
     if LLM_PROVIDER == "none":
         return "off"
     if LLM_PROVIDER == "ollama" or LLM_PROVIDER == "auto":
@@ -2768,7 +2768,7 @@ def get_llm_status():
     return "keyword"
 
 def display_width(s):
-    """문자열의 표시 너rain 계산 (CJK/이모지는 2칸)"""
+    """  rain  (CJK/ 2)"""
     import unicodedata
     width = 0
     for c in s:
@@ -2782,13 +2782,13 @@ def display_width(s):
     return width
 
 def pad_right(s, total_width):
-    """오른쪽 패딩 (표시 너rain 기준)"""
+    """  ( rain )"""
     current = display_width(s)
     padding = max(0, total_width - current)
     return s + ' ' * padding
 
 def truncate(s, max_width):
-    """최대 너rain로 자르기"""
+    """ rain """
     width = 0
     result = []
     for c in s:
@@ -2902,8 +2902,8 @@ def main():
         if cmd == "!":
             global USE_API
             USE_API = not USE_API
-            mode_str = "DB+API" if USE_API else "DB만 (fast)"
-            print(f"  search 모드: {mode_str}\n")
+            mode_str = "DB+API" if USE_API else "DB (fast)"
+            print(f"  search : {mode_str}\n")
             continue
 
         # Resume (last station)
@@ -2922,7 +2922,7 @@ def main():
                 play_start_time = time.time()
                 print(f"  {t('help_after_play')}")
             else:
-                print("  마지막 playback broadcast이 없습니다.\n")
+                print("   playback broadcast .\n")
             continue
 
         # Stop
@@ -2999,7 +2999,7 @@ def main():
             global SONG_MONITOR_ENABLED
             SONG_MONITOR_ENABLED = not SONG_MONITOR_ENABLED
             status = "ON" if SONG_MONITOR_ENABLED else "OFF"
-            print(f"  song 기rock: {status}\n")
+            print(f"  song rock: {status}\n")
             continue
 
         # Delete song records
@@ -3203,7 +3203,7 @@ def main():
         if cmd == "<" or cmd == ",":
             favs = load_favorites()
             if not favs:
-                print("  즐겨찾기가 rain어있습니다.\n")
+                print("   rain.\n")
                 continue
             if PLAYER_PROC and current_station and play_start_time:
                 duration = int(time.time() - play_start_time)
@@ -3223,7 +3223,7 @@ def main():
         if cmd == ">" or cmd == ".":
             favs = load_favorites()
             if not favs:
-                print("  즐겨찾기가 rain어있습니다.\n")
+                print("   rain.\n")
                 continue
             if PLAYER_PROC and current_station and play_start_time:
                 duration = int(time.time() - play_start_time)
@@ -3343,7 +3343,7 @@ if __name__ == "__main__":
     # --cleanup: Remove dead stations
     if len(sys.argv) > 1 and sys.argv[1] == "--cleanup":
         count = cleanup_dead_stations()
-        print(f"죽은 broadcast {count}items 삭제됨")
+        print(f" broadcast {count}items ")
         sys.exit(0)
 
     # --db-stats: DB statistics
@@ -3358,16 +3358,16 @@ if __name__ == "__main__":
             cursor.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 0")
             dead = cursor.fetchone()[0]
             conn.close()
-            print(f"DB 통계: 전체 {total}items, 활성 {alive}items, 죽음 {dead}items")
+            print(f"DB :  {total}items,  {alive}items,  {dead}items")
         else:
-            print("DB 파일 없음")
+            print("DB  ")
         sys.exit(0)
 
     main()
 
 # === Click tracking (our API) ===
 def record_click(station):
-    """playback 시 click 기rock"""
+    """playback  click rock"""
     if not station:
         return
     station_id = station.get("stationuuid") or station.get("id")

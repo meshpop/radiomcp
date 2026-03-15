@@ -41,7 +41,7 @@ Repository = "https://github.com/meshpop/radiomcp"
 Issues = "https://github.com/meshpop/radiomcp/issues"
 
 [project.optional-dependencies]
-# audio = ["miniaudio>=1.60"]  # TODO: 스트리밍 지원 후 활성화
+# audio = ["miniaudio>=1.60"]  # TODO:    
 dev = [
     "pytest",
     "black",

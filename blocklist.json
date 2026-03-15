@@ -3,7 +3,7 @@
   "updated": "2026-03-02",
   "blocked": [
     {
-      "pattern": "평양",
+      "pattern": "",
       "reason": "blocked content",
       "added": "2026-03-02"
     },
@@ -23,7 +23,7 @@
       "added": "2026-03-02"
     },
     {
-      "pattern": "조선중앙",
+      "pattern": "",
       "reason": "blocked content",
       "added": "2026-03-02"
     },
