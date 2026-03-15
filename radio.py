@@ -676,12 +676,12 @@ LANG_MAP = {
     "trot": "trot", "trot": "trot", "トロット": "trot", "연가": "trot",
     # Religious
     "종교": "religious", "religious": "religious", "christian": "religious",
-    "gospel": "religious", "기독교": "religious", "찬송": "religious",
+    "gospel": "religious", "christian": "religious", "찬송": "religious",
     # Kids
     "어린이": "children", "children": "children", "kids": "children",
     "子供": "children", "儿童": "children", "키즈": "children",
     # Oldies
-    "올디스": "oldies", "oldies": "oldies", "オールディーズ": "oldies",
+    "oldies": "oldies", "oldies": "oldies", "オールディーズ": "oldies",
     "80년대": "80s", "80s": "80s", "90년대": "90s", "90s": "90s",
     "70년대": "70s", "70s": "70s", "60년대": "60s", "60s": "60s",
 
@@ -1409,7 +1409,7 @@ def get_high_quality(limit=30):
     return api_request("stations/search", params)
 
 def get_premium(limit=30):
-    """Premium stations (high quality + popular) - metadata 풍부할 가능성 높음"""
+    """Premium stations (high quality + popular) - metadata rich possibility 높음"""
     params = {
         "bitrateMin": 192,
         "order": "votes",
@@ -1679,7 +1679,7 @@ def update_station_url(old_url, new_url):
 def play(url, name="", use_fresh_url=True):
     """
     Play radio
-    use_fresh_url=True: API에서 최신 URL 먼저 가져옴 (token expiration handling)
+    use_fresh_url=True: API에서 최신 URL 먼저 fetched (token expiration handling)
     """
     global PLAYER_PROC
     stop()
@@ -1768,7 +1768,7 @@ def is_advertisement(title):
     return False
 
 def get_current_song():
-    """Get current playing song info 가져오기 (mpv IPC)"""
+    """Get current playing song info fetch (mpv IPC)"""
     if PLAYER != "mpv" or not os.path.exists(MPV_SOCKET):
         return None
 
@@ -1857,7 +1857,7 @@ def add_song_to_history(raw_title, station_name):
     save_songs(songs)
 
 def check_song_change(station_name):
-    """song 변경 감지하고 기rock"""
+    """song 변경 detect하고 기rock"""
     song = get_current_song()
     if song and song.get("title") and not song.get("is_ad"):
         add_song_to_history(song["title"], station_name)
@@ -2350,7 +2350,7 @@ def mpv_command(cmd):
         return False
 
 def mpv_get_property(prop):
-    """mpv IPC로 속성 가져오기"""
+    """mpv IPC로 속성 fetch"""
     if not os.path.exists(MPV_SOCKET):
         return None
     try:
@@ -2383,7 +2383,7 @@ def set_volume(level):
     return False
 
 def get_volume():
-    """Get current volume 가져오기"""
+    """Get current volume fetch"""
     if PLAYER != "mpv":
         return None
     return mpv_get_property("volume")

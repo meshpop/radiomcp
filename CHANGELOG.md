@@ -13,14 +13,14 @@
 
 #### AI Helper Tools
 - `get_radio_guide()` - AI용 사용 가이드
-- `get_categories()` - 대분류 목rock (음악/news/스포츠)
+- `get_categories()` - 대분류 목rock (음악/news/sports)
 - `get_listening_stats(period)` - 기간별 청취 통계
 - `check_stream(url)` - stream 생존 확인
 - `similar_stations()` - 유사 broadcast 추천
 - `expand_search(query)` - search어 확장
 
 #### search items선
-- **country명 감지**: "korea news" → KR + news 필터
+- **country명 detect**: "korea news" → KR + news 필터
 - **한글 태그 search**: "news" + "news" 둘 다 search
 - **country 필터 강제**: API 결과도 country 필터 적용
 

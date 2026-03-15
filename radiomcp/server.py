@@ -774,8 +774,8 @@ LANG_MAP = {
     "summer": "summer", "winter": "winter", "rain": "rain", "nature": "nature",
     "classical": "classical", "orchestra": "orchestra", "symphony": "symphony",
     "오페라": "opera", "musical": "musical", "soundtrack": "soundtrack",
-    "게임음악": "game", "애니메이션": "anime", "동요": "children",
-    "종교": "religious", "찬송가": "gospel", "불교": "buddhist",
+    "game music": "game", "animation": "anime", "children song": "children",
+    "종교": "religious", "찬송가": "gospel", "buddhist": "buddhist",
 
     # Japanese
     "ジャズ": "jazz", "クラシック": "classical", "ロック": "rock", "ポップ": "pop",
