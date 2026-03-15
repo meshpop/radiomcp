@@ -29,17 +29,16 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          python3 - << 'PYEOF'
+          python3 << 'PYEOF'
           import json, os, re, sys
           from datetime import datetime
 
           body = os.environ.get("ISSUE_BODY", "")
-          title = os.environ.get("ISSUE_TITLE", "")
           issue_num = os.environ.get("ISSUE_NUMBER", "0")
 
-          def extract_field(body, label):
-              pattern = rf"### {re.escape(label)}\\s*\\n\\s*(.+?)\\s*(?=###|$)"
-              m = re.search(pattern, body, re.DOTALL)
+          def extract_field(text, label):
+              pattern = r"### " + re.escape(label) + r"\s*\n\s*(.+?)(?=\n### |\Z)"
+              m = re.search(pattern, text, re.DOTALL)
               if m:
                   val = m.group(1).strip()
                   if val and val != "_No response_" and val != "None":
@@ -50,6 +49,8 @@ jobs:
           stream_url = extract_field(body, "Stream URL")
           station_uuid = extract_field(body, "Station UUID")
           reason = extract_field(body, "Reason for Takedown")
+
+          print(f"Parsed: name={station_name}, url={stream_url}, uuid={station_uuid}")
 
           if not station_name and not stream_url and not station_uuid:
               print("ERROR: No station identifier found in issue")
@@ -113,8 +114,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const summary = '${{ steps.parse.outputs.summary }}';
-            const body = '## Takedown Processed\n\nThe following entries have been added to the blocklist: **' + summary + '**\n\nThis will take effect for all RadioMCP clients on their next blocklist sync (within 1 hour).\n\nIf you need immediate removal or have questions, contact mpop@mpop.dev.\n\n---\n*This action was performed automatically by the RadioMCP takedown bot.*';
+            const summary = `${{ steps.parse.outputs.summary }}`;
+            const body = `## Takedown Processed\n\nThe following entries have been added to the blocklist: **${summary}**\n\nThis will take effect for all RadioMCP clients on their next blocklist sync (within 1 hour).\n\nIf you need immediate removal or have questions, contact mpop@mpop.dev.\n\n---\n*This action was performed automatically by the RadioMCP takedown bot.*`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
