@@ -1,0 +1,659 @@
+{
+  "serverInfo": {
+    "name": "Radiomcp",
+    "version": "1.0.0"
+  },
+  "tools": [
+    {
+      "name": "search",
+      "description": "Search radio stations by keyword. Fast local DB search (~5ms).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "advanced_search",
+      "description": "Advanced search with multiple filters combined.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "string"
+          },
+          "min_bitrate": {
+            "type": "string"
+          },
+          "codec": {
+            "type": "string"
+          },
+          "sort_by": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "search_by_country",
+      "description": "Search radio stations by country.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code"
+        ]
+      }
+    },
+    {
+      "name": "search_by_language",
+      "description": "Search radio stations by language.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ]
+      }
+    },
+    {
+      "name": "get_popular",
+      "description": "Get popular radio stations from local DB.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "play",
+      "description": "Play a radio station.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "stop",
+      "description": "Stop radio playback.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_player_backend",
+      "description": "Get current player backend info.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "set_player_backend",
+      "description": "Set player backend.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "resume",
+      "description": "Resume last playing station.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "now_playing",
+      "description": "Get current song info.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "recognize_song",
+      "description": "Recognize current playing song using multiple methods.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "duration": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_recognized_songs",
+      "description": "Get history of recognized songs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_favorites",
+      "description": "Get favorite stations list.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_favorite",
+      "description": "Add station to favorites.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "station": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "station"
+        ]
+      }
+    },
+    {
+      "name": "remove_favorite",
+      "description": "Remove station from favorites by index (0-based).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index"
+        ]
+      }
+    },
+    {
+      "name": "play_favorite",
+      "description": "Play a station from favorites.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_history",
+      "description": "Get listening history.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "recommend",
+      "description": "Get mood-based recommendations.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mood": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_db_stats",
+      "description": "Get database statistics.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "purge_dead",
+      "description": "Delete all dead stations from database.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "health_check",
+      "description": "Check health of stations by testing URLs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "sync_with_api",
+      "description": "Sync database with RadioGraph API.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "set_sleep_timer",
+      "description": "Set sleep timer to stop radio after specified minutes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      }
+    },
+    {
+      "name": "set_alarm",
+      "description": "Set alarm to start playing radio at specified time.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "hour": {
+            "type": "string"
+          },
+          "minute": {
+            "type": "string"
+          },
+          "station_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hour"
+        ]
+      }
+    },
+    {
+      "name": "set_volume",
+      "description": "Set playback volume.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "level"
+        ]
+      }
+    },
+    {
+      "name": "get_volume",
+      "description": "Get current volume level.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "similar_stations",
+      "description": "Find similar stations based on currently playing station's tags.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "similar_artists",
+      "description": "Find artists with similar radio programming patterns using SVD embeddings.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "artist": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist"
+        ]
+      }
+    },
+    {
+      "name": "search_artist",
+      "description": "Search for artists in the SVD embeddings database.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "recommend_by_weather",
+      "description": "Recommend stations based on current weather.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_profile",
+      "description": "Analyze listening history to build user preference profile.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "personalized_recommend",
+      "description": "Recommend stations based on user's listening patterns.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "recommend_by_time",
+      "description": "Recommend stations based on current time of day.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_blocklist",
+      "description": "Get current blocklist status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "refresh_blocklist",
+      "description": "Refresh blocklist from GitHub and purge blocked stations from DB.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "add_to_blocklist",
+      "description": "Add a station to the blocklist by name pattern, URL, or UUID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "remove_from_blocklist",
+      "description": "Remove an entry from the blocklist.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_radio_guide",
+      "description": "IMPORTANT: Call this first when user asks about radio.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "expand_search",
+      "description": "Get related search terms to expand search results.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "get_radio_status",
+      "description": "Get current radio system status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "check_stream",
+      "description": "Check if a stream URL is alive before playing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "check_stream_detailed",
+      "description": "Check stream with detailed info via G3 validator (if enabled).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "get_categories",
+      "description": "Get major station categories for quick navigation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_listening_stats",
+      "description": "Get listening statistics for a specific period.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "check_station",
+      "description": "Check if a radio station URL is alive.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "share_station",
+      "description": "Get shareable info for current or specified station.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    }
+  ],
+  "resources": [],
+  "prompts": []
+}
