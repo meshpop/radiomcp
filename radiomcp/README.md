@@ -123,7 +123,9 @@ See [HELP.md](HELP.md) for complete documentation.
 
 ## Data Sources
 
-- [Radio Browser](https://www.radio-browser.info/) - station metadata ([ODbL](https://opendatacommons.org/licenses/odbl/))- [Whisper](https://github.com/openai/whisper) - DJ speech recognition
+- [Radio Browser](https://www.radio-browser.info/) - station metadata ([ODbL](https://opendatacommons.org/licenses/odbl/))
+- [Icecast Directory](https://dir.xiph.org/) - additional stations (open source)
+- [Whisper](https://github.com/openai/whisper) - DJ speech recognition
 - [wttr.in](https://wttr.in/) - weather data
 
 ## License

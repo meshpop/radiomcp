@@ -11,6 +11,7 @@ Build the most complete and high-quality radio station database, independent of 
 | Source | Stations | API | Notes |
 |--------|----------|-----|-------|
 | Radio Browser | 40K+ | Public REST | Community-driven, variable quality |
+| Icecast | 15K+ | Yellow Pages | Direct listing |
 | Radio Garden | 30K+ | Unofficial | Geo-based, good coverage |
 
 ### Tier 2: IPTV/Playlist Aggregation

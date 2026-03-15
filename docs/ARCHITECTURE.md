@@ -94,6 +94,7 @@
 ### 1. New Station Discovery
 ```
 Radio Browser API ──▶ sync_radiobrowser.py ──▶ radio_unified.db
+Icecast Directory ──▶                         ───▶
 ```
 
 ### 2. Station Validation

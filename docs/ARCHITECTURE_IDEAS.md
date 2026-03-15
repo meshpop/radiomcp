@@ -10,6 +10,7 @@
 
 ### Data Sources
 - Radio Browser API: 27K stations
+- Icecast directory: 14K stations
 
 ---
 
