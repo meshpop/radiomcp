@@ -6,8 +6,8 @@ import sqlite3
 import re
 from datetime import datetime
 
-BLOCKLIST_FILE = '/home/dragon/radio_blocklist.json'
-UNIFIED_DB = '/home/dragon/radio_unified.db'
+BLOCKLIST_FILE = '/opt/radiomcp/data/radio_blocklist.json'
+UNIFIED_DB = '/opt/radiomcp/data/radio_unified.db'
 
 
 def load_blocklist():

@@ -24,7 +24,7 @@ def translate_search_query(query):
     return ' '.join(translated)
 
 
-DB = '/home/dragon/radio_unified.db'
+DB = '/opt/radiomcp/data/radio_unified.db'
 # Common country name aliases
 from korean_resolvers import resolve_url, KOREAN_STATIONS
 
@@ -388,7 +388,7 @@ class RadioAPI(BaseHTTPRequestHandler):
             # / (API info) - serve HTML homepage
             elif path in ['', '/', '/json']:
                 try:
-                    with open('/home/dragon/radio_api_home.html', 'rb') as f:
+                    with open('/opt/radiomcp/data/radio_api_home.html', 'rb') as f:
                         html = f.read()
                     self.send_response(200)
                     self.send_header('Content-Type', 'text/html; charset=utf-8')

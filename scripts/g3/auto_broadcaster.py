@@ -12,8 +12,8 @@ import requests
 from datetime import datetime
 from typing import Optional, Dict, List
 
-REGISTRY_FILE = '/home/dragon/broadcaster_registry.json'
-DB_FILE = '/home/dragon/radio_unified.db'
+REGISTRY_FILE = '/opt/radiomcp/data/broadcaster_registry.json'
+DB_FILE = '/opt/radiomcp/data/radio_unified.db'
 TIMEOUT = 10
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 HEADERS = {'User-Agent': UA}
