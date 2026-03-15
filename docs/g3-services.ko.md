@@ -4,7 +4,7 @@ g3 서버에서 운영 중인 검증/데이터 서비스 목록.
 
 ## URL Validator API
 
-**위치**: `/home/dragon/url_validator_api.py`
+**위치**: `/opt/radiomcp/url_validator_api.py`
 **포트**: 8100
 **상태**: 운영 중
 
@@ -53,7 +53,7 @@ POST http://g3:8100/api/validate/batch
 
 ## RSS Feed Directory
 
-**위치**: `/home/dragon/rss-directory/`
+**위치**: `/opt/radiomcp/rss-directory/`
 **DB**: `global_feeds.db` (1,171 피드)
 
 ### 파일 구조
@@ -103,7 +103,7 @@ GET http://g3:{port}/api/newspapers?country=KR
 
 ## Radio Stations DB
 
-**위치**: `/home/dragon/radio_stations.db`
+**위치**: `/opt/radiomcp/radio_stations.db`
 **크기**: 9.5MB (27,196개 → 정리 후 24,414개)
 
 로컬에 복사해서 사용 중 (`~/RadioCli/radio_stations.db`)

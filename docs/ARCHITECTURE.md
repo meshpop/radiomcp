@@ -217,7 +217,7 @@ User Input          → Keyword Lookup    → DB Search
 ## File Structure (g3 Server)
 
 ```
-/home/dragon/
+/opt/radiomcp/
 ├── radio_api_v4.py          # Main API server (port 8092)
 ├── radio_unified.db         # SQLite database (51,915 stations)
 ├── korean_resolvers.py      # KBS, MBC, YTN URL resolvers
@@ -266,11 +266,11 @@ Claude → MCP Server → g3 API → Stream URL → mpv
 
 ```bash
 # API Server (systemd or nohup)
-nohup python3 /home/dragon/radio_api_v4.py > /tmp/radio_api.log 2>&1 &
+nohup python3 /opt/radiomcp/radio_api_v4.py > /tmp/radio_api.log 2>&1 &
 
 # Cron Jobs
-0 2 * * * /usr/bin/python3 /home/dragon/radio_revalidate_v2.py
-0 5 * * * /usr/bin/python3 /home/dragon/sync_radiobrowser.py
-0 7 * * * /usr/bin/python3 /home/dragon/auto_broadcaster.py
-0 8 * * 0 /usr/bin/python3 /home/dragon/shoutcast_crawler.py
+0 2 * * * /usr/bin/python3 /opt/radiomcp/radio_revalidate_v2.py
+0 5 * * * /usr/bin/python3 /opt/radiomcp/sync_radiobrowser.py
+0 7 * * * /usr/bin/python3 /opt/radiomcp/auto_broadcaster.py
+0 8 * * 0 /usr/bin/python3 /opt/radiomcp/shoutcast_crawler.py
 ```

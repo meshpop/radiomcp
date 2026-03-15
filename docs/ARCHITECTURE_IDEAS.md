@@ -79,7 +79,7 @@ if manifest.version > local_version:
 
 ### g3 (Daily)
 ```bash
-# /home/dragon/export_radio_db.sh
+# /opt/radiomcp/export_radio_db.sh
 #!/bin/bash
 sqlite3 radio_unified.db ".dump" | gzip > /var/www/radio_db.sql.gz
 echo $(date +%Y%m%d) > /var/www/radio_db_version.txt
