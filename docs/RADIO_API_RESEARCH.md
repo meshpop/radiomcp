@@ -347,7 +347,6 @@ RATE_LIMITS = {
     'default': 1.0,        # 1 request per second
     'shoutcast.com': 2.0,  # Be nice
     'tunein.com': 3.0,     # Very cautious
-    'radio.garden': 1.0,
 }
 
 # Respect robots.txt

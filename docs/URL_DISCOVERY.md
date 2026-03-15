@@ -22,16 +22,6 @@ Process:
 **Pros:** Easy, thousands of URLs, community maintained
 **Cons:** Overlap with existing sources, quality varies
 
-### 2. Radio Garden API
-```
-Endpoints:
-- http://radio.garden/api/ara/content/places (all locations)
-- http://radio.garden/api/ara/content/page/{id} (station details)
-
-Already have: radio_garden_final.py on g3
-~30,000+ stations with geo data
-```
-
 ### 3. Playlist File Collection
 ```
 Search:
@@ -185,58 +175,6 @@ if __name__ == "__main__":
 
 ---
 
-## Implementation: Radio Garden Sync
-
-```python
-#!/usr/bin/env python3
-"""Sync stations from Radio Garden API"""
-import requests
-import sqlite3
-import time
-
-API_BASE = "http://radio.garden/api/ara/content"
-
-def get_all_places():
-    """Get all locations with radio stations"""
-    resp = requests.get(f"{API_BASE}/places", timeout=30)
-    data = resp.json()
-    return data.get('data', {}).get('list', [])
-
-def get_place_channels(place_id: str):
-    """Get radio stations for a location"""
-    resp = requests.get(f"{API_BASE}/page/{place_id}/channels", timeout=10)
-    data = resp.json()
-    return data.get('data', {}).get('content', [])
-
-def get_stream_url(channel_id: str):
-    """Get actual stream URL for a channel"""
-    # Radio Garden uses redirect
-    url = f"http://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3"
-    try:
-        resp = requests.head(url, allow_redirects=True, timeout=10)
-        return resp.url
-    except:
-        return None
-
-def main():
-    places = get_all_places()
-    print(f"Found {len(places)} locations")
-
-    for place in places[:10]:  # Test with first 10
-        place_id = place['id']
-        channels = get_place_channels(place_id)
-
-        for ch in channels:
-            stream_url = get_stream_url(ch['id'])
-            print(f"{ch.get('title')}: {stream_url}")
-
-        time.sleep(0.5)  # Rate limit
-
-if __name__ == "__main__":
-    main()
-```
-
----
 
 ## Data Quality
 
