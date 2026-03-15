@@ -17,7 +17,7 @@
 If you are a copyright holder and believe your content is being streamed without authorization:
 1. Contact the radio station directly (we do not host streams)
 2. Submit a removal request to Radio Browser API
-3. For blocklist additions, open an issue at: https://github.com/dragonflydiy/radiomcp/issues
+3. For blocklist additions, open an issue at: https://github.com/meshpop/radiomcp/issues
 
 ### User Responsibility
 - Users are responsible for complying with local laws regarding radio streaming
@@ -42,7 +42,7 @@ If you are a copyright holder and believe your content is being streamed without
 저작권자이며 무단 스트리밍되고 있다고 판단되는 경우:
 1. 라디오 방송국에 직접 연락하세요 (저희는 스트림을 호스팅하지 않습니다)
 2. Radio Browser API에 삭제 요청을 제출하세요
-3. 블록리스트 추가는 이슈를 열어주세요: https://github.com/dragonflydiy/radiomcp/issues
+3. 블록리스트 추가는 이슈를 열어주세요: https://github.com/meshpop/radiomcp/issues
 
 ### 사용자 책임
 - 사용자는 라디오 스트리밍 관련 현지 법률을 준수할 책임이 있습니다

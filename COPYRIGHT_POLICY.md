@@ -10,7 +10,7 @@ Stream URLs are provided by third-party radio stations and public directories.
 ### Step 1: Submit Request
 Copyright holders can submit takedown requests via:
 - GitHub Issues: https://github.com/meshpop/radiomcp/issues
-- Email: copyright@airtune.ai
+- Email: mpop@mpop.dev
 
 Required information:
 - Station name or stream URL
@@ -60,7 +60,7 @@ Upon receiving a valid takedown request:
 
 ## Contact
 - GitHub: https://github.com/meshpop/radiomcp/issues
-- Email: copyright@airtune.ai
+- Email: mpop@mpop.dev
 
 ## Data Sources
 - [Radio Browser](https://www.radio-browser.info/) — ODbL 1.0 License
