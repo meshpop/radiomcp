@@ -5,4 +5,4 @@ COPY . .
 RUN pip install --no-cache-dir -e .
 
 EXPOSE 8000
-CMD ["python", "-m", "radiomcp"]
+CMD ["python", "-m", "radiomcp", "--transport", "sse", "--port", "8000"]

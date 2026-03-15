@@ -4419,24 +4419,57 @@ def _init_background():
     blocklist_thread.start()
 
 
-def main_mcp():
-    """Run as MCP stdio server (for Claude)"""
+def main_mcp(transport="stdio", port=8000):
+    """Run as MCP server (stdio or HTTP)
+    
+    Args:
+        transport: "stdio" (default) or "sse"/"streamable-http"
+        port: Port for HTTP transport (default 8000)
+    """
     import sys
     if not _HAS_MCP:
-        sys.stderr.write("[radiomcp] ERROR: MCP package not installed.\n")
-        sys.stderr.write("Install with: pip install 'mcp[cli]>=1.0.0'\n")
-        sys.stderr.write("CLI commands still work: radiomcp search jazz\n")
+        sys.stderr.write("[radiomcp] ERROR: MCP package not installed.
+")
+        sys.stderr.write("Install with: pip install 'mcp[cli]>=1.0.0'
+")
+        sys.stderr.write("CLI commands still work: radiomcp search jazz
+")
         sys.exit(1)
-    sys.stderr.write(f"[radiomcp] Starting MCP server PID={os.getpid()}\n")
-    sys.stderr.flush()
+    
     _init_background()
-    try:
-        mcp.run()
-    except Exception as e:
-        sys.stderr.write(f"[radiomcp] Fatal error: {e}\n")
-        raise
-    finally:
-        sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}\n")
+    
+    if transport == "stdio":
+        sys.stderr.write(f"[radiomcp] Starting MCP stdio server PID={os.getpid()}
+")
+        sys.stderr.flush()
+        try:
+            mcp.run()
+        except Exception as e:
+            sys.stderr.write(f"[radiomcp] Fatal error: {e}
+")
+            raise
+        finally:
+            sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}
+")
+    
+    elif transport in ("sse", "streamable-http"):
+        sys.stderr.write(f"[radiomcp] Starting MCP HTTP/SSE server on port {port} PID={os.getpid()}
+")
+        sys.stderr.flush()
+        try:
+            mcp.run(transport="sse", port=port)
+        except Exception as e:
+            sys.stderr.write(f"[radiomcp] Fatal error: {e}
+")
+            raise
+        finally:
+            sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}
+")
+    
+    else:
+        sys.stderr.write(f"[radiomcp] ERROR: Unknown transport '{transport}'. Use 'stdio', 'sse', or 'streamable-http'
+")
+        sys.exit(1)
 
 
 def _get_openapi_spec(host="localhost:8100"):
@@ -5276,16 +5309,54 @@ EXAMPLES:
 
 
 def main():
-    """Entry point — detects mode from arguments"""
+    """Entry point - detects mode from arguments"""
     import sys
 
     if len(sys.argv) > 1:
-        # CLI or serve mode
-        main_cli(sys.argv[1:])
+        # Parse for --transport and --port flags
+        transport = "stdio"
+        port = 8000
+        args = []
+        
+        i = 0
+        while i < len(sys.argv[1:]):
+            arg = sys.argv[i + 1]
+            if arg == "--transport":
+                if i + 2 < len(sys.argv):
+                    transport = sys.argv[i + 2]
+                    i += 2
+                else:
+                    sys.stderr.write("ERROR: --transport requires a value
+")
+                    sys.exit(1)
+            elif arg == "--port":
+                if i + 2 < len(sys.argv):
+                    try:
+                        port = int(sys.argv[i + 2])
+                    except ValueError:
+                        sys.stderr.write(f"ERROR: --port must be an integer, got '{sys.argv[i + 2]}'
+")
+                        sys.exit(1)
+                    i += 2
+                else:
+                    sys.stderr.write("ERROR: --port requires a value
+")
+                    sys.exit(1)
+            else:
+                args.append(arg)
+                i += 1
+            i += 1
+        
+        # Check if we're running as MCP with transport/port flags (no other args)
+        if not args:
+            # MCP mode with explicit transport
+            main_mcp(transport=transport, port=port)
+        else:
+            # CLI mode
+            main_cli(args)
     else:
         # Default: MCP stdio server
         main_mcp()
-
 
 if __name__ == "__main__":
     main()
