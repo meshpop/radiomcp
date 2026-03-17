@@ -4,8 +4,7 @@ Radio MCP Server - Internet radio search and playback
 SQLite DB first, RadioGraph API fallback
 
 Station database derived from Radio Browser (https://www.radio-browser.info/)
-Data licensed under ODbL 1.0. See DATA_LICENSE.md and ATTRIBUTION.md.
-"""
+Data licensed under ODbL 1.0. See DATA_LICENSE.md and ATTRIBUTION.md.\n"""
 from __future__ import annotations
 
 import json
@@ -4428,47 +4427,37 @@ def main_mcp(transport="stdio", port=8000):
     """
     import sys
     if not _HAS_MCP:
-        sys.stderr.write("[radiomcp] ERROR: MCP package not installed.
-")
-        sys.stderr.write("Install with: pip install 'mcp[cli]>=1.0.0'
-")
-        sys.stderr.write("CLI commands still work: radiomcp search jazz
-")
+        sys.stderr.write("[radiomcp] ERROR: MCP package not installed.\n")
+        sys.stderr.write("Install with: pip install 'mcp[cli]>=1.0.0'\n")
+        sys.stderr.write("CLI commands still work: radiomcp search jazz\n")
         sys.exit(1)
     
     _init_background()
     
     if transport == "stdio":
-        sys.stderr.write(f"[radiomcp] Starting MCP stdio server PID={os.getpid()}
-")
+        sys.stderr.write(f"[radiomcp] Starting MCP stdio server PID={os.getpid()}\n")
         sys.stderr.flush()
         try:
             mcp.run()
         except Exception as e:
-            sys.stderr.write(f"[radiomcp] Fatal error: {e}
-")
+            sys.stderr.write(f"[radiomcp] Fatal error: {e}\n")
             raise
         finally:
-            sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}
-")
+            sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}\n")
     
     elif transport in ("sse", "streamable-http"):
-        sys.stderr.write(f"[radiomcp] Starting MCP HTTP/SSE server on port {port} PID={os.getpid()}
-")
+        sys.stderr.write(f"[radiomcp] Starting MCP HTTP/SSE server on port {port} PID={os.getpid()}\n")
         sys.stderr.flush()
         try:
             mcp.run(transport="sse", port=port)
         except Exception as e:
-            sys.stderr.write(f"[radiomcp] Fatal error: {e}
-")
+            sys.stderr.write(f"[radiomcp] Fatal error: {e}\n")
             raise
         finally:
-            sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}
-")
+            sys.stderr.write(f"[radiomcp] Shutting down PID={os.getpid()}\n")
     
     else:
-        sys.stderr.write(f"[radiomcp] ERROR: Unknown transport '{transport}'. Use 'stdio', 'sse', or 'streamable-http'
-")
+        sys.stderr.write(f"[radiomcp] ERROR: Unknown transport '{transport}'. Use 'stdio', 'sse', or 'streamable-http'\n")
         sys.exit(1)
 
 
@@ -5069,8 +5058,7 @@ Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=default.target
-"""
+WantedBy=default.target\n"""
                 os.makedirs(os.path.dirname(service_path), exist_ok=True)
                 with open(service_path, "w") as f:
                     f.write(service_content)
@@ -5281,8 +5269,7 @@ EXAMPLES:
   radiomcp recommend focus
   radiomcp serve --port 8100
   radiomcp update
-  radiomcp config set radiograph_url https://api.airtune.ai
-""")
+  radiomcp config set radiograph_url https://api.airtune.ai\n""")
         return
 
     if cmd == "update":
@@ -5326,21 +5313,18 @@ def main():
                     transport = sys.argv[i + 2]
                     i += 2
                 else:
-                    sys.stderr.write("ERROR: --transport requires a value
-")
+                    sys.stderr.write("ERROR: --transport requires a value\n")
                     sys.exit(1)
             elif arg == "--port":
                 if i + 2 < len(sys.argv):
                     try:
                         port = int(sys.argv[i + 2])
                     except ValueError:
-                        sys.stderr.write(f"ERROR: --port must be an integer, got '{sys.argv[i + 2]}'
-")
+                        sys.stderr.write(f"ERROR: --port must be an integer, got '{sys.argv[i + 2]}'\n")
                         sys.exit(1)
                     i += 2
                 else:
-                    sys.stderr.write("ERROR: --port requires a value
-")
+                    sys.stderr.write("ERROR: --port requires a value\n")
                     sys.exit(1)
             else:
                 args.append(arg)
