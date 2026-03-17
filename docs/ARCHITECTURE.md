@@ -78,6 +78,8 @@
 │  │             └─ Refresh major broadcaster URLs (KBS, MBC, BBC)      │     │
 │  │                                                                     │     │
 
+│  │  [S] 08:00  _crawler.py (Sunday only)                     │     │
+│  │             └─ Crawl  directory                           │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
 │                              DATA SOURCES                                    │
@@ -86,6 +88,9 @@
 │  │Radio Browser│
 │  │  27,468     │
 │  └─────────────┘
+│  │Radio Browser│ │   Icecast   │ │       │ │    │           │
+│  │  27,468     │ │   14,253    │ │   10,042    │ │   (Weekly)  │           │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘           │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -95,6 +100,10 @@
 ```
 Radio Browser API ──▶ sync_radiobrowser.py ──▶ radio_unified.db
 Icecast Directory ──▶                         ───▶
+Radio Browser API ──┐
+Icecast Directory ──┼──▶ sync_radiobrowser.py ──▶ radio_unified.db
+ Scraper ─────┤                              (INSERT OR REPLACE)
+ Crawler ──┘
 ```
 
 ### 2. Station Validation
@@ -164,6 +173,7 @@ CREATE TABLE stations (
 
     -- Source tracking
     source TEXT,             -- radiobrowser
+    source TEXT,             -- radiobrowser, icecast, , etc.
     resolver TEXT,           -- kbs, mbc, ytn (for Korean)
     broadcaster TEXT,        -- Broadcaster registry ID
 
@@ -270,4 +280,5 @@ nohup python3 /opt/radiomcp/radio_api_v4.py > /tmp/radio_api.log 2>&1 &
 0 2 * * * /usr/bin/python3 /opt/radiomcp/radio_revalidate_v2.py
 0 5 * * * /usr/bin/python3 /opt/radiomcp/sync_radiobrowser.py
 0 7 * * * /usr/bin/python3 /opt/radiomcp/auto_broadcaster.py
+0 8 * * 0 /usr/bin/python3 /opt/radiomcp/_crawler.py
 ```

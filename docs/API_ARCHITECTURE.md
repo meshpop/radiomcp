@@ -38,6 +38,7 @@ The Radio API provides access to 50,000+ radio stations with real-time URL resol
 │               │    │ - KBS API     │   │ - Radio       │
 │ 50,000+       │    │ - MBC API     │   │   Browser     │
 │ stations      │    │ - YTN API     │   │               │
+│ stations      │    │ - YTN API     │   │ -    │
 │               │    │ - SBS (TODO)  │   │               │
 └───────────────┘    └───────────────┘   └───────────────┘
 ```
@@ -225,6 +226,7 @@ CREATE TABLE stations (
 |------|-----|-------------|
 | 04:00 | radio_revalidate_v2.py | Validate all station URLs |
 | 05:00 | sync_radiobrowser.py | Sync new stations from Radio Browser |
+| 06:00 Sun | _crawler.py | Crawl  directory |
 
 ## Health Scoring
 
