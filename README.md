@@ -1,6 +1,6 @@
 # Airtune
 
-Search and play 55,000+ internet radio stations from 200+ countries.
+Search and play 41,000+ verified internet radio stations from 200+ countries.
 
 Powered by [Airtune API](https://api.airtune.ai) | [korean](README.ko.md)
 
@@ -287,10 +287,10 @@ Station DB (`radio_stations.db`, 24k+ stations) is bundled with the package and 
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system architecture.
 
-**Data Pipeline (g3 server):**
+**Data Pipeline:**
 - Daily URL validation & new station sync
 - Korean broadcaster URL resolvers (KBS, MBC, YTN)
-- 40,000+ stations from Radio Browser + Icecast
+- Stations sourced from Radio Browser + Icecast directories
 
 ## License
 
