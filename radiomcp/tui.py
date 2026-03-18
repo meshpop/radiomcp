@@ -310,10 +310,14 @@ RECORD_WAV_FILE = os.path.join(DATA_DIR, "record_sample.wav")
 # === LLM Settings ===
 # RADIOCLI_LLM: none(default), auto, ollama, claude, openai
 LLM_PROVIDER = os.environ.get("RADIOCLI_LLM", "none")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:14b")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
 API_BASE = "https://api.airtune.ai"
 PLAYER = None
@@ -893,7 +897,7 @@ def call_claude(prompt):
     """Claude API """
     try:
         data = json.dumps({
-            "model": "claude-sonnet-4-20250514",
+            "model": CLAUDE_MODEL,
             "max_tokens": 200,
             "messages": [{"role": "user", "content": prompt}]
         }).encode()
@@ -919,7 +923,7 @@ def call_openai(prompt):
     """OpenAI API """
     try:
         data = json.dumps({
-            "model": "gpt-4o-mini",
+            "model": OPENAI_MODEL,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 200,
             "temperature": 0.1
