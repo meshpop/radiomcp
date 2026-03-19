@@ -68,8 +68,6 @@ exclude = [
 include = [
     "radiomcp/",
     "radio_stations.db",
-    "blocklist.json",
-    "languages.json",
     "pyproject.toml",
     "README.md",
     "LICENSE",
