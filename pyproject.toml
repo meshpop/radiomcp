@@ -54,6 +54,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["radiomcp"]
+artifacts = ["radiomcp/*.db", "radiomcp/*.json"]
 exclude = [
     "radiomcp/cron_maintenance.sh",
     "radiomcp/sync_from_unified.py",

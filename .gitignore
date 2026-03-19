@@ -33,3 +33,22 @@ docs/URL_DISCOVERY.md
 # OS
 .DS_Store
 Thumbs.db
+# Planning / internal docs (Korean, not for git)
+docs/RADIOGRAPH.md
+
+# More Python artifacts
+*.pyd
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# Secrets / certs
+*.key
+*.pem

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Sync radiomcp DB from g3 unified DB
-주 1회 실행: 0 3 * * 0 /path/to/sync_from_unified.py
+Run weekly: 0 3 * * 0 /path/to/sync_from_unified.py
 """
 
 import subprocess
@@ -20,7 +20,7 @@ def log(msg):
 def sync():
     log("=== Sync from unified DB ===")
 
-    # 1. g3에서 퀄리티 스테이션 추출 (votes >= 1)
+    # 1. Extract quality stations from g3 (votes >= 1)
     query = '''
     SELECT
         id, name, url, url_resolved, favicon,
@@ -48,11 +48,11 @@ def sync():
         log("No stations fetched, aborting")
         return
 
-    # 2. 로컬 DB 업데이트
+    # 2. Update local DB
     conn = sqlite3.connect(LOCAL_DB)
     c = conn.cursor()
 
-    # 기존 데이터 백업 (is_alive 상태 유지)
+    # Backup existing data (preserve is_alive state)
     c.execute('CREATE TABLE IF NOT EXISTS stations_backup AS SELECT * FROM stations')
 
     updated = 0
