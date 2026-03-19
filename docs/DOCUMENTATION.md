@@ -15,7 +15,7 @@ Both share the same SQLite database and support multilingual search, song recogn
 
 ```
 +---------------------------+---------------------------+
-|      CLI (radio.py)       |    MCP Server (server.py) |
+|      CLI (`radio`)        |    MCP Server (server.py) |
 |      - Terminal UI        |    - Claude Desktop       |
 |      - Direct input       |    - Natural language     |
 +-------------+-------------+-------------+-------------+
@@ -39,7 +39,7 @@ Both share the same SQLite database and support multilingual search, song recogn
 
 ```
 RadioCli/
-|-- radio.py                 # Main CLI application
+|-- radiomcp/tui.py          # Main CLI application (`radio` command)
 |-- radio_stations.db        # SQLite database (51k+ stations)
 |-- languages.json           # UI translations (ko, en, ja, zh)
 |-- README.md                # Project readme

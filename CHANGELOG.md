@@ -33,7 +33,7 @@
 - MCP   Radio Browser popular broadcast 
 - URL changed  auto update
 
-### CLI (radio.py)
+### CLI (`radio` command)
 
 - rock `blocklist.json` 
 - KBS/MBC/SBS rock 
@@ -70,7 +70,7 @@ RadioCli/
 │   ├── server.py          # MCP  (103KB)
 │   ├── blocklist.json     # rock
 │   └── radio_stations.db  # broadcast DB (12MB)
-├── radio.py               # CLI 
+├── radiomcp/tui.py       # CLI (radio command)
 ├── blocklist.json         # rock ()
 ├── pyproject.toml         # PyPI 
 ├── LICENSE                # MIT

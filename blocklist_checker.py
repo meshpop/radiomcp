@@ -9,7 +9,7 @@ import urllib.request
 import time
 
 # GitHub raw URL for blocklist
-BLOCKLIST_URL = "https://raw.githubusercontent.com/anthropics/radiocli/main/blocklist.json"
+BLOCKLIST_URL = "https://raw.githubusercontent.com/meshpop/radiomcp/main/blocklist.json"
 # Local cache
 CACHE_DIR = os.path.expanduser("~/.radiocli")
 BLOCKLIST_CACHE = os.path.join(CACHE_DIR, "blocklist_cache.json")

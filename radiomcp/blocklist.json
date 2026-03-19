@@ -1,7 +1,57 @@
 {
-  "version": "1.0.0",
-  "updated": "2026-03-09",
-  "blocked": [],
-  "blocked_urls": [],
-  "blocked_uuids": []
+  "version": "1.0.2",
+  "updated": "2026-03-15",
+  "blocked": [
+    {
+      "pattern": "",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "pyongyang",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "north korea",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "dprk",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "",
+      "reason": "blocked content",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "KBS",
+      "reason": "token-based URL expires",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "MBC",
+      "reason": "token-based URL expires",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "SBS",
+      "reason": "token-based URL expires",
+      "added": "2026-03-02"
+    },
+    {
+      "pattern": "Test Radio Station XYZ",
+      "reason": "Takedown request #1: This is a test takedown request to verify the automated blocklist system works correctly. Please rem",
+      "added": "2026-03-15"
+    }
+  ],
+  "blocked_urls": [
+    "https://stream.test-radio-xyz.example.com/live"
+  ],
+  "blocked_uuids": [
+    "00000000-test-0000-0000-000000000000"
+  ]
 }
