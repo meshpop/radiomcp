@@ -52,3 +52,7 @@ env/
 # Secrets / certs
 *.key
 *.pem
+# Internal infra docs — never commit
+ARCHITECTURE.md
+docs/ARCHITECTURE.md
+docs/API_ARCHITECTURE.md
