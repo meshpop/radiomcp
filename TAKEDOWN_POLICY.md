@@ -12,7 +12,7 @@ Takedown requests are enforced at two levels:
 
 1. **GitHub Blocklist (Remote Sync)** — All RadioMCP clients periodically fetch `blocklist.json` from this repository. Blocked stations are automatically purged from local databases.
 
-2. **Server-Side Blocklist (v4 API)** — The RadioMCP server also maintains its own blocklist that filters stations before they reach any client.
+2. **Server-Side Blocklist (relay4 API)** — The RadioMCP server also maintains its own blocklist that filters stations before they reach any client.
 
 This dual-layer approach ensures that blocked stations are removed even if one system experiences delays.
 

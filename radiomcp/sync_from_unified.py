@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sync radiomcp DB from g3 unified DB
+Sync radiomcp DB from node3 unified DB
 Run weekly: 0 3 * * 0 /path/to/sync_from_unified.py
 """
 
@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 
 LOCAL_DB = os.path.join(os.path.dirname(__file__), '..', 'radio_stations.db')
-REMOTE_HOST = os.environ.get('RADIO_REMOTE_HOST', 'g3')  # Override via env var
+REMOTE_HOST = os.environ.get('RADIO_REMOTE_HOST', '')  # Set via env: RADIO_REMOTE_HOST=yourserver
 # Remote DB path on the source server. Override via env var RADIO_REMOTE_DB
 REMOTE_DB = os.environ.get('RADIO_REMOTE_DB', '/home/user/radio_unified.db')
 
@@ -20,7 +20,7 @@ def log(msg):
 def sync():
     log("=== Sync from unified DB ===")
 
-    # 1. Extract quality stations from g3 (votes >= 1)
+    # 1. Extract quality stations from node3 (votes >= 1)
     query = '''
     SELECT
         id, name, url, url_resolved, favicon,
@@ -32,7 +32,7 @@ def sync():
     WHERE votes >= 1 AND is_verified = 1
     '''
 
-    log("Fetching from g3...")
+    log("Fetching from node3...")
     cmd = f'ssh {REMOTE_HOST} "sqlite3 -json {REMOTE_DB} \\"{query}\\""'
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 

@@ -382,7 +382,7 @@ RADIOGRAPH_BASE = CONFIG["radiograph_url"]
 API_BASE = RADIOGRAPH_BASE
 
 # G3 URL Validator API (optional, for detailed stream info)
-G3_VALIDATOR_URL = os.environ.get("G3_VALIDATOR_URL", "http://g3:8100/api/validate")
+G3_VALIDATOR_URL = os.environ.get("G3_VALIDATOR_URL", "")  # Set via env: G3_VALIDATOR_URL=http://yourserver:8100/api/validate
 G3_VALIDATOR_ENABLED = os.environ.get("G3_VALIDATOR_ENABLED", "false").lower() == "true"
 
 
@@ -970,17 +970,17 @@ def translate_query(query: str) -> str:
     return " ".join(translated)
 
 
-def levenshtein_distance(s1: str, s2: str) -> int:
+def levenshtein_distance(storage1: str, storage2: str) -> int:
     """Calculate edit distance between two strings"""
-    if len(s1) < len(s2):
-        return levenshtein_distance(s2, s1)
-    if len(s2) == 0:
-        return len(s1)
+    if len(storage1) < len(storage2):
+        return levenshtein_distance(storage2, storage1)
+    if len(storage2) == 0:
+        return len(storage1)
 
-    previous_row = range(len(s2) + 1)
-    for i, c1 in enumerate(s1):
+    previous_row = range(len(storage2) + 1)
+    for i, c1 in enumerate(storage1):
         current_row = [i + 1]
-        for j, c2 in enumerate(s2):
+        for j, c2 in enumerate(storage2):
             insertions = previous_row[j + 1] + 1
             deletions = current_row[j] + 1
             substitutions = previous_row[j] + (c1 != c2)
