@@ -56,3 +56,4 @@ env/
 ARCHITECTURE.md
 docs/ARCHITECTURE.md
 docs/API_ARCHITECTURE.md
+!radiomcp/radio_stations.db
