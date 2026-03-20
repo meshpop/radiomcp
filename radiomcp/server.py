@@ -1886,7 +1886,7 @@ def db_advanced_search(
         return []
 
 
-def _api_only_search(query: str, detected_country: str = None, limit: int = 20) -> list[dict]:
+def _api_only_search(query: str, detected_country: str = None, limit: int = 20) -> list:
     """API-only search for lightweight mode (no local DB)."""
     all_results = []
     seen_urls = set()
@@ -1947,7 +1947,7 @@ def _api_only_search(query: str, detected_country: str = None, limit: int = 20) 
 
 
 @mcp.tool()
-def search(query: str, limit: int = 20) -> list[dict]:
+def search(query: str, limit: int = 20) -> list:
     """
     Search radio stations by keyword. Fast local DB search (~5ms).
 
@@ -2113,7 +2113,7 @@ def advanced_search(
     codec: str = None,
     sort_by: str = "votes",
     limit: int = 20
-) -> list[dict]:
+) -> list:
     """
     Advanced search with multiple filters combined.
 
@@ -2267,7 +2267,7 @@ def advanced_search(
 
 
 @mcp.tool()
-def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
+def search_by_country(country_code: str, limit: int = 20) -> list:
     """
     Search radio stations by country.
     Merges results from local DB and RadioGraph API.
@@ -2306,7 +2306,7 @@ def search_by_country(country_code: str, limit: int = 20) -> list[dict]:
 
 
 @mcp.tool()
-def search_by_language(language: str, limit: int = 20) -> list[dict]:
+def search_by_language(language: str, limit: int = 20) -> list:
     """
     Search radio stations by language.
 
@@ -2374,7 +2374,7 @@ def search_by_language(language: str, limit: int = 20) -> list[dict]:
 
 
 @mcp.tool()
-def get_popular(limit: int = 20) -> list[dict]:
+def get_popular(limit: int = 20) -> list:
     """
     Get popular radio stations from local DB.
 
@@ -2815,7 +2815,7 @@ def save_recognized(result: dict):
 
 
 @mcp.tool()
-def get_recognized_songs(limit: int = 20) -> list[dict]:
+def get_recognized_songs(limit: int = 20) -> list:
     """
     Get history of recognized songs.
 
@@ -2836,7 +2836,7 @@ def get_recognized_songs(limit: int = 20) -> list[dict]:
 
 
 @mcp.tool()
-def get_favorites() -> list[dict]:
+def get_favorites() -> list:
     """Get favorite stations list."""
     return load_json(FAVORITES_FILE)
 
@@ -2907,14 +2907,14 @@ def play_favorite(index: int = 0) -> dict:
 
 
 @mcp.tool()
-def get_history(limit: int = 20) -> list[dict]:
+def get_history(limit: int = 20) -> list:
     """Get listening history."""
     history = load_json(HISTORY_FILE)
     return history[-limit:][::-1]
 
 
 @mcp.tool()
-def recommend(mood: str = "relaxing") -> list[dict]:
+def recommend(mood: str = "relaxing") -> list:
     """
     Get mood-based recommendations.
 
@@ -3278,7 +3278,7 @@ def get_volume() -> dict:
 
 
 @mcp.tool()
-def similar_stations(limit: int = 10) -> list[dict]:
+def similar_stations(limit: int = 10) -> list:
     """
     Find similar stations based on currently playing station's tags.
     Uses SVD embeddings API for high-quality recommendations when available,
@@ -3651,7 +3651,7 @@ def personalized_recommend(limit: int = 10) -> dict:
 
 
 @mcp.tool()
-def recommend_by_time() -> list[dict]:
+def recommend_by_time() -> list:
     """
     Recommend stations based on current time of day.
 
