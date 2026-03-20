@@ -824,10 +824,43 @@ def is_blocked(name):
             return True
     return False
 
+def _auto_install_player():
+    """Try to auto-install mpv via brew (macOS) or apt (Linux)."""
+    import platform
+    sys_name = platform.system()
+    try:
+        if sys_name == "Darwin":
+            if shutil.which("brew"):
+                print("  mpv not found — installing via brew...")
+                r = subprocess.run(["brew", "install", "mpv"],
+                                   capture_output=False, timeout=120)
+                return r.returncode == 0
+            else:
+                print("  mpv not found. Install with: brew install mpv")
+        elif sys_name == "Linux":
+            pkg_mgr = shutil.which("apt") or shutil.which("apt-get")
+            if pkg_mgr:
+                print("  mpv not found — installing via apt...")
+                r = subprocess.run(
+                    ["sudo", pkg_mgr, "install", "-y", "mpv"],
+                    capture_output=False, timeout=120)
+                return r.returncode == 0
+            else:
+                print("  mpv not found. Install with: sudo apt install mpv")
+    except Exception as e:
+        print(f"  Auto-install failed: {e}")
+    return False
+
+
 def get_player():
     for p in ["mpv", "ffplay", "vlc"]:
         if shutil.which(p):
             return p
+    # Not found — try auto-install
+    if _auto_install_player():
+        for p in ["mpv", "ffplay", "vlc"]:
+            if shutil.which(p):
+                return p
     return None
 
 # === LLM Integration ===
