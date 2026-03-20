@@ -4812,18 +4812,17 @@ def _handle_update():
 
     # Find best existing DB to use as base
     db_path = user_db
-    if not os.path.exists(user_db):
-        # Copy largest existing DB to user dir
-        import shutil as _shutil
-        best_src = None
-        best_size = 0
-        for src in [pkg_db, dev_db]:
-            if os.path.exists(src) and os.path.getsize(src) > best_size:
-                best_src = src
-                best_size = os.path.getsize(src)
-        if best_src:
-            _shutil.copy2(best_src, user_db)
-            print(f"  [i] Copied existing DB ({best_size//1024//1024}MB) to {user_db}")
+    import shutil as _shutil
+    best_src = None
+    best_size = 0
+    for src in [pkg_db, dev_db]:
+        if os.path.exists(src) and os.path.getsize(src) > best_size:
+            best_src = src
+            best_size = os.path.getsize(src)
+    user_size = os.path.getsize(user_db) if os.path.exists(user_db) else 0
+    if best_src and best_size > user_size * 2:
+        _shutil.copy2(best_src, user_db)
+        print(f"  [i] Using bundled DB ({best_size//1024//1024}MB) as base for update")
 
     print(f"  Updating stations from RadioGraph API...")
     print(f"  API: {RADIOGRAPH_BASE}")
@@ -5163,9 +5162,13 @@ def _run_doctor():
     if db:
         try:
             count = db.execute("SELECT COUNT(*) FROM stations WHERE is_alive = 1").fetchone()[0]
-            results.append(f"  Stations: {count:,}")
-        except:
-            results.append("  Stations: ERROR reading database")
+            if count == 0:
+                results.append("  Stations: No stations yet")
+                results.append("  Run: radiomcp update")
+            else:
+                results.append(f"  Stations: {count:,}")
+        except Exception:
+            results.append("  Stations: No stations yet — Run: radiomcp update")
     else:
         results.append("  Database: NOT FOUND")
         results.append("  Run: radiomcp update")

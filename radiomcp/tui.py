@@ -29,18 +29,33 @@ SONGS_FILE = os.path.join(DATA_DIR, "songs.json")  # Song history
 LAST_STATION_FILE = os.path.join(DATA_DIR, "last_station.json")  # Last station
 PREFERENCES_FILE = os.path.join(DATA_DIR, "preferences.json")
 
-# SQLite DB - search order: 1) package bundled, 2) ~/.radiocli/, 3) ~/RadioCli/
+# SQLite DB - user working DB takes priority; bundle is copied on first run
+def _init_user_db():
+    """Copy bundled DB to ~/.radiocli/ on first run or if bundle is significantly larger."""
+    user_db = os.path.join(DATA_DIR, "radio_stations.db")
+    bundle_db = os.path.join(_PKG_DIR, "radio_stations.db")
+    if not os.path.exists(bundle_db):
+        return
+    user_size = os.path.getsize(user_db) if os.path.exists(user_db) else 0
+    bundle_size = os.path.getsize(bundle_db)
+    if bundle_size > user_size * 2:
+        try:
+            shutil.copy2(bundle_db, user_db)
+        except Exception:
+            pass
+
 def _find_db():
     candidates = [
-        os.path.join(_PKG_DIR, "radio_stations.db"),          # pip install package embedded
-        os.path.join(DATA_DIR, "radio_stations.db"),           # ~/.radiocli/
-        os.path.expanduser("~/RadioCli/radio_stations.db"),    # dev environment
+        os.path.join(DATA_DIR, "radio_stations.db"),          # ~/.radiocli/ (user's working DB)
+        os.path.join(_PKG_DIR, "radio_stations.db"),          # pip install bundle (fallback)
+        os.path.expanduser("~/RadioCli/radio_stations.db"),   # dev environment
     ]
     for p in candidates:
         if os.path.exists(p):
             return p
-    return candidates[0]  # fallback to package path
+    return candidates[0]  # fallback to user dir path
 
+_init_user_db()
 DB_PATH = _find_db()
 
 # API mode: True=DB+API, False=DB only (fast)

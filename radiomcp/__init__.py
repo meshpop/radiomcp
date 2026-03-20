@@ -9,7 +9,11 @@ pip install radiomcp
 Powered by RadioGraph API
 """
 
-__version__ = "1.0.0"
+try:
+    from importlib.metadata import version as _pkg_version
+    __version__ = _pkg_version("radiomcp")
+except Exception:
+    __version__ = "1.0.6"
 __author__ = "meshpop"
 
 from .server import main, mcp
