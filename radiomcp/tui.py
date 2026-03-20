@@ -267,7 +267,7 @@ def detect_language_by_ip():
     return None
 
 def init_language():
-    """Initialize language (env > saved > IP > default)"""
+    """Initialize language (env > saved > default English)"""
     global UI_LANG
     # 1) Use environment variable if set
     env_lang = os.environ.get("RADIOCLI_LANG", "")
@@ -275,7 +275,7 @@ def init_language():
         UI_LANG = env_lang
         return
 
-    # 2) Use saved preference
+    # 2) Use saved preference (only if user explicitly set it via 'lang' command)
     try:
         pref_file = os.path.join(DATA_DIR, "lang.txt")
         if os.path.exists(pref_file):
@@ -286,18 +286,7 @@ def init_language():
     except:
         pass
 
-    # 3) Auto-detect by IP (slow, only first time)
-    detected = detect_language_by_ip()
-    if detected:
-        # Save for next time
-        try:
-            with open(os.path.join(DATA_DIR, "lang.txt"), "w") as f:
-                f.write(detected)
-        except:
-            pass
-        return
-
-    # 4) Default
+    # 3) Default: English
     UI_LANG = "en"
 
 # Song recognition settings

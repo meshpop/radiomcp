@@ -1,6 +1,6 @@
 [project]
 name = "radiomcp"
-version = "1.0.5"
+version = "1.0.6"
 description = "Internet radio MCP server + TUI player - 55,000+ stations, Airtune API, mpv playback"
 readme = "README.md"
 license = {text = "MIT"}
