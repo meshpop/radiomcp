@@ -16,8 +16,12 @@ Powered by [Airtune API](https://api.airtune.ai) | [korean](README.ko.md)
 ### Installation
 
 ```bash
-pip install radiomcp
+pipx install radiomcp
 ```
+
+> **Note:** Use `pipx` (recommended) to ensure the `radio` command is automatically added to your PATH.
+> If you prefer `pip`, you may need to add the scripts directory to your PATH manually.
+> Install pipx: `brew install pipx` (macOS) or `pip install pipx` (Linux/Windows)
 
 ### Player Installation (Optional)
 
