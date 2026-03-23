@@ -2855,8 +2855,6 @@ def show_menu():
         search_hint = f"  🔍 {t('search_hint_menu')}"
 
     print(f"""
-  RadioCli ({mode})
-
   a {t('ai_recommend'):<6} t {t('my_taste'):<5} p {t('popular'):<5} h {t('hq')}
   g {t('genre'):<6} c {t('country'):<5} f {t('favorites')}({fav_count})  l {t('playlist')}
   w {t('mood_now'):<6} i {t('song_recognize'):<5} n {t('current_song'):<5} sl {t('songs')}({songs_count})
@@ -2906,7 +2904,6 @@ def main():
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
-    print(f"\n  RadioCli ({PLAYER})")
     show_menu()
 
     while True:
