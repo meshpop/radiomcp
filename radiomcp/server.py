@@ -1173,8 +1173,32 @@ def get_db():
         return db_conn
 
     for path in DB_PATHS:
-        if os.path.exists(path):
+        if os.path.exists(path) and os.path.getsize(path) > 0:
             db_conn = sqlite3.connect(path, check_same_thread=False)
+            db_conn.row_factory = sqlite3.Row
+            # Verify it actually has stations (not a corrupt/empty schema)
+            try:
+                count = db_conn.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
+                if count > 0:
+                    return db_conn
+            except Exception:
+                pass
+            db_conn.close()
+            db_conn = None
+
+    # No valid DB found — copy package DB to DATA_DIR as first-run setup
+    package_db = os.path.join(PACKAGE_DIR, "radio_stations.db")
+    if os.path.exists(package_db) and os.path.getsize(package_db) > 0:
+        try:
+            os.makedirs(DATA_DIR, exist_ok=True)
+            dest = os.path.join(DATA_DIR, "radio_stations.db")
+            shutil.copy2(package_db, dest)
+            db_conn = sqlite3.connect(dest, check_same_thread=False)
+            db_conn.row_factory = sqlite3.Row
+            return db_conn
+        except Exception:
+            # Fallback: use package DB directly
+            db_conn = sqlite3.connect(package_db, check_same_thread=False)
             db_conn.row_factory = sqlite3.Row
             return db_conn
 
