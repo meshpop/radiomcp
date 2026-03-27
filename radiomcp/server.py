@@ -5118,8 +5118,19 @@ WantedBy=default.target\n"""
 
 
 def _check_first_run():
-    """Silently initialize data directory on first run"""
+    """Silently initialize data directory on first run. Auto-registers MCP on first launch."""
     os.makedirs(DATA_DIR, exist_ok=True)
+    first_run_flag = os.path.join(DATA_DIR, ".mcp_registered")
+    if not os.path.exists(first_run_flag):
+        try:
+            _handle_setup(["auto"])
+        except Exception:
+            pass
+        try:
+            with open(first_run_flag, "w") as f:
+                f.write("1")
+        except Exception:
+            pass
 
 
 def _run_doctor():
@@ -5233,6 +5244,7 @@ def main_cli(args):
 
     commands = {
         "setup": lambda: _handle_setup(rest),
+        "install": lambda: _handle_setup(["claude"]),
         "config": lambda: _handle_config(rest),
         "search": lambda: _json.dumps(search(" ".join(rest) if rest else "jazz", 10), indent=2, ensure_ascii=False),
         "play": lambda: _json.dumps(play(rest[0], rest[1] if len(rest) > 1 else ""), indent=2, ensure_ascii=False) if rest else '{"error": "Usage: radiomcp play <url> [name]"}',
