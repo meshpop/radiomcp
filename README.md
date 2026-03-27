@@ -7,8 +7,10 @@
 **Internet radio for Claude and your terminal. ~25,000 verified live stations, 197 countries.**
 
 ```bash
-pip install radiomcp
+pip install radiomcp && radiomcp
 ```
+
+First run auto-registers with Claude Desktop / Claude Code. Restart Claude and you're done.
 
 [한국어](README.ko.md) · Powered by [Airtune API](https://api.airtune.ai)
 
@@ -25,7 +27,11 @@ pip install radiomcp
 
 ## MCP — control radio with Claude
 
-Add to `~/.claude/settings.json` (or Claude Desktop config):
+```bash
+pip install radiomcp && radiomcp
+```
+
+Auto-detected and registered on first run. Or manually add to `~/.claude/settings.json`:
 
 ```json
 {
