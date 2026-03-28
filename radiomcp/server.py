@@ -2565,16 +2565,23 @@ def stop() -> dict:
 
     result = {"status": "stopped", "backend": PLAYER_BACKEND}
 
-    if PLAYER_BACKEND == "mpv":
-        kill_existing_mpv()
-        player_proc = None
-    elif PLAYER_BACKEND == "vlc":
-        player = get_vlc_player()
-        player.stop()
-    elif PLAYER_BACKEND == "ffplay":
-        player = get_ffplay_player()
-        player.stop()
-    elif PLAYER_BACKEND == "browser":
+    # Always kill all possible players regardless of current backend
+    # (previous sessions may have left orphaned processes)
+    kill_existing_mpv()
+    player_proc = None
+
+    # Also kill VLC and ffplay if running
+    try:
+        if IS_WINDOWS:
+            subprocess.run(["taskkill", "/IM", "vlc.exe", "/F"], capture_output=True, timeout=2)
+            subprocess.run(["taskkill", "/IM", "ffplay.exe", "/F"], capture_output=True, timeout=2)
+        else:
+            subprocess.run(["pkill", "-f", "VLC.*--intf dummy"], capture_output=True, timeout=2)
+            subprocess.run(["pkill", "-f", "ffplay.*http"], capture_output=True, timeout=2)
+    except Exception:
+        pass
+
+    if PLAYER_BACKEND == "browser":
         player = get_browser_player()
         player.stop()
         result["note"] = "Please close the browser tab manually"
